@@ -1,0 +1,190 @@
+// prisma/schema.prisma
+// DartHub core database schema.
+// Model names are PascalCase; table and column names are mapped to snake_case.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+
+  @@map("user_roles")
+}
+
+enum GameMode {
+  X01
+  CRICKET
+  AROUND_THE_CLOCK
+  CAREER
+
+  @@map("game_modes")
+}
+
+enum GameStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+  ABANDONED
+
+  @@map("game_statuses")
+}
+
+enum FriendStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  BLOCKED
+
+  @@map("friend_statuses")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         UserRole @default(USER)
+  displayName  String   @map("display_name") @db.VarChar(64)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  guests Guest[]
+
+  eloRatings           EloRating[]
+  performanceRatings   PerformanceRating[]
+  gamesAsPlayerOne     GameSession[]       @relation("GamesAsPlayerOne")
+  gamesAsPlayerTwo     GameSession[]       @relation("GamesAsPlayerTwo")
+  gamesAsWinner        GameSession[]       @relation("GamesAsWinner")
+  scores               Score[]
+  friendRequestsSent   Friend[]            @relation("FriendRequestsSent")
+  friendRequestsReceived Friend[]           @relation("FriendRequestsReceived")
+
+  @@map("users")
+}
+
+model Guest {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @unique @map("user_id") @db.Uuid
+  nickname   String   @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+
+  // Task 003 (auth): sha256 of the one-time guest migration token (proof of
+  // ownership when linking the guest to a real account). Null once used.
+  // Additive change; nothing else in the schema is altered.
+  migrationTokenHash String? @map("migration_token_hash") @db.VarChar(64)
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("guests")
+}
+
+// Ratings are tracked per game mode (X01 / CRICKET / AROUND_THE_CLOCK /
+// CAREER, plus free-form mode strings used by tests and admin tooling),
+// so the unique key is the (userId, mode) pair — one rating per user and
+// mode, never one per user.
+model EloRating {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  mode        String   @default("X01") @db.VarChar(32)
+  rating      Int      @default(1000)
+  gamesPlayed Int      @default(0) @map("games_played")
+  wins        Int      @default(0)
+  losses      Int      @default(0)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mode])
+  @@map("elo_ratings")
+}
+
+model PerformanceRating {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  mode             String   @default("X01") @db.VarChar(32)
+  averageTurnScore Decimal  @default(0) @map("average_turn_score") @db.Decimal(6, 2)
+  checkoutPct      Decimal  @default(0) @map("checkout_pct") @db.Decimal(5, 4)
+  gamesPlayed      Int      @default(0) @map("games_played")
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, mode])
+  @@map("performance_ratings")
+}
+
+model GameSession {
+  id          String     @id @default(uuid()) @db.Uuid
+  mode        GameMode   @default(X01)
+  status      GameStatus @default(WAITING)
+  playerOneId String     @map("player_one_id") @db.Uuid
+  playerTwoId String?    @map("player_two_id") @db.Uuid
+  winnerId    String?    @map("winner_id") @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  finishedAt  DateTime?  @map("finished_at") @db.Timestamptz(6)
+
+  playerOne User    @relation("GamesAsPlayerOne", fields: [playerOneId], references: [id], onDelete: Cascade)
+  playerTwo User?   @relation("GamesAsPlayerTwo", fields: [playerTwoId], references: [id], onDelete: SetNull)
+  winner    User?   @relation("GamesAsWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  scores    Score[]
+
+  @@index([playerOneId])
+  @@index([playerTwoId])
+  @@index([winnerId])
+  @@index([status])
+  @@map("game_sessions")
+}
+
+model Score {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @map("session_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  points    Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("scores")
+}
+
+model Friend {
+  id          String       @id @default(uuid()) @db.Uuid
+  requesterId String       @map("requester_id") @db.Uuid
+  addresseeId String       @map("addressee_id") @db.Uuid
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  respondedAt DateTime?    @map("responded_at") @db.Timestamptz(6)
+
+  requester User @relation("FriendRequestsSent", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendRequestsReceived", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId])
+  @@index([status])
+  @@map("friends")
+}
+
+model CareerQuest {
+  id         String   @id @default(uuid()) @db.Uuid
+  slug       String   @unique @db.VarChar(64)
+  name       String   @db.VarChar(128)
+  minLevel   Int      @default(1) @map("min_level")
+  questOrder Int      @map("quest_order")
+  payload    Json
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("career_quests")
+}

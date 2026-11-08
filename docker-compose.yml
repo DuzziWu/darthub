@@ -1,0 +1,61 @@
+# Compose variables are provided through the environment (or an env file), so
+# no sensitive value is ever committed:
+#   POSTGRES_USER      (default: darthub)
+#   POSTGRES_PASSWORD  (required, no default — compose fails fast without it)
+#   POSTGRES_DB        (default: darthub)
+
+name: darthub
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-darthub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in the environment}@postgres:5432/${POSTGRES_DB:-darthub}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-darthub}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in the environment}"
+      POSTGRES_DB: "${POSTGRES_DB:-darthub}"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-darthub} -d $${POSTGRES_DB:-darthub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Future task 009 (realtime Socket.IO server): add a second Node service
+  # alongside `app`, e.g.:
+  #
+  #   realtime:
+  #     build:
+  #       context: .
+  #       dockerfile: Dockerfile.realtime
+  #     restart: unless-stopped
+  #     ports:
+  #       - "3001:3001"
+  #     environment:
+  #       DATABASE_URL: "postgresql://${POSTGRES_USER:-darthub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in the environment}@postgres:5432/${POSTGRES_DB:-darthub}"
+  #     depends_on:
+  #       postgres:
+  #         condition: service_healthy
+  #
+  # The postgres service and DATABASE_URL wiring above are shared, so nothing
+  # else needs to change.
+
+volumes:
+  postgres-data:

@@ -1,0 +1,8 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "types": ["node"]
+  },
+  "include": ["../../../src/camera/**/*.ts", "**/*.ts", "../../../tests/support/**/*.ts"]
+}

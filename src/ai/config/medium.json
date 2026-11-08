@@ -1,0 +1,7 @@
+{
+  "difficulty": "medium",
+  "description": "Regular pub player with consistent but imperfect grouping",
+  "sigma": { "single": 20, "double": 22, "triple": 20, "bull": 24 },
+  "aimWeights": { "scoring": { "T20": 4, "T19": 1, "S20": 3, "S19": 1 } },
+  "checkoutSuccessRate": 0.25
+}

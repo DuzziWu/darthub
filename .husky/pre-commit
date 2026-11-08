@@ -1,0 +1,25 @@
+#!/bin/sh
+# DartHub pre-commit hook (POSIX sh; works on Windows Git Bash and Unix).
+# Runs ESLint with zero warnings allowed and Prettier, and aborts the commit
+# when either check fails. Installed via `git config core.hooksPath .husky`
+# (see README.md).
+#
+# Bypass is possible with `git commit --no-verify` but should be avoided.
+
+set -u
+
+echo "==> Pre-commit: running ESLint (eslint . --max-warnings=0)..."
+if ! npx --no-install eslint . --max-warnings=0; then
+  echo "==> Pre-commit: ESLint failed, commit aborted." >&2
+  echo "    Fix the reported errors (try: npm run lint:fix) and try again." >&2
+  exit 1
+fi
+
+echo "==> Pre-commit: checking formatting (prettier . --check)..."
+if ! npx --no-install prettier . --check; then
+  echo "==> Pre-commit: Prettier check failed, commit aborted." >&2
+  echo "    Run 'npm run format' and stage the changes, then try again." >&2
+  exit 1
+fi
+
+echo "==> Pre-commit: checks passed."

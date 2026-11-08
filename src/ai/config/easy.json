@@ -1,0 +1,7 @@
+{
+  "difficulty": "easy",
+  "description": "Casual social player with a loose, scatter-prone throw",
+  "sigma": { "single": 36, "double": 38, "triple": 36, "bull": 40 },
+  "aimWeights": { "scoring": { "S20": 8, "S19": 2, "T20": 1 } },
+  "checkoutSuccessRate": 0.1
+}

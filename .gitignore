@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+
+# Next.js build output
+.next
+out
+
+# Test coverage
+coverage
+
+# Misc
+.DS_Store
+*.pem
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files — real secrets stay untracked; .env.example is the tracked template
+.env
+.env.*
+!.env.example
+
+# Editor directories
+.idea
+.vscode
+*.suo
+
+# Vercel
+.vercel
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated / scratch directories
+reports/
+tmp-precommit-scratch/
+*.tmp-debug*

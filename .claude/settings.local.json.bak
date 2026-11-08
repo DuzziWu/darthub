@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {},
+  "permissions": {
+    "allow": [
+      "Bash(awk '{print $1}')",
+      "Skill(hcf:plan-orchestrate)"
+    ]
+  }
+}

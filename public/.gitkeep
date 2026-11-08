@@ -1,0 +1,2 @@
+# The production image copies /app/public into the runner stage. This file
+# keeps the directory present (and tracked in git) until static assets exist.

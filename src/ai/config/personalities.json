@@ -1,0 +1,23 @@
+{
+  "balanced": {
+    "id": "balanced",
+    "label": "Balanced",
+    "description": "Plays the percentages without a positional bias",
+    "sigmaMultiplier": 1,
+    "aimBias": { "T20": 1, "S20": 1 }
+  },
+  "aggressive": {
+    "id": "aggressive",
+    "label": "Aggressive",
+    "description": "Hunts the big beds: heavy treble-20 focus, few safe singles",
+    "sigmaMultiplier": 1,
+    "aimBias": { "T20": 3, "T19": 1.5, "S20": 0.3, "S19": 0.3 }
+  },
+  "conservative": {
+    "id": "conservative",
+    "label": "Conservative",
+    "description": "Protects the average: prefers the safe single-20 bed",
+    "sigmaMultiplier": 1,
+    "aimBias": { "T20": 0.4, "T19": 0.4, "S20": 2.5, "S19": 0.4 }
+  }
+}

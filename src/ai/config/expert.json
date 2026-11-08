@@ -1,0 +1,7 @@
+{
+  "difficulty": "expert",
+  "description": "Elite tournament player with near-automatic scoring darts",
+  "sigma": { "single": 9, "double": 10, "triple": 9, "bull": 11 },
+  "aimWeights": { "scoring": { "T20": 8, "T19": 2 } },
+  "checkoutSuccessRate": 0.64
+}

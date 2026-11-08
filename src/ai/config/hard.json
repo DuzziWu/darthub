@@ -1,0 +1,7 @@
+{
+  "difficulty": "hard",
+  "description": "Strong competitive player with tight grouping and double focus",
+  "sigma": { "single": 13, "double": 14, "triple": 13, "bull": 15 },
+  "aimWeights": { "scoring": { "T20": 7, "T19": 2, "S20": 2 } },
+  "checkoutSuccessRate": 0.46
+}

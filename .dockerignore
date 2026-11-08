@@ -1,0 +1,39 @@
+# Dependency and build caches (recreated inside the container by `npm ci`
+# and `npm run build`).
+node_modules/
+.next/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Version control and tooling metadata.
+.git
+.gitignore
+.gitattributes
+.github/
+.claude/
+.husky/
+.vscode/
+.prettierrc
+.prettierignore
+.dockerignore
+
+# Test, documentation and report artifacts are never part of a production
+# image build context.
+tests/
+docs/
+reports/
+README.md
+CLAUDE.md
+eslint.config.mjs
+vitest.config.ts
+
+# Local scratch/scratch-space directories.
+.tmp-debug/
+
+# Secret files.
+.env*
+
+# Compose file: describes how to run the stack outside the image, not what
+# gets baked into it.
+docker-compose.yml
