@@ -1,0 +1,26 @@
+{
+  "id": "quest-training-checkout-practice",
+  "name": "Checkout Practice",
+  "description": "Coach 'The Veteran' explains how to finish a leg. Score exactly 41 using 3 darts or fewer — the classic T1-D20 finish.",
+  "minLevel": 1,
+  "order": 3,
+  "stages": [
+    {
+      "id": "stage-checkout-practice",
+      "name": "Checkout Practice",
+      "objectives": [
+        {
+          "id": "obj-checkout-41",
+          "type": "checkout",
+          "target": 41,
+          "description": "Score exactly 41 using 3 darts or fewer"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "xp": 200,
+    "coins": 100,
+    "unlockedItems": ["quest-training-double-out"]
+  }
+}

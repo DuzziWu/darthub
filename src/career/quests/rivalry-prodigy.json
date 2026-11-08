@@ -1,0 +1,26 @@
+{
+  "id": "quest-rivalry-prodigy",
+  "name": "Rivalry: The Prodigy",
+  "description": "Your first real match! Face 'The Prodigy', a young hotshot who thinks you're just another pub player. Win a 301 game against this AI opponent to prove them wrong.",
+  "minLevel": 1,
+  "order": 5,
+  "stages": [
+    {
+      "id": "stage-rivalry-prodigy",
+      "name": "Rivalry Match",
+      "objectives": [
+        {
+          "id": "obj-win-match",
+          "type": "matchWins",
+          "target": 1,
+          "description": "Win a 301 game against The Prodigy"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "xp": 500,
+    "coins": 250,
+    "unlockedItems": ["avatar-veterans-cap"]
+  }
+}

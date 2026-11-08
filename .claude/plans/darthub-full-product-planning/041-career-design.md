@@ -1,6 +1,6 @@
 # Task 041: Design Career Mode story structure, NPCs, rivals, and training lessons
 
-**Status**: pending
+**Status**: completed
 **Depends on**: 020
 **Retry count**: 0
 
@@ -16,9 +16,9 @@ Create a detailed design document that defines:
 - Should reference the JSON quest schema from Task 020.
 
 ## Requirements (Test Descriptions)
-- [ ] `it outlines at least three distinct NPC archetypes with progression paths`
-- [ ] `it defines three core training lessons with measurable objectives`
-- [ ] `it maps story milestones to quest IDs and reward tiers`
+- [x] `it outlines at least three distinct NPC archetypes with progression paths` — docs/CAREER_DESIGN.md defines Coach (The Veteran), Rival (The Prodigy), and Patron (The Sponsor) with progression paths across acts
+- [x] `it defines three core training lessons with measurable objectives` — docs/CAREER_DESIGN.md defines Aiming Fundamentals, Checkout Techniques, and Double-Out Mastery with targets
+- [x] `it maps story milestones to quest IDs and reward tiers` — docs/CAREER_DESIGN.md includes milestone table mapping milestones to quest IDs and Tier 1-6 rewards
 
 ## Acceptance Criteria
 - Document reviewed and approved by product lead.

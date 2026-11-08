@@ -1,0 +1,38 @@
+{
+  "id": "quest-training-aiming-fundamentals",
+  "name": "Aiming Fundamentals",
+  "description": "Coach 'The Veteran' teaches you proper aiming technique. Hit 3 distinct segments: one in singles, one in doubles, and one in triples.",
+  "minLevel": 1,
+  "order": 2,
+  "stages": [
+    {
+      "id": "stage-aiming-fundamentals",
+      "name": "Aiming Fundamentals",
+      "objectives": [
+        {
+          "id": "obj-hit-single",
+          "type": "singleDartScore",
+          "target": 1,
+          "description": "Hit a single segment"
+        },
+        {
+          "id": "obj-hit-double",
+          "type": "singleDartScore",
+          "target": 2,
+          "description": "Hit a double segment"
+        },
+        {
+          "id": "obj-hit-triple",
+          "type": "singleDartScore",
+          "target": 3,
+          "description": "Hit a triple segment"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "xp": 150,
+    "coins": 75,
+    "unlockedItems": ["quest-training-checkout-practice"]
+  }
+}

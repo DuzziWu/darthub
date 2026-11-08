@@ -1,6 +1,6 @@
 # Task 047: Integrate optional Redis backend into matchmaking persistence
 
-**Status**: pending
+**Status**: completed
 **Depends on**: 046, 031
 **Retry count**: 0
 
@@ -12,10 +12,10 @@ Implement `RedisRoomStore` using the `ioredis` client. Ensure it respects the `U
 - Environment variable `USE_REDIS` determines which `IRoomStore` implementation is instantiated.
 
 ## Requirements (Test Descriptions)
-- [ ] `it connects to Redis using the URL from env`
-- [ ] `it saves room snapshots and can restore them after a restart`
-- [ ] `it clears stale rooms after a TTL`
-- [ ] `integration test spins up a Redis container and verifies persistence`
+- [x] `it connects to Redis using the URL from env`
+- [x] `it saves room snapshots and can restore them after a restart`
+- [x] `it clears stale rooms after a TTL`
+- [x] `integration test spins up a Redis container and verifies persistence`
 
 ## Acceptance Criteria
 - When `USE_REDIS=true` the server uses Redis for room state.

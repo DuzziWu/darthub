@@ -1,24 +1,40 @@
 /**
  * Registry of active private rooms.
  *
- * Keeps the room lookup seam narrow so later tasks (015 invite codes,
- * 046/047 room persistence) can swap the in-memory implementation
- * without touching the socket layer.
+ * Delegates room persistence to a pluggable IRoomStore implementation.
+ * Uses InMemoryRoomStore by default for local development.
  */
 import { GameRoom } from "@/realtime/GameRoom";
+import { InMemoryRoomStore } from "@/realtime/InMemoryRoomStore";
+import type { IRoomStore } from "@/realtime/IRoomStore";
+
+/** Default TTL for room persistence in seconds (1 hour). */
+const DEFAULT_TTL_SECONDS = 3600;
+
+/** Constructor options for RoomRegistry. */
+export interface RoomRegistryOptions {
+  /** Persistence store; defaults to InMemoryRoomStore. */
+  store?: IRoomStore;
+  /** Default TTL in seconds for saved room snapshots. */
+  defaultTtlSeconds?: number;
+}
 
 /** In-memory store of live rooms keyed by room code. */
 export class RoomRegistry {
   private readonly rooms = new Map<string, GameRoom>();
-  /** Simple in‑memory backup of room snapshots for persistence. */
-  private readonly backup: { roomCode: string; data: unknown }[] = [];
+  private readonly store: IRoomStore;
+  private readonly defaultTtlSeconds: number;
+
+  constructor(options: RoomRegistryOptions = {}) {
+    this.store = options.store ?? new InMemoryRoomStore();
+    this.defaultTtlSeconds = options.defaultTtlSeconds ?? DEFAULT_TTL_SECONDS;
+  }
 
   /** Creates a new private room with the given host name. */
   createRoom(hostPlayerName: string, withAiOpponent = false): GameRoom {
     const room = GameRoom.create(hostPlayerName, withAiOpponent);
     this.rooms.set(room.roomCode, room);
-    // Store a shallow snapshot for backup; real implementation would serialize state.
-    this.backup.push({ roomCode: room.roomCode, data: room.getMembership(room.getHostSeat()) });
+    void this.persistRoom(room);
     return room;
   }
 
@@ -27,8 +43,13 @@ export class RoomRegistry {
     return this.rooms.get(roomCode);
   }
 
-  /** Returns the persisted backup entries (for testing). */
-  getBackup(): readonly { roomCode: string; data: unknown }[] {
-    return this.backup;
+  /** Returns the persistence store (for testing). */
+  getStore(): IRoomStore {
+    return this.store;
+  }
+
+  /** Persists a room snapshot to the configured store. */
+  private async persistRoom(room: GameRoom): Promise<void> {
+    await this.store.save(room, this.defaultTtlSeconds);
   }
 }

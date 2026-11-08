@@ -2,6 +2,7 @@
  * Shared types and constants for the DartHub realtime (Socket.IO) layer.
  */
 import type { MatchState } from "@/game-engine";
+import type { IRoomStore } from "@/realtime/IRoomStore";
 
 /** Socket.IO event names used between the realtime server and its clients. */
 export const REALTIME_EVENTS = {
@@ -45,6 +46,11 @@ export interface RealtimeServerOptions {
    * imports `@/ai` directly; callers provide the implementation.
    */
   readonly aiProvider?: AIProvider;
+  /**
+   * Room persistence store. Defaults to the factory-selected store
+   * (USE_REDIS=1 → RedisRoomStore, otherwise → InMemoryRoomStore).
+   */
+  readonly roomStore?: IRoomStore;
 }
 
 /**

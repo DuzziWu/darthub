@@ -1,0 +1,26 @@
+{
+  "id": "quest-training-double-out",
+  "name": "Double-Out Mastery",
+  "description": "Coach 'The Veteran' teaches you the double-out rule. Hit double-16 twice (D16 × 2 = 32) in a single visit to prove your double accuracy.",
+  "minLevel": 1,
+  "order": 4,
+  "stages": [
+    {
+      "id": "stage-double-out",
+      "name": "Double-Out Mastery",
+      "objectives": [
+        {
+          "id": "obj-double-16-twice",
+          "type": "checkout",
+          "target": 32,
+          "description": "Hit double-16 twice in a single visit (D16 + D16 = 32)"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "xp": 300,
+    "coins": 150,
+    "unlockedItems": ["quest-rivalry-prodigy"]
+  }
+}

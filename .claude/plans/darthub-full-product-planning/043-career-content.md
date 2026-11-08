@@ -1,6 +1,6 @@
 # Task 043: Create first playable Career Mode content (quests, NPCs, training lessons)
 
-**Status**: pending
+**Status**: completed
 **Depends on**: 042
 **Retry count**: 0
 
@@ -16,10 +16,10 @@ Populate the JSON quest files and related assets for the initial Career Mode rel
 - Update `src/career/questLoader.ts` to include these files.
 
 ## Requirements (Test Descriptions)
-- [ ] `it loads the intro quest and returns correct dialog data`
-- [ ] `it loads each training lesson and validates against the schema`
-- [ ] `it awards the expected XP and unlocks after completion`
-- [ ] `it integrates with the progression service (Task 042)`
+- [x] `it loads the intro quest and returns correct dialog data`
+- [x] `it loads each training lesson and validates against the schema`
+- [x] `it awards the expected XP and unlocks after completion`
+- [x] `it integrates with the progression service (Task 042)`
 
 ## Acceptance Criteria
 - Playable content is accessible in a local dev build.

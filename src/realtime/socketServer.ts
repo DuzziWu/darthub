@@ -24,6 +24,7 @@ import {
   type RoomRejectionCodeValue,
 } from "@/realtime/GameRoom";
 import { RoomRegistry } from "@/realtime/RoomRegistry";
+import { createRoomStore } from "@/realtime/roomStoreFactory";
 import {
   REALTIME_EVENTS,
   type Ack,
@@ -196,7 +197,7 @@ export function createSocketIoServer(
   const io = new SocketIoServer(httpServer, {
     cors: { origin: DEFAULT_CORS_ORIGINS, methods: ["GET", "POST"] },
   });
-  const registry = new RoomRegistry();
+  const registry = new RoomRegistry({ store: options.roomStore ?? createRoomStore() });
   const runAiTurns = createAiTurnRunner(options.aiProvider, io);
   /** Broadcasts one state change to the room and drains AI turns. */
   const publishState = (room: GameRoom, state: MatchState): MatchState => {

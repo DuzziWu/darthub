@@ -1,0 +1,38 @@
+{
+  "id": "quest-intro",
+  "name": "First Flight",
+  "description": "Meet Coach 'The Veteran' and learn the basics of dart throwing. Throw 3 practice darts to prove you're ready to begin your journey.",
+  "minLevel": 1,
+  "order": 1,
+  "stages": [
+    {
+      "id": "stage-first-flight",
+      "name": "First Flight",
+      "objectives": [
+        {
+          "id": "obj-first-throw",
+          "type": "singleDartScore",
+          "target": 1,
+          "description": "Throw your first dart at any target"
+        },
+        {
+          "id": "obj-second-throw",
+          "type": "singleDartScore",
+          "target": 2,
+          "description": "Throw your second dart at any target"
+        },
+        {
+          "id": "obj-third-throw",
+          "type": "singleDartScore",
+          "target": 3,
+          "description": "Throw your third dart at any target"
+        }
+      ]
+    }
+  ],
+  "rewards": {
+    "xp": 100,
+    "coins": 50,
+    "unlockedItems": ["quest-training-aiming-fundamentals"]
+  }
+}
