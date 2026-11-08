@@ -7,7 +7,7 @@
 ready
 
 ## Objective
-Define, design, and prepare all components needed to build the DartHub platform according to the confirmed architectural decisions, covering user model, ranking, AI, multiplayer, camera integration, social features, GDPR compliance, deployment, career mode, and supporting documentation. **MVP implementation complete — 47/48 tasks done; task 048 (plan audit) remains pending.**
+Define, design, and prepare all components needed to build the DartHub platform according to the confirmed architectural decisions, covering user model, ranking, AI, multiplayer, camera integration, social features, GDPR compliance, deployment, career mode, and supporting documentation. **MVP implementation complete — 48/48 tasks done.**
 
 ## Related Issues
 none
@@ -94,7 +94,7 @@ All architectural decisions have been fixed (guest & registered users, hybrid ra
 | 045 | Define calibration, perspective correction and hit‑detection module (future CV phase) | 044 | completed |
 | 046 | Abstract room persistence layer with pluggable backends | 010 | completed |
 | 047 | Integrate optional Redis backend into matchmaking persistence | 046, 031 | completed |
-| 048 | Verify completeness of the development plan and Definition of Done | 034, 047, 043, 039, 028 | pending |
+| 048 | Verify completeness of the development plan and Definition of Done | 034, 047, 043, 039, 028 | completed |
 
 ## Architecture Notes
 - All modules are placed under `src/` respecting the service‑repository‑DTO pattern.
