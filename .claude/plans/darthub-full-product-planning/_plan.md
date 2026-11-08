@@ -4,10 +4,10 @@
 2026-11-07
 
 ## Status
-in_progress
+ready
 
 ## Objective
-Define, design, and prepare all components needed to build the DartHub platform according to the confirmed architectural decisions, covering user model, ranking, AI, multiplayer, camera integration, social features, GDPR compliance, deployment, career mode, and supporting documentation.
+Define, design, and prepare all components needed to build the DartHub platform according to the confirmed architectural decisions, covering user model, ranking, AI, multiplayer, camera integration, social features, GDPR compliance, deployment, career mode, and supporting documentation. **MVP implementation complete — 47/48 tasks done; task 048 (plan audit) remains pending.**
 
 ## Related Issues
 none
@@ -69,15 +69,15 @@ All architectural decisions have been fixed (guest & registered users, hybrid ra
 | 020 | Design JSON‑driven career‑mode quest engine | 001 | completed |
 | 021 | Implement basic quest loader and progression API | 020 | completed |
 | 022 | Add adaptive difficulty hook into career quests | 021 | completed |
-| 023 | Create UI skeletons (dashboard, game lobby, career screen) | 001, 006, 014, 003, 043 | pending |
-| 024 | Write unit & integration tests for core UI components | 023 | pending |
-| 025 | End‑to‑end Playwright tests for login, matchmaking, career flow | 024 | pending |
+| 023 | Create UI skeletons (dashboard, game lobby, career screen) | 001, 006, 014, 003, 043 | completed |
+| 024 | Write unit & integration tests for core UI components | 023 | completed |
+| 025 | End‑to‑end Playwright tests for login, matchmaking, career flow | 024 | completed |
 | 026 | Assemble full documentation set (PRD, ARCHITECTURE, DATABASE, API, ROADMAP, TESTING, SECURITY, COSTS, DECISIONS) | 001 | completed |
 | 027 | Conduct architecture and security review (devils‑advocate, standards‑enforcer) | 026 | completed |
-| 028 | Final acceptance checklist and plan ready flag | 027 | pending |
+| 028 | Final acceptance checklist and plan ready flag | 027 | completed |
 | 029 | Add .dockerignore to exclude unnecessary files from Docker context | 018 | completed |
-| 030 | Implement lightweight audit logger for GDPR actions | 016, 017 | blocked |
-| 031 | Add Redis (or fast store) for matchmaking state persistence | 010 | pending |
+| 030 | Implement lightweight audit logger for GDPR actions | 016, 017 | completed |
+| 031 | Add Redis (or fast store) for matchmaking state persistence | 010 | completed |
 | 032 | Add pre‑commit hook to run lint and format checks | 001 | completed |
 | 033 | Create example .env file with required environment variables | 018 | completed |
 | 034 | Enforce ESLint import ordering rule across new modules | 001 | completed |
@@ -85,15 +85,15 @@ All architectural decisions have been fixed (guest & registered users, hybrid ra
 | 036 | Implement 501 and 301 game modes | 035 | completed |
 | 037 | Implement Cricket game mode | 035 | completed |
 | 038 | Implement out rules, bust, checkout, leg and set logic | 035, 036, 037 | completed |
-| 039 | Write comprehensive unit tests for the Dart game engine | 038 | pending |
+| 039 | Write comprehensive unit tests for the Dart game engine | 038 | completed |
 | 040 | Document GameEngine public API and integration guide | 035 | completed |
-| 041 | Design Career Mode story structure, NPCs, rivals, and training lessons | 020 | pending |
-| 042 | Implement Career Mode progression, rewards and unlock system | 041 | pending |
-| 043 | Create first playable Career Mode content (quests, NPCs, training lessons) | 042 | pending |
+| 041 | Design Career Mode story structure, NPCs, rivals, and training lessons | 020 | completed |
+| 042 | Implement Career Mode progression, rewards and unlock system | 041 | completed |
+| 043 | Create first playable Career Mode content (quests, NPCs, training lessons) | 042 | completed |
 | 044 | Separate camera stub from future computer‑vision implementation | 012 | completed |
 | 045 | Define calibration, perspective correction and hit‑detection module (future CV phase) | 044 | completed |
-| 046 | Abstract room persistence layer with pluggable backends | 010 | pending |
-| 047 | Integrate optional Redis backend into matchmaking persistence | 046, 031 | pending |
+| 046 | Abstract room persistence layer with pluggable backends | 010 | completed |
+| 047 | Integrate optional Redis backend into matchmaking persistence | 046, 031 | completed |
 | 048 | Verify completeness of the development plan and Definition of Done | 034, 047, 043, 039, 028 | pending |
 
 ## Architecture Notes

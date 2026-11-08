@@ -1,6 +1,6 @@
 # Task 028: Final acceptance checklist and mark plan as ready
 
-**Status**: pending
+**Status**: completed
 **Depends on**: 027
 **Retry count**: 0
 
@@ -20,3 +20,13 @@ Create a checklist covering all success criteria from previous tasks. Verify eac
 ## Acceptance Criteria
 - Checklist passes all automated validation scripts.
 - Plan is ready for orchestration.
+
+## Implementation Notes
+- `reports/final-checklist.md` updated with current 48-task status table (47 completed, 1 pending: 048)
+- `_plan.md` status changed from `in_progress` to `ready`; Objective updated to note MVP is complete
+- Task 015 (invite codes) was already marked `complete` in both task file and _plan.md — no change needed
+- Tasks 023, 024, 025 (UI skeletons, UI tests, E2E tests) were completed this session and are now marked completed in _plan.md
+- Task 030 (audit logger) was completed this session and is now marked completed in _plan.md (was previously showing as blocked in old checklist report)
+- Task 042 and 043 (career progression and content) were completed this session and are now marked completed in _plan.md
+- No open critical findings from architecture review (task 027: 0 CRITICAL, 3 HIGH design-level assigned as pre-completion constraints to 004/005)
+- Plan is ready for orchestration; only task 048 (plan completeness audit) remains
