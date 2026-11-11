@@ -67,8 +67,9 @@ const createInMemoryFriendRepository = () => {
     friends: friendStore,
     addUser,
     addFriend,
-    runInTransaction: async <T>(fn: (repo: typeof import("@/friends/repository")) => Promise<T>) =>
-      fn(),
+    runInTransaction: async <T>(
+      fn: (tx: import("@/friends/repository").FriendUnitOfWork) => Promise<T>,
+    ) => fn({} as import("@/friends/repository").FriendUnitOfWork),
   };
 };
 

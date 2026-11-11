@@ -1,0 +1,667 @@
+﻿
+ RUN  v4.1.12 E:/coding/darthub
+
+ × tests/unit/precommit/precommit.test.ts > pre-commit hook > executes eslint --max-warnings=0 and prettier --check 38ms
+   → hook exited with 1:
+: expected 1 to be +0 // Object.is equality
+ × tests/unit/precommit/precommit.test.ts > pre-commit hook > prevents commit when linting fails 29ms
+   → expected '' to match /ESLint failed/i
+ × tests/unit/precommit/precommit.test.ts > pre-commit hook > works on Windows and Unix environments 19ms
+   → hook exited with 1:
+: expected 1 to be +0 // Object.is equality
+ ✓ tests/unit/antiCheatMiddleware.test.ts > Anti‑cheat middleware > rejects throws with points outside 0‑60 5ms
+ ✓ tests/unit/antiCheatMiddleware.test.ts > Anti‑cheat middleware > prevents the same player ID from joining multiple rooms simultaneously 2ms
+ × tests/unit/antiCheatMiddleware.test.ts > Anti‑cheat middleware > blocks illegal state transitions (starting a match twice) 11ms
+   → Cannot read properties of undefined (reading 'constructor')
+[realtime] socket connected (37G3mGSBEZtuWaYcAAAA)
+[realtime] room created (VR73QG)
+[realtime] match started
+[realtime] socket disconnected (37G3mGSBEZtuWaYcAAAA): client namespace disconnect
+ ✓ tests/integration/realtime/aiSeam.test.ts > AI provider seam > throws automatically for AI seats when a provider is injected 96ms
+[realtime] socket connected (rN_qQdGJjmDUJjF9AAAA)
+[realtime] socket disconnected (rN_qQdGJjmDUJjF9AAAA): client namespace disconnect
+[realtime] socket connected (A5XFXHMbrDIHxXJhAAAB)
+[realtime] room created (UUYGAF)
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > establishes a Socket.IO connection and acknowledges client 62ms
+[realtime] socket connected (_fq39Tej_kTbbwWlAAAC)
+[realtime] socket admitted to room (UUYGAF)
+[realtime] socket disconnected (A5XFXHMbrDIHxXJhAAAB): client namespace disconnect
+[realtime] socket disconnected (_fq39Tej_kTbbwWlAAAC): client namespace disconnect
+[realtime] socket connected (-76c31rTjHrjTY-7AAAD)
+[realtime] room created (V7KDLG)
+[realtime] socket connected (HEL0fuc64Hf7Gnt6AAAE)
+[realtime] socket admitted to room (V7KDLG)
+[realtime] match started
+[realtime] socket connected (nY45Vh1rKFmDCRCUAAAF)
+[realtime] room created (B43A3B)
+[realtime] socket connected (nQn4871ywNX5OTjQAAAG)
+[realtime] socket admitted to room (B43A3B)
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > creates a private room and only allows invited sockets 43ms
+ × tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > validates incoming throw data on the server side 77ms
+   → payload {"roomCode":"V7KDLG","points":10,"playerId":"V7KDLG-p2"} must be rejected: expected true to be false // Object.is equality
+[realtime] match started
+[realtime] socket connected (nQpadFRYUIsrRr8xAAAH)
+[realtime] room created (67MYHN)
+[realtime] socket connected (eee84fSZsuFj7l6LAAAI)
+[realtime] socket admitted to room (67MYHN)
+[realtime] match started
+[realtime] socket disconnected (eee84fSZsuFj7l6LAAAI): client namespace disconnect
+[realtime] socket connected (9ucTi2kIDjo-AzjMAAAJ)
+[realtime] socket admitted to room (67MYHN)
+[realtime] socket connected (kF5Nw8PlR8BLBAmUAAAK)
+[realtime] room created (UM3FPV)
+[realtime] socket connected (ztH708eDgJQUlDCcAAAL)
+[realtime] socket admitted to room (UM3FPV)
+[realtime] match started
+[realtime] socket connected (Jqfgb2wYqlndwq9GAAAM)
+[realtime] socket disconnected (-76c31rTjHrjTY-7AAAD): client namespace disconnect
+[realtime] socket disconnected (HEL0fuc64Hf7Gnt6AAAE): client namespace disconnect
+[realtime] socket disconnected (nY45Vh1rKFmDCRCUAAAF): client namespace disconnect
+[realtime] socket disconnected (nQn4871ywNX5OTjQAAAG): client namespace disconnect
+[realtime] socket disconnected (nQpadFRYUIsrRr8xAAAH): client namespace disconnect
+[realtime] socket disconnected (9ucTi2kIDjo-AzjMAAAJ): client namespace disconnect
+[realtime] socket disconnected (kF5Nw8PlR8BLBAmUAAAK): client namespace disconnect
+[realtime] socket disconnected (ztH708eDgJQUlDCcAAAL): client namespace disconnect
+[realtime] socket disconnected (Jqfgb2wYqlndwq9GAAAM): client namespace disconnect
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > updates game state and broadcasts to all participants 36ms
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > handles client disconnect and allows reconnection to same room 46ms
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > rejects reconnection with an unknown player token 31ms
+ ✓ tests/unit/auth/guestService.test.ts > guestService > creates a guest session without email 753ms
+ ✓ tests/unit/auth/guestService.test.ts > guestService > gives guest sessions a week-long expiration 668ms
+ ✓ tests/unit/auth/authService.test.ts > authService > registers a new user with email and hashed password 1410ms
+ ✓ tests/unit/auth/authService.test.ts > authService > rejects registration with an invalid email address 5ms
+ ✓ tests/unit/auth/guestService.test.ts > guestService > refuses registration of addresses in the reserved guest domain 667ms
+ ✓ tests/unit/auth/authService.test.ts > authService > refuses a second registration for an already registered email 672ms
+node.exe : stderr | tests/integration/linkGuest.test.ts > POST /api/auth/link-guest > accepts a guest token and new 
+user credentials
+In Zeile:1 Zeichen:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\dusti\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr | tests/...ser credentials:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PrismaClientInitializationError: Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at r (E:\coding\darthub\node_modules\@prisma\client\runtime\library.js:112:2770)
+    at async Qr.transaction (E:\coding\darthub\node_modules\@prisma\client\runtime\library.js:111:11048)
+    at async Proxy._transactionWithCallback (E:\coding\darthub\node_modules\@prisma\client\runtime\library.js:130:8044)
+    at POST (E:/coding/darthub/app/api/auth/link-guest/route.ts:25:36)
+    at E:/coding/darthub/tests/integration/linkGuest.test.ts:18:18
+    at async file:///E:/coding/darthub/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20 {
+  clientVersion: '6.19.3',
+  errorCode: 'P1001',
+  retryable: undefined
+}
+
+ × tests/integration/linkGuest.test.ts > POST /api/auth/link-guest > accepts a guest token and new user credentials 4190ms
+   → expected 500 to be 400 // Object.is equality
+ ✓ tests/unit/auth/guestService.test.ts > guestService.migrateGuestToUser > migrates guest data to a registered user preserving progress 1410ms
+ ✓ tests/unit/realtime/redisPersistence.test.ts > Redis room persistence > room snapshot persistence > stores room state in Redis and retrieves it on server start 8ms
+ ✓ tests/unit/auth/authService.test.ts > authService > logs in a user and returns a JWT 1391ms
+ ✓ tests/unit/realtime/redisPersistence.test.ts > Redis room persistence > TTL enforcement > expires stale room entries after a configurable TTL 1106ms
+ ✓ tests/unit/auth/guestService.test.ts > guestService.migrateGuestToUser > refuses a guest migration without the one-time migration token 1489ms
+ ✓ tests/unit/realtime/redisPersistence.test.ts > Redis room persistence > docker compose redis service > compose defines a redis service with correct port and healthcheck 492ms
+ ✓ tests/unit/auth/authService.test.ts > authService > rejects login with invalid credentials 1479ms
+ ✓ tests/unit/ai/engine.test.ts > AI engine > does not use external APIs 12ms
+ ✓ tests/unit/ai/engine.test.ts > AI engine > can be injected into game logic via an interface 2ms
+ ✓ tests/unit/ai/engine.test.ts > AI engine > produces realistic checkout success rates per difficulty 53ms
+ ✓ tests/unit/ai/engine.test.ts > AI engine > returns higher average scores for Hard vs. Easy 43ms
+ ✓ tests/integration/career/questRoutes.test.ts > career quest API routes > respects user authentication 92ms
+ ✓ tests/integration/career/questRoutes.test.ts > career quest API routes > returns the current quest for an authenticated user 10ms
+ ✓ tests/unit/ai/engine.test.ts > AI engine > respects personality modifiers (aggressive, conservative) 53ms
+ ✓ tests/integration/career/questRoutes.test.ts > career quest API routes > completes a quest and unlocks the next one (full flow) 27ms
+ ✓ tests/integration/career/questRoutes.test.ts > career quest API routes > returns error status when the quest ID is invalid 7ms
+ ✓ tests/integration/career/questRoutes.test.ts > career quest API routes > persists progression across a service restart 15ms
+ ✓ tests/integration/career/questRoutes.test.ts > career quest API routes > rejects a malformed POST body 5ms
+ ✓ tests/unit/auth/guestService.test.ts > guestService.migrateGuestToUser > burns the migration token so it cannot replay the migration 2181ms
+ ✓ tests/unit/camera/cameraCompile.test.ts > Camera abstraction compile-time contract > compiles without implementation 9371ms
+ ✓ tests/unit/dockerignore.test.ts > dockerignore > contains entries for node_modules, tests/, .git, .env, and other large folders 6ms
+ ✓ tests/unit/dockerignore.test.ts > dockerignore > does not ignore files the builder stage needs 9ms
+ ✓ tests/unit/dockerignore.test.ts > dockerignore > docker build respects the ignore file and image size stays below 200 MB 79ms
+ ✓ tests/unit/ai/difficultyMeans.test.ts > AI difficulty scoring means > loads Easy config and verifies mean score ≈ 30 67ms
+ ✓ tests/unit/ai/difficultyMeans.test.ts > AI difficulty scoring means > loads Hard config and verifies mean score ≈ 70 39ms
+ ✓ tests/unit/ai/difficultyMeans.test.ts > AI difficulty checkout profile > ensures checkout success probability matches spec per difficulty 51ms
+ ✓ tests/unit/camera/vision/visionScaffold.test.ts > Camera CV module outline (task 045) > defines the Calibration class with method stubs for calibrate() and apply() 7ms
+ ✓ tests/unit/camera/vision/visionScaffold.test.ts > Camera CV module outline (task 045) > defines the Perspective class with method stub transform() 1ms
+ ✓ tests/unit/camera/vision/visionScaffold.test.ts > Camera CV module outline (task 045) > defines the HitDetector class with method stub detect() returning a CameraDTO 1ms
+ ✓ tests/unit/camera/vision/visionScaffold.test.ts > Camera CV module outline (task 045) > includes type tests that the interfaces compile 9720ms
+ ✓ tests/unit/camera/vision/visionScaffold.test.ts > Camera CV module outline (task 045) > documents the intended algorithmic steps in the vision README 1ms
+ ✓ tests/unit/camera/vision/visionScaffold.test.ts > Camera CV module outline (task 045) > imports no external libraries (pure outline module) 9ms
+ ✓ tests/unit/privacy/deleteAccountRoute.test.ts > DELETE /api/privacy/account > requires authentication and returns 401 otherwise 56ms
+ ✓ tests/unit/privacy/deleteAccountRoute.test.ts > DELETE /api/privacy/account > deletes the user record and all related entries 13ms
+ ✓ tests/unit/privacy/deleteAccountRoute.test.ts > DELETE /api/privacy/account > removes associated guest sessions (verified via service call) 2ms
+ ✓ tests/unit/privacy/deleteAccountRoute.test.ts > DELETE /api/privacy/account > logs the deletion event for audit 3ms
+ ✓ tests/unit/privacy/deleteAccountRoute.test.ts > DELETE /api/privacy/account > returns a confirmation JSON response 5ms
+ ✓ tests/integration/rating/ratingRoutes.test.ts > GET /api/rating/:userId > returns both ratings in the GET /api/rating/:userId endpoint 79ms
+ ✓ tests/integration/rating/ratingRoutes.test.ts > GET /api/rating/:userId > serves the baseline defaults for a user without any recorded games 2ms
+ ✓ tests/integration/rating/ratingRoutes.test.ts > GET /api/rating/:userId > respects the requested game mode from the query string 2ms
+ ✓ tests/integration/rating/ratingRoutes.test.ts > GET /api/rating/:userId > returns 400 when the user id parameter is missing 1ms
+ ✓ tests/integration/rating/ratingRoutes.test.ts > POST /api/rating/game > applies the Elo and performance updates for both participants 4ms
+ ✓ tests/integration/rating/ratingRoutes.test.ts > POST /api/rating/game > rejects a malformed POST body and honours the mode query 4ms
+ ✓ tests/integration/auth/requireAuth.test.ts > requireAuth > protects routes with authentication middleware 85ms
+ ✓ tests/integration/auth/requireAuth.test.ts > requireAuth > exposes the guest's progress identity from a guest session 6ms
+ ✓ tests/integration/auth/requireAuth.test.ts > requireAuth > rejects an expired token as if it were anonymous 3ms
+ ✓ tests/integration/auth/requireAuth.test.ts > requireAuth > rejects tokens signed with a foreign secret 3ms
+ ✓ tests/unit/camera/cameraDTO.test.ts > CameraDTO > defines CameraDTO with fields: x, y, score, timestamp 22ms
+ ✓ tests/unit/docker.test.ts > docker setup > builds a production image with node:18-alpine 5ms
+ ✓ tests/unit/docker.test.ts > docker setup > runs the app inside the container and serves on port 3000 5ms
+ ✓ tests/unit/docker.test.ts > docker setup > starts PostgreSQL with persistent volume 1ms
+ ✓ tests/unit/docker.test.ts > docker setup > injects DATABASE_URL correctly 1ms
+ ✓ tests/unit/docker.test.ts > docker setup > can be started with docker compose up without errors 82ms
+ ✓ tests/unit/docs/docs.test.ts > docs documentation set > includes a table of contents with correct links 17ms
+ ✓ tests/unit/docs/docs.test.ts > docs documentation set > references the latest architecture diagram (to be added later) 2ms
+ ✓ tests/unit/docs/docs.test.ts > docs documentation set > describes all modules and their responsibilities 4ms
+ ✓ tests/unit/docs/docs.test.ts > docs documentation set > lists open decisions and rationales 2ms
+ ✓ tests/unit/docs/docs.test.ts > docs documentation set > passes markdown linting 42ms
+ ✓ tests/unit/career/questService.test.ts > questService > validates quest JSON files against the TypeScript schema before loading 15ms
+ ✓ tests/unit/career/questService.test.ts > questService > records quest completion and updates progress 14ms
+ ✓ tests/unit/career/questService.test.ts > questService > unlocks the next quest based on adaptive difficulty 19ms
+ ✓ tests/unit/career/questService.test.ts > questService > returns error if quest ID is invalid 14ms
+ ✓ tests/integration/ui-skeletons.test.tsx > UI Skeletons > Dashboard Page > renders the dashboard with user stats placeholder 64ms
+ ✓ tests/integration/ui-skeletons.test.tsx > UI Skeletons > Lobby Page > renders the lobby with list of available rooms 34ms
+ ✓ tests/integration/ui-skeletons.test.tsx > UI Skeletons > Career Page > renders the career screen with current quest 19ms
+ ✓ tests/integration/ui-skeletons.test.tsx > UI Skeletons > uses responsive design (mobile + desktop) 1ms
+ ✓ tests/integration/ui-skeletons.test.tsx > UI Skeletons > compiles without TypeScript errors 1ms
+ ✓ tests/unit/ui/career.test.tsx > Career Page > renders career screen with sections 31ms
+ ✓ tests/unit/ui/career.test.tsx > Career Page > displays current quest placeholder 2ms
+ ✓ tests/unit/ui/career.test.tsx > Career Page > shows progress bar 3ms
+ ✓ tests/unit/ui/career.test.tsx > Career Page > shows training placeholder 7ms
+ ✓ tests/unit/ui/career.test.tsx > Career Page > matches snapshot structure 6ms
+ ✓ tests/unit/ui/career.test.tsx > Career Page > uses responsive design classes 2ms
+ ✓ tests/unit/career/questLoader.test.ts > questLoader > provides a function to fetch next quest based on player level 15ms
+ ✓ tests/unit/career/questLoader.test.ts > questLoader > loads quests into memory on app start 11ms
+ ✓ tests/unit/career/questLoader.test.ts > questLoader > is idempotent: repeated load() calls keep a single cache 6ms
+ ✓ tests/unit/career/questLoader.test.ts > questLoader > rejects a quests directory containing invalid quest JSON 7ms
+ ✓ tests/unit/camera/cameraStubVsCv.test.ts > Camera stub vs computer-vision implementation (task 044) > mentions that the stub returns dummy CameraDTO data 6ms
+ ✓ tests/unit/camera/cameraStubVsCv.test.ts > Camera stub vs computer-vision implementation (task 044) > outlines the planned CV pipeline stages (calibration, perspective correction, detection) 2ms
+ ✓ tests/unit/camera/cameraStubVsCv.test.ts > Camera stub vs computer-vision implementation (task 044) > defines an interface ICameraProcessor for the future implementation 55ms
+ ✓ tests/unit/ui/lobby.test.tsx > Lobby Page > renders lobby with matchmaking and room sections 26ms
+ ✓ tests/unit/ui/lobby.test.tsx > Lobby Page > shows list of rooms in lobby placeholder 2ms
+ ✓ tests/unit/ui/lobby.test.tsx > Lobby Page > has interactive buttons 2ms
+ ✓ tests/unit/ui/lobby.test.tsx > Lobby Page > matches snapshot structure 5ms
+ ✓ tests/unit/ui/lobby.test.tsx > Lobby Page > uses responsive design classes 2ms
+ ✓ tests/unit/privacy/auditService.test.ts > auditService > writes an audit record with required fields for an export action 36ms
+ ✓ tests/unit/privacy/auditService.test.ts > auditService > writes an audit record for a delete action 2ms
+ ✓ tests/unit/privacy/auditService.test.ts > auditService > can be queried for recent audit events 3ms
+ ✓ tests/integration/career/adaptiveEngineFlow.test.ts > adaptive engine integration with the quest completion flow > escalates difficulty through completeQuest and persists it per user 22ms
+ ✓ tests/integration/career/adaptiveEngineFlow.test.ts > adaptive engine integration with the quest completion flow > de-escalates through completeQuest after consecutive losses 10ms
+ ✓ tests/unit/auth/session.test.ts > session > logins in a user and returns a JWT 21ms
+ ✓ tests/unit/auth/session.test.ts > session > round trips claims through verifySessionToken 4ms
+ ✓ tests/unit/auth/session.test.ts > session > gives user sessions a 24 hour expiration 2ms
+ ✓ tests/unit/auth/session.test.ts > session > refuses to sign tokens with a weak, absent, or trivial secret 3ms
+ ✓ tests/unit/auth/session.test.ts > session > rejects tokens signed with a different secret 3ms
+ ✓ tests/unit/auth/session.test.ts > session > rejects tokens after their expiration has passed 3ms
+ × tests/unit/formatting.test.ts > formatting > formats code without differences using prettier 14634ms
+   → prettier --check exited with 1:
+
+> darthub@0.1.0 format:check
+> prettier . --check
+
+Checking formatting...
+[warn] app/api/auth/invitation/route.ts
+[warn] app/api/invite/create/route.ts
+[warn] app/api/invite/join/route.ts
+[warn] tests/integration/friends/friendRoutes.test.ts
+[warn] Code style issues found in 4 files. Run Prettier with --write to fix.
+: expected 1 to be +0 // Object.is equality
+ ✓ tests/unit/camera/cameraIndex.test.ts > Camera barrel > an index.ts barrel file exports ICameraService and CameraDTO for easy imports 51ms
+ ✓ tests/unit/ui/dashboard.test.tsx > Dashboard Page > renders dashboard with mock user data 30ms
+ ✓ tests/unit/ui/dashboard.test.tsx > Dashboard Page > displays stat placeholders 2ms
+ ✓ tests/unit/ui/dashboard.test.tsx > Dashboard Page > matches snapshot structure 5ms
+ ✓ tests/unit/ui/dashboard.test.tsx > Dashboard Page > uses responsive breakpoints (mobile view) 2ms
+ ✓ tests/unit/career/careerContent.test.ts > careerContent > intro quest > loads the intro quest and returns correct dialog data 12ms
+ ✓ tests/unit/career/careerContent.test.ts > careerContent > training lessons > loads each training lesson and validates against the schema 4ms
+ ✓ tests/unit/career/careerContent.test.ts > careerContent > XP rewards > awards the expected XP based on quest rewards definition 5ms
+ ✓ tests/unit/career/careerContent.test.ts > careerContent > quest chain > references correct next quest chain (intro → training → rivalry) 5ms
+ ✓ tests/unit/game-engine/modes/CricketMode.test.ts > CricketMode > tracks hits on each target number and the bullseye 18ms
+ ✓ tests/unit/game-engine/modes/CricketMode.test.ts > CricketMode > correctly closes a number after three hits 2ms
+ ✓ tests/unit/game-engine/modes/CricketMode.test.ts > CricketMode > awards points for hits on already-closed numbers of the opponent 4ms
+ ✓ tests/unit/game-engine/modes/CricketMode.test.ts > CricketMode > determines the winner when all numbers are closed and the higher score wins 5ms
+ ✓ tests/unit/game-engine/rules/OutRules.test.ts > OutRules (checkout rules) > Double Out > it enforces Double Out: a player can only finish on a double 16ms
+ ✓ tests/unit/game-engine/rules/OutRules.test.ts > OutRules (checkout rules) > Master Out > it enforces Master Out: a player can finish on any double or bull 2ms
+ ✓ tests/unit/game-engine/rules/OutRules.test.ts > OutRules (checkout rules) > Straight Out > it enforces Straight Out: any score can finish the leg 1ms
+ ✓ tests/unit/game-engine/rules/OutRules.test.ts > OutRules (checkout rules) > Bust scenarios > it correctly handles bust scenarios according to the selected out rule 4ms
+ ✓ tests/unit/game-engine/rules/OutRules.test.ts > OutRules (checkout rules) > Engine configuration > it exposes out-rule and leg/set configuration through MatchConfig 2ms
+ ✓ tests/unit/game-engine/rules/OutRules.test.ts > OutRules (checkout rules) > Engine configuration > it validates throw segments against the scored points 2ms
+ ✓ tests/unit/db-schema/migration.test.ts > prisma migration > validates the schema without errors 15466ms
+ ✓ tests/unit/career/questSchema.test.ts > questSchema > validates a quest JSON against the schema 7ms
+ ✓ tests/unit/career/questSchema.test.ts > questSchema > rejects a quest missing required fields 1ms
+ ✓ tests/unit/career/questSchema.test.ts > questSchema > validates the sample quest file 18ms
+ ✓ tests/unit/career/questSchema.test.ts > questSchema > supports adaptive difficulty flags 2ms
+ ✓ tests/unit/career/questSchema.test.ts > questSchema > rejects invalid adaptive difficulty values 1ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > requests video permissions via getUserMedia 10ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > resolves a CameraDTO with dummy data when captureThrow is called 2ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > handles permission denial gracefully 6ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > conforms to ICameraService interface 1ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > tests run in a jsdom environment or mock MediaDevices appropriately 1ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > delegates capture to an injected processor when one is provided 3ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > stops all stream tracks when a started session is stopped 1ms
+ ✓ tests/unit/camera/smartphoneCamera.test.ts > SmartphoneCameraService > rejects stop and capture before the session started 1ms
+ ✓ tests/unit/game-engine/modes/StandardMode.test.ts > StandardMode (x01) > it starts a match at 501 and allows scoring down to zero 16ms
+ ✓ tests/unit/game-engine/modes/StandardMode.test.ts > StandardMode (x01) > it starts a match at 301 and behaves identically with a lower start score 4ms
+ ✓ tests/unit/game-engine/modes/StandardMode.test.ts > StandardMode (x01) > it rejects throws that would reduce the score below zero (bust) 1ms
+ ✓ tests/unit/game-engine/modes/StandardMode.test.ts > StandardMode (x01) > it can be selected via a configuration object when creating a GameEngine instance 2ms
+ ✓ tests/integration/friends/friendRoutes.test.ts > friend system > send friend request > sends a friend request from user A to user B 13ms
+ ✓ tests/integration/friends/friendRoutes.test.ts > friend system > send friend request > validates that both users exist 4ms
+ ✓ tests/integration/friends/friendRoutes.test.ts > friend system > send friend request > prevents duplicate friend entries 1ms
+ ✓ tests/integration/friends/friendRoutes.test.ts > friend system > accept friend request > allows user B to accept the request 1ms
+ ✓ tests/integration/friends/friendRoutes.test.ts > friend system > list friends > lists all accepted friends for a user 2ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > retrieves player Elo and selects appropriate difficulty tier 9ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > escalates difficulty after consecutive successes 3ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > de-escalates after failures 1ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > scenario matrix > respects a quest's tightenTargetsOnWin flag 1ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > scenario matrix > respects a quest's relaxTargetsOnLoss flag 1ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > scenario matrix > uses a quest's own thresholds and step 1ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > scenario matrix > clamps the cumulative adjustment at the loop boundaries 1ms
+ ✓ tests/unit/career/adaptiveEngine.test.ts > adaptiveEngine > scenario matrix > persists difficulty adjustments per user 1ms
+ ✓ tests/unit/game-engine/rules/LegSetManager.test.ts > LegSetManager > it tracks leg wins and set progression 16ms
+ ✓ tests/unit/game-engine/rules/LegSetManager.test.ts > LegSetManager > it requires more than half of a best-of-N round to win it 2ms
+ ✓ tests/unit/db-schema/schema.test.ts > database schema > creates a User model with id, email, passwordHash, role 7ms
+ ✓ tests/unit/db-schema/schema.test.ts > database schema > creates a Guest model linked optionally to a User 4ms
+ ✓ tests/unit/db-schema/schema.test.ts > database schema > creates EloRating and PerformanceRating models linked to a User and keyed per game mode 4ms
+ ✓ tests/unit/db-schema/schema.test.ts > database schema > creates GameSession model with foreign keys to players and scores 3ms
+ ✓ tests/unit/db-schema/schema.test.ts > database schema > creates Friend relationship model (bidirectional) 4ms
+ ✓ tests/unit/db-schema/schema.test.ts > database schema > creates CareerQuest model with JSON payload 3ms
+ ✓ tests/unit/ai/difficultyConfig.test.ts > AI difficulty configuration > validates that all required fields exist in each config file 10ms
+ ✓ tests/unit/ai/difficultyConfig.test.ts > AI difficulty configuration > loads each difficulty tier by name from the registry 1ms
+ ✓ tests/unit/ai/difficultyConfig.test.ts > AI difficulty configuration > rejects an unknown difficulty level 2ms
+ ✓ tests/unit/ai/difficultyConfig.test.ts > AI difficulty configuration > rejects a config with a missing field 2ms
+ ✓ tests/unit/ai/difficultyConfig.test.ts > AI difficulty configuration > rejects a config with mutated field values 2ms
+ ✓ tests/unit/game-engine/frameworkAgnostic.test.ts > GameEngine framework-agnosticism > is framework-agnostic and can be imported in Node or browser environments 24ms
+ ✓ tests/unit/docs/deploymentDocs.test.ts > DEPLOYMENT.md > contains sections: prerequisites, environment variables, docker compose commands, data migration 7ms
+ ✓ tests/unit/docs/deploymentDocs.test.ts > DEPLOYMENT.md > provides a rollback guide 2ms
+ ✓ tests/unit/docs/deploymentDocs.test.ts > DEPLOYMENT.md > lists required ports and firewall rules 2ms
+ ✓ tests/unit/docs/deploymentDocs.test.ts > DEPLOYMENT.md > has no broken relative links 7ms
+ ✓ tests/unit/docs/deploymentDocs.test.ts > DEPLOYMENT.md > is lint-checked for Markdown style 2ms
+ ✓ tests/unit/rating/ratingService.test.ts > ratingService > stores both ratings separately for a user 11ms
+ ✓ tests/unit/rating/ratingService.test.ts > ratingService > keeps ratings for different game modes in separate rows 2ms
+ ✓ tests/unit/rating/ratingService.test.ts > ratingService > starts a new user at the baseline default values 2ms
+ ✓ tests/unit/rating/ratingService.test.ts > ratingService > does not affect guest ratings until migration 3ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > calculateXpForLevel > returns 0 for level 1 4ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > calculateXpForLevel > calculates XP required for each level correctly 1ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > xpRequiredForNextLevel > returns 150 for level 1 0ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > xpRequiredForNextLevel > scales with level 0ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > awardXp > awards XP without level-up when below threshold 2ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > awardXp > awards XP and triggers level-up at threshold 1ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > awardXp > does not over-award XP beyond level threshold 0ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > awardXp > handles multi-level jumps 1ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > getUnlockablesForLevel > returns correct unlockables for a given level 2ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > getUnlockablesForLevel > accumulates unlockables from all lower levels 2ms
+ ✓ tests/unit/career/progressionService.test.ts > progressionService > getUnlockablesForLevel > returns empty array for level 1 2ms
+ ✓ tests/unit/realtime/roomStore.test.ts > InMemoryRoomStore > stores and retrieves room state using the selected backend 7ms
+ ✓ tests/unit/realtime/roomStore.test.ts > InMemoryRoomStore > returns undefined for a room that does not exist 5ms
+ ✓ tests/unit/realtime/roomStore.test.ts > InMemoryRoomStore > replaces an existing room with the same code 1ms
+ ✓ tests/unit/realtime/roomStore.test.ts > InMemoryRoomStore > finds multiple rooms 1ms
+ ✓ tests/unit/realtime/roomStore.test.ts > createRoomStore > falls back to InMemory when Redis is not configured 1ms
+ ✓ tests/unit/realtime/roomStore.test.ts > createRoomStore > selects RedisRoomStore when USE_REDIS is set 1ms
+ ✓ tests/unit/camera/iCameraService.test.ts > ICameraService > defines ICameraService with start, stop, captureThrow methods 63ms
+ ✓ tests/unit/game-engine/GameEngineValidation.test.ts > GameEngine input validation > validates input parameters (player IDs, scores) 13ms
+ ✓ tests/unit/game-engine/GameEngine.test.ts > GameEngine > exposes methods to start a new match, record a throw, and query current state 13ms
+ ✓ tests/unit/career/careerDesign.test.ts > careerDesign > outlines at least three distinct NPC archetypes with progression paths 6ms
+ ✓ tests/unit/career/careerDesign.test.ts > careerDesign > defines three core training lessons with measurable objectives 4ms
+ ✓ tests/unit/career/careerDesign.test.ts > careerDesign > maps story milestones to quest IDs and reward tiers 2ms
+ ✓ tests/unit/rating/performanceService.test.ts > PerformanceRating > updates PerformanceRating based on recent game stats 5ms
+ ✓ tests/unit/rating/performanceService.test.ts > PerformanceRating > aggregates the last N games in a single batched summary (no per-game queries) 2ms
+ ✓ tests/unit/rating/performanceService.test.ts > PerformanceRating > returns default zeroes for a new user without any game stats 1ms
+ ✓ tests/unit/rating/performanceService.test.ts > PerformanceRating > avoids division by zero when no turns or checkout attempts were recorded 1ms
+ ✓ tests/unit/rating/performanceService.test.ts > PerformanceRating > rounds stored values to the database decimal precision 1ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 200 and roomId for a valid unused code 18ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 400 for a nonexistent code 2ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 400 for a code that has already been consumed 3ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 400 when code is missing from body 2ms
+ ✓ tests/integration/invite/createRoute.test.ts > POST /api/invite/create > returns 200 with a code string for a valid roomId 17ms
+ ✓ tests/integration/invite/createRoute.test.ts > POST /api/invite/create > returns 400 when roomId is missing 2ms
+ ✓ tests/integration/invite/createRoute.test.ts > POST /api/invite/create > returns 400 when roomId is an empty string 3ms
+ ✓ tests/unit/env-example.test.ts > .env.example > it includes DATABASE_URL, JWT_SECRET, REDIS_URL (optional), and PORT 5ms
+ ✓ tests/unit/env-example.test.ts > .env.example > comments explain each variable 2ms
+ ✓ tests/unit/env-example.test.ts > .env.example > the file is excluded from version-controlled secrets (.gitignore) 2ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > returns an 8-character alphanumeric string 7ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > associates the code with the given roomId 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > multiple codes for the same roomId are all valid 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > consumeInviteCode with a valid code returns the roomId and invalidates it 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > consumeInviteCode returns undefined for a nonexistent code 0ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > consumeInviteCode returns undefined for an already-consumed code (single-use) 0ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > listActiveInvites reflects active (non-consumed) codes 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > collision resistance: generating many codes does not produce duplicates 1ms
+ ✓ tests/unit/game-engine/docs/publicApi.test.ts > game-engine README documentation > includes TypeScript signatures for all public methods 6ms
+ ✓ tests/unit/game-engine/docs/publicApi.test.ts > game-engine README documentation > provides example code snippets for both client-side and server-side usage 2ms
+ ✓ tests/unit/game-engine/docs/publicApi.test.ts > game-engine README documentation > mentions the engine is UI-agnostic and can be used in isolation 1ms
+ ✓ tests/unit/career/prismaCareerProgressRepository.test.ts > prismaCareerProgressRepository > reads a user's progress from the Prisma delegate 8ms
+ ✓ tests/unit/career/prismaCareerProgressRepository.test.ts > prismaCareerProgressRepository > upserts progress so completions survive a restart 1ms
+ ✓ tests/unit/career/rewardService.test.ts > rewardService > claimReward > allows first-time reward claim 6ms
+ ✓ tests/unit/career/rewardService.test.ts > rewardService > claimReward > prevents duplicate reward claims 1ms
+ ✓ tests/unit/career/rewardService.test.ts > rewardService > claimReward > returns unlockables on successful claim 0ms
+ ✓ tests/unit/career/rewardService.test.ts > rewardService > claimReward > allows different users to claim the same reward 1ms
+ ✓ tests/unit/rating/eloService.test.ts > Elo rating math > calculates Elo change after a win/loss using standard K-factor 5ms
+ ✓ tests/unit/rating/eloService.test.ts > Elo rating math > uses the standard logistic expected-score formula for unequal ratings 1ms
+ ✓ tests/unit/rating/eloService.test.ts > Elo rating math > keeps paired win/loss changes symmetric so rating points cancel out 0ms
+ ✓ tests/unit/rating/eloService.test.ts > Elo rating math > clamps ratings to sane bounds to guard against overflow 1ms
+ ✓ tests/unit/rating/eloService.test.ts > Elo rating math > uses the default bounds to clamp ratings pushed outside the sane range 0ms
+ ✓ tests/unit/career/adaptiveDifficulty.test.ts > defaultAdaptiveDifficultyPolicy > applies no adjustment when the quest has no adaptive difficulty block 5ms
+ ✓ tests/unit/career/adaptiveDifficulty.test.ts > defaultAdaptiveDifficultyPolicy > applies no adjustment when adaptive difficulty is disabled 1ms
+ ✓ tests/unit/career/adaptiveDifficulty.test.ts > defaultAdaptiveDifficultyPolicy > tightens targets after reaching the win streak threshold 1ms
+ ✓ tests/unit/career/adaptiveDifficulty.test.ts > defaultAdaptiveDifficultyPolicy > relaxes targets after reaching the loss streak threshold 1ms
+ ✓ tests/unit/career/adaptiveDifficulty.test.ts > defaultAdaptiveDifficultyPolicy > relaxes before tightening when both streak thresholds are met 1ms
+ ✓ tests/unit/career/adaptiveDifficulty.test.ts > defaultAdaptiveDifficultyPolicy > ignores tighten/relax when the corresponding flag is off 1ms
+ ✓ tests/unit/matchmaking.test.ts > PublicMatchmaker > matches two random guests into a public room 6ms
+ × tests/unit/typescript.test.ts > typescript > compiles Typescript with no type errors 22125ms
+   → tsc --noEmit exited with 2:
+
+> darthub@0.1.0 typecheck
+> tsc --noEmit --incremental false
+
+tests/integration/invite/createRoute.test.ts(11,29): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/createRoute.test.ts(24,29): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/createRoute.test.ts(36,29): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(14,29): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(26,29): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(42,30): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(51,30): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(63,29): error TS2345: Argument of type 'Request' is not assignable to parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+: expected 2 to be +0 // Object.is equality
+ × tests/unit/linting.test.ts > lint > lints code without errors using eslint 22215ms
+   → eslint exited with 1:
+
+> darthub@0.1.0 lint
+> eslint .
+
+
+E:\coding\darthub\tests\integration\invite\joinRoute.test.ts
+  3:1  error  `@/realtime/inviteService` import should occur before import of `../../../app/api/invite/join/route`  import-x/order
+
+✖ 1 problem (1 error, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+: expected 1 to be +0 // Object.is equality
+ ✓ tests/unit/eslint/import-order.test.ts > import order > runs eslint and reports no import order violations for the codebase 21241ms
+ ✓ tests/unit/ci-workflow.test.ts > ci > defines a workflow that triggers on push 26ms
+ × tests/unit/ci-workflow.test.ts > ci > runs the CI workflow successfully on push 21915ms
+   → workflow step "Lint" exited with 1:
+
+> darthub@0.1.0 lint
+> eslint .
+
+
+E:\coding\darthub\tests\integration\invite\joinRoute.test.ts
+  3:1  error  `@/realtime/inviteService` import should occur before import of `../../../app/api/invite/join/route`  import-x/order
+
+✖ 1 problem (1 error, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+: expected 1 to be +0 // Object.is equality
+ ✓ tests/unit/eslint/import-order.test.ts > import order > fails a build if a new file violates the order 2780ms
+ ✓ tests/unit/eslint/import-order.test.ts > import order > accepts a fixture whose imports follow the configured order 18ms
+ ✓ tests/unit/db-schema/migration.test.ts > prisma migration > generates the Prisma client without errors 10737ms
+ ✓ tests/unit/db-schema/migration.test.ts > prisma migration > generates migration and applies without errors 4397ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/integration/linkGuest.test.ts > POST /api/auth/link-guest > accepts a guest token and new user credentials
+AssertionError: expected 500 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 500
+
+ ❯ tests/integration/linkGuest.test.ts:19:25
+     17|     // Since the guest does not exist, we expect a 400 response.
+     18|     const resp = await POST(req);
+     19|     expect(resp.status).toBe(400);
+       |                         ^
+     20|   });
+     21| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+ FAIL  tests/unit/antiCheatMiddleware.test.ts > Anticheat middleware > blocks illegal state transitions (starting a 
+match twice)
+TypeError: Cannot read properties of undefined (reading 'constructor')
+ ❯ tests/unit/antiCheatMiddleware.test.ts:35:73
+     33|     room.startMatch(room.getHostSeat().playerId);
+     34|     // Second start should be blocked by middleware.
+     35|     expect(() => validateMatchStart(room, room.getHostSeat().playerId)…
+       |                                                                         ^
+     36|       (e: unknown) =>
+     37|         e instanceof RoomChangeError && e.code === RoomRejectionCode.m…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯
+
+ FAIL  tests/unit/ci-workflow.test.ts > ci > runs the CI workflow successfully on push
+AssertionError: workflow step "Lint" exited with 1:
+
+> darthub@0.1.0 lint
+> eslint .
+
+
+E:\coding\darthub\tests\integration\invite\joinRoute.test.ts
+  3:1  error  `@/realtime/inviteService` import should occur before import of `../../../app/api/invite/join/route`  
+import-x/order
+
+✖ 1 problem (1 error, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/unit/ci-workflow.test.ts:46:9
+     44|         exitCode,
+     45|         `workflow step "${step.name ?? step.run}" exited with ${exitCo…
+     46|       ).toBe(0);
+       |         ^
+     47|     }
+     48|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/10]⎯
+
+ FAIL  tests/unit/formatting.test.ts > formatting > formats code without differences using prettier
+AssertionError: prettier --check exited with 1:
+
+> darthub@0.1.0 format:check
+> prettier . --check
+
+Checking formatting...
+[warn] app/api/auth/invitation/route.ts
+[warn] app/api/invite/create/route.ts
+[warn] app/api/invite/join/route.ts
+[warn] tests/integration/friends/friendRoutes.test.ts
+[warn] Code style issues found in 4 files. Run Prettier with --write to fix.
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/unit/formatting.test.ts:8:78
+      6|     const { exitCode, output } = runCommand("npm run format:check");
+      7|
+      8|     expect(exitCode, `prettier --check exited with ${exitCode}:\n${out…
+       |                                                                              ^
+      9|     expect(output).not.toMatch(/\[warn\]/);
+     10|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/10]⎯
+
+ FAIL  tests/unit/linting.test.ts > lint > lints code without errors using eslint
+AssertionError: eslint exited with 1:
+
+> darthub@0.1.0 lint
+> eslint .
+
+
+E:\coding\darthub\tests\integration\invite\joinRoute.test.ts
+  3:1  error  `@/realtime/inviteService` import should occur before import of `../../../app/api/invite/join/route`  
+import-x/order
+
+✖ 1 problem (1 error, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/unit/linting.test.ts:8:68
+      6|     const { exitCode, output } = runCommand("npm run lint");
+      7|
+      8|     expect(exitCode, `eslint exited with ${exitCode}:\n${output}`).toB…
+       |                                                                    ^
+      9|     expect(output).not.toMatch(/error\b/i);
+     10|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/10]⎯
+
+ FAIL  tests/unit/typescript.test.ts > typescript > compiles Typescript with no type errors
+AssertionError: tsc --noEmit exited with 2:
+
+> darthub@0.1.0 typecheck
+> tsc --noEmit --incremental false
+
+tests/integration/invite/createRoute.test.ts(11,29): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/createRoute.test.ts(24,29): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/createRoute.test.ts(36,29): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(14,29): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(26,29): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(42,30): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(51,30): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+tests/integration/invite/joinRoute.test.ts(63,29): error TS2345: Argument of type 'Request' is not assignable to 
+parameter of type 'NextRequest'.
+  Type 'Request' is missing the following properties from type 'NextRequest': cookies, nextUrl, page, ua
+: expected 2 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 2
+
+ ❯ tests/unit/typescript.test.ts:8:74
+      6|     const { exitCode, output } = runCommand("npm run typecheck");
+      7|
+      8|     expect(exitCode, `tsc --noEmit exited with ${exitCode}:\n${output}…
+       |                                                                          ^
+      9|     expect(output).not.toMatch(/error TS\d+/);
+     10|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/10]⎯
+
+ FAIL  tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > validates incoming throw data on 
+the server side
+AssertionError: payload {"roomCode":"V7KDLG","points":10,"playerId":"V7KDLG-p2"} must be rejected: expected true to be 
+false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+
+ Test Files  8 failed | 60 passed (68)
+      Tests  10 failed | 256 passed (266)
+   Start at  21:17:43
+   Duration  31.70s (transform 5.58s, setup 0ms, import 21.02s, tests 175.68s, environment 25ms)
+
+ ❯ tests/integration/realtime/socketServer.test.ts:196:77
+    194|     for (const payload of invalidPayloads) {
+    195|       const ack = await emitAck(room.host.socket, REALTIME_EVENTS.thro…
+    196|       expect(ack.ok, `payload ${JSON.stringify(payload)} must be rejec…
+       |                                                                             ^
+    197|       if (!ack.ok) {
+    198|         expect(ack.code).toBe("invalidThrow");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/10]⎯
+
+ FAIL  tests/unit/precommit/precommit.test.ts > pre-commit hook > executes eslint --max-warnings=0 and prettier --check
+AssertionError: hook exited with 1:
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/unit/precommit/precommit.test.ts:93:66
+     91|
+     92|     const { exitCode, output } = runHook();
+     93|     expect(exitCode, `hook exited with ${exitCode}:\n${output}`).toBe(…
+       |                                                                  ^
+     94|     expect(output).toMatch(/eslint/i);
+     95|     expect(output).toMatch(/prettier/i);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/10]⎯
+
+ FAIL  tests/unit/precommit/precommit.test.ts > pre-commit hook > prevents commit when linting fails
+AssertionError: expected '' to match /ESLint failed/i
+
+- Expected:
+/ESLint failed/i
+
++ Received:
+""
+
+ ❯ tests/unit/precommit/precommit.test.ts:110:20
+    108|     const { exitCode, output } = runHook();
+    109|     expect(exitCode, `hook unexpectedly passed:\n${output}`).not.toBe(…
+    110|     expect(output).toMatch(/ESLint failed/i);
+       |                    ^
+    111|     expect(output).toMatch(/abort/i);
+    112|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/10]⎯
+
+ FAIL  tests/unit/precommit/precommit.test.ts > pre-commit hook > works on Windows and Unix environments
+AssertionError: hook exited with 1:
+: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/unit/precommit/precommit.test.ts:126:66
+    124|     writeCleanProbe();
+    125|     const { exitCode, output } = runHook();
+    126|     expect(exitCode, `hook exited with ${exitCode}:\n${output}`).toBe(…
+       |                                                                  ^
+    127|
+    128|     // Wired up: local git is pointed at the hook directory, and fresh
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/10]⎯
+

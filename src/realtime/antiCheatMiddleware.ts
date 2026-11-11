@@ -1,4 +1,4 @@
-import type { Server as ServerSocket } from "socket.io";
+import type { Socket as ClientSocket } from "socket.io";
 import { GameInputError } from "@/realtime/GameStateMachine";
 import { RoomChangeError, RoomRejectionCode } from "@/realtime/GameRoom";
 import { GameRoom } from "@/realtime/GameRoom";
@@ -15,7 +15,13 @@ export function validateThrowPoints(payload: unknown): number {
   if (typeof payload !== "object" || payload === null) {
     throw new GameInputError("Invalid payload");
   }
-  const points = (payload as Record<string, unknown>)["points"];
+  const obj = payload as Record<string, unknown>;
+  const allowedKeys = ["roomCode", "points"];
+  const unexpected = Object.keys(obj).filter((k) => !allowedKeys.includes(k));
+  if (unexpected.length > 0) {
+    throw new GameInputError("Unexpected fields in throw payload");
+  }
+  const points = obj["points"];
   if (
     typeof points !== "number" ||
     !Number.isInteger(points) ||
@@ -31,8 +37,8 @@ export function validateThrowPoints(payload: unknown): number {
  * Tracks which socket is associated with each player ID to prevent duplicate
  * connections. If a different socket is already bound, it is disconnected.
  */
-const playerSocketMap = new Map<string, ServerSocket>();
-export function enforceSingleSocketPerPlayer(playerId: string, socket: ServerSocket): void {
+const playerSocketMap = new Map<string, ClientSocket>();
+export function enforceSingleSocketPerPlayer(playerId: string, socket: ClientSocket): void {
   const existing = playerSocketMap.get(playerId);
   if (existing && existing !== socket) {
     // Disconnect the old socket; cleanup will be handled by its own logic.

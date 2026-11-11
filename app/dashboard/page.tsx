@@ -1,39 +1,36 @@
+import Link from "next/link";
+
 /**
- * Dashboard page — shows user stats (rating, level, XP) and friend count.
- * Uses Tailwind utility classes for responsive layout.
+ * The dashboard: the player's own record.
+ *
+ * There is no signed-in player behind this page yet, so there is no rating,
+ * level, XP or friend count to show. The page says so honestly — one empty
+ * state with the action that would fill it — rather than four `--` tiles
+ * standing in for numbers that do not exist.
  */
+
+/** The primary action: the brass fill, 44px tall, cream label. */
+const PRIMARY_ACTION =
+  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-sm bg-brass px-xl font-label text-board transition-colors duration-fast ease-out hover:bg-brass-deep hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink motion-reduce:transition-none";
+
 export default function DashboardPage() {
   return (
-    <main className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Rating stat */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <p className="text-sm text-slate-400">Rating</p>
-            <p className="text-xl font-semibold">--</p>
-          </div>
-
-          {/* Level stat */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <p className="text-sm text-slate-400">Level</p>
-            <p className="text-xl font-semibold">--</p>
-          </div>
-
-          {/* XP stat */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <p className="text-sm text-slate-400">XP</p>
-            <p className="text-xl font-semibold">--</p>
-          </div>
-
-          {/* Friends count */}
-          <div className="bg-slate-800 rounded-lg p-4">
-            <p className="text-sm text-slate-400">Friends</p>
-            <p className="text-xl font-semibold">--</p>
-          </div>
-        </div>
+    <div className="w-full max-w-[720px] space-y-2xl py-2xl">
+      <div className="space-y-xs">
+        <h1 className="font-display text-display font-bold text-ink">Dashboard</h1>
       </div>
-    </main>
+
+      <section className="space-y-xl">
+        <h2 className="font-display text-title font-semibold text-ink">
+          No completed matches yet.
+        </h2>
+        <p className="font-body text-body text-ink-muted">
+          Finish a leg to see your rating, average and checkout rate here.
+        </p>
+        <Link href="/game-center" className={PRIMARY_ACTION}>
+          Play a match
+        </Link>
+      </section>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { PrismaClient, type Friend } from "@prisma/client";
-import type { FriendRepository, FriendRow, UserLookup } from "./repository";
+import type { FriendRepository, FriendRow, FriendUnitOfWork, UserLookup } from "./repository";
 
 const client = new PrismaClient();
 
@@ -113,7 +113,7 @@ export function createPrismaFriendRepository(): FriendRepository {
               await tx.friend.delete({ where: { id } });
             },
           },
-          runInTransaction: async <T2>(fn: (tx: FriendRepository) => Promise<T2>) =>
+          runInTransaction: async <T2>(fn: (tx: FriendUnitOfWork) => Promise<T2>) =>
             txRepo.runInTransaction(fn),
         };
         return fn(txRepo);

@@ -1,0 +1,13 @@
+        <ul className="flex items-center gap-xs" aria-label="Current visit">
+          {strip.map((entry, index) => (
+            <li
+              key={`${entry.playerId}-${index}`}
+              className={
+                entry.bust
+                  ? "rounded-xs bg-double px-xs font-caption uppercase tracking-[0.04em] text-board"
+                  : "font-mono text-caption text-treble"
+            >
+              {entry.bust ? "BUST" : visitBadge(entry)}
+            </li>
+          ))}
+        </ul>

@@ -1,0 +1,59 @@
+
+ RUN  v4.1.12 E:/coding/darthub
+
+ ✓ tests/unit/antiCheatMiddleware.test.ts > Anti‑cheat middleware > rejects throws with points outside 0‑60 3ms
+ ✓ tests/unit/antiCheatMiddleware.test.ts > Anti‑cheat middleware > prevents the same player ID from joining multiple rooms simultaneously 1ms
+ ✓ tests/unit/antiCheatMiddleware.test.ts > Anti‑cheat middleware > blocks illegal state transitions (starting a match twice) 3ms
+[realtime] socket connected (VZod4IgTRl4jA10tAAAA)
+[realtime] socket disconnected (VZod4IgTRl4jA10tAAAA): client namespace disconnect
+[realtime] socket connected (iRIt-7Pj6ZUh1kQsAAAB)
+[realtime] room created (MVC6UL)
+[realtime] socket connected (KrTeLdTK0myvaAeEAAAC)
+[realtime] socket admitted to room (MVC6UL)
+[realtime] socket disconnected (iRIt-7Pj6ZUh1kQsAAAB): client namespace disconnect
+[realtime] socket disconnected (KrTeLdTK0myvaAeEAAAC): client namespace disconnect
+[realtime] socket connected (YMVTYEPRSfbIjRf0AAAD)
+[realtime] room created (QUFBLJ)
+[realtime] socket connected (ChDhHaEWSDac6YImAAAE)
+[realtime] socket admitted to room (QUFBLJ)
+[realtime] match started
+[realtime] socket connected (WFK8TWkAGUqjZfsaAAAF)
+[realtime] room created (DW9DBA)
+[realtime] socket connected (mI5UjdOn-ZW1CZPBAAAG)
+[realtime] socket admitted to room (DW9DBA)
+[realtime] match started
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > establishes a Socket.IO connection and acknowledges client 33ms
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > creates a private room and only allows invited sockets 24ms
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > validates incoming throw data on the server side 23ms
+[realtime] socket connected (3ZpJ4rl_8bt2h39YAAAH)
+[realtime] room created (26Y4TJ)
+[realtime] socket connected (4QdtyJLLHLF12j6mAAAI)
+[realtime] socket admitted to room (26Y4TJ)
+[realtime] match started
+[realtime] socket disconnected (4QdtyJLLHLF12j6mAAAI): client namespace disconnect
+[realtime] socket connected (creZxm7r7x0ZByJbAAAJ)
+[realtime] socket admitted to room (26Y4TJ)
+[realtime] socket connected (kcAQAsJtZKSmWU8-AAAK)
+[realtime] room created (MGJ9W7)
+[realtime] socket connected (O7gjFp7AWnsxVoG4AAAL)
+[realtime] socket admitted to room (MGJ9W7)
+[realtime] match started
+[realtime] socket connected (S7mj4Wqdr530tGryAAAM)
+[realtime] socket disconnected (YMVTYEPRSfbIjRf0AAAD): client namespace disconnect
+[realtime] socket disconnected (ChDhHaEWSDac6YImAAAE): client namespace disconnect
+[realtime] socket disconnected (WFK8TWkAGUqjZfsaAAAF): client namespace disconnect
+[realtime] socket disconnected (mI5UjdOn-ZW1CZPBAAAG): client namespace disconnect
+[realtime] socket disconnected (3ZpJ4rl_8bt2h39YAAAH): client namespace disconnect
+[realtime] socket disconnected (creZxm7r7x0ZByJbAAAJ): client namespace disconnect
+[realtime] socket disconnected (kcAQAsJtZKSmWU8-AAAK): client namespace disconnect
+[realtime] socket disconnected (O7gjFp7AWnsxVoG4AAAL): client namespace disconnect
+[realtime] socket disconnected (S7mj4Wqdr530tGryAAAM): client namespace disconnect
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > updates game state and broadcasts to all participants 16ms
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > handles client disconnect and allows reconnection to same room 21ms
+ ✓ tests/integration/realtime/socketServer.test.ts > Socket.IO realtime server > rejects reconnection with an unknown player token 14ms
+
+ Test Files  2 passed (2)
+      Tests  9 passed (9)
+   Start at  21:52:01
+   Duration  1.44s (transform 310ms, setup 0ms, import 1.07s, tests 164ms, environment 0ms)
+

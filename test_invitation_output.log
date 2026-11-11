@@ -1,0 +1,15 @@
+﻿
+ RUN  v4.1.12 E:/coding/darthub
+
+node.exe : No test files found, exiting with code 1
+In Zeile:1 Zeichen:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\dusti\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (No test files found, exiting with code 1:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+filter: tests/unit/auth/invitationRoute.test.ts
+include: tests/**/*.test.ts, tests/**/*.test.tsx
+exclude:  **/node_modules/**, **/.git/**
+

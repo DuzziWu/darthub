@@ -1,0 +1,17 @@
+Checking formatting...
+[[33mwarn[39m] .playwright-mcp/page-2026-11-08T21-28-37-909Z.yml
+[[33mwarn[39m] .playwright-mcp/page-2026-11-08T21-29-20-482Z.yml
+[[33mwarn[39m] .playwright-mcp/page-2026-11-08T21-30-29-822Z.yml
+[[33mwarn[39m] .playwright-mcp/page-2026-11-08T21-31-07-191Z.yml
+[[33mwarn[39m] app/game/301/page.tsx
+[[33mwarn[39m] app/game/around-the-clock/page.tsx
+[[33mwarn[39m] app/game/cricket/page.tsx
+[[33mwarn[39m] app/game/page.tsx
+[[33mwarn[39m] app/game/shanghai/page.tsx
+[[33mwarn[39m] docs/LOCAL_SETUP.md
+[[33mwarn[39m] src/components/game/GameResultBanner.tsx
+[[33mwarn[39m] src/components/game/ScoreDisplay.tsx
+[[33mwarn[39m] src/game-engine/modes/AroundTheClockMode.ts
+[[33mwarn[39m] src/game-engine/modes/index.ts
+[[33mwarn[39m] src/game-engine/modes/ShanghaiMode.ts
+[[33mwarn[39m] Code style issues found in 15 files. Run Prettier with --write to fix.

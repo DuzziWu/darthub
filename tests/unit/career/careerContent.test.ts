@@ -15,7 +15,7 @@ describe("careerContent", () => {
       expect(intro!.name).toBe("First Flight");
       expect(intro!.description).toContain("Coach");
       expect(intro!.stages).toHaveLength(1);
-      expect(intro!.stages[0].name).toBe("First Flight");
+      expect(intro!.stages[0]!.name).toBe("First Flight");
     });
   });
 
@@ -34,9 +34,7 @@ describe("careerContent", () => {
         const quest = loader.getQuestById(id);
         expect(quest, `Quest ${id} should exist`).not.toBeUndefined();
         const result = validateQuest(quest);
-        expect(result.valid, `Quest ${id} should be valid: ${result.errors?.join(", ")}`).toBe(
-          true,
-        );
+        expect(result.valid, `Quest ${id} should be valid`).toBe(true);
       }
     });
   });
@@ -77,7 +75,7 @@ describe("careerContent", () => {
 
       // Verify each quest exists and has correct order
       for (let i = 0; i < chain.length; i++) {
-        const quest = loader.getQuestById(chain[i]);
+        const quest = loader.getQuestById(chain[i]!);
         expect(quest, `Quest ${chain[i]} should exist`).not.toBeUndefined();
         expect(quest!.order, `Quest ${chain[i]} should have order ${i + 1}`).toBe(i + 1);
       }

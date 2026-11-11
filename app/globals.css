@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/*
+ * DartHub design tokens — the single source of truth for colour, type,
+ * spacing, radius, motion and elevation (design-system/darthub/MASTER.md).
+ *
+ * Components reference these as utilities (bg-surface, text-ink, rounded-sm)
+ * and never as raw palette utilities.
+ *
+ * `static` keeps every declared token in :root even when no utility consumes
+ * it, so hand-written CSS can rely on var(--space-md) and the board can paint
+ * with var(--board-red) — neither of which Tailwind can see as a usage.
+ */
+@theme static {
+  /* --- Surfaces: the board and its parts --- */
+  --color-board: #0c0c0e; /* page ground — warm black sisal */
+  --color-surface: #16161a; /* sheet, panel, card */
+  --color-raised: #1e1e23; /* raised: input, key, row hover */
+  --color-sunken: #08080a; /* recessed well: throw pad bed, code block */
+
+  /* --- Rules & edges --- */
+  --color-rule: #2a2a31; /* DECORATIVE hairline only (1.17-1.40:1) */
+  --color-edge: #6b6b78; /* control boundary, >= 3:1 (3.16-3.81:1) */
+
+  /* --- Ink --- */
+  --color-ink: #f2ede4; /* primary text — bull cream */
+  --color-ink-muted: #b9b2a6; /* secondary text */
+  --color-ink-faint: #8c857a; /* tertiary text, disabled, labels */
+
+  /* --- The accent: the lit board --- */
+  --color-brass: #e3a64f; /* accent fill, active turn, bull */
+  --color-brass-deep: #8a6220; /* brass border/hover on dark, not text */
+
+  /* --- Semantic game colour --- */
+  --color-treble: #59d6ae; /* a visit that counted */
+  --color-double: #e85c4a; /* a bust */
+
+  /* --- Board material --- */
+  /* Painted board materials, not UI state colours. They are consumed by
+     var() on the SVG nodes, so they generate no utilities. */
+  --board-sisal-dark: #141416;
+  --board-sisal-light: #d9cfba;
+  --board-red: #a32b22;
+  --board-green: #1b6b47;
+  --board-bull-inner: #1b6b47;
+  --board-bull-outer: #e4dac4;
+  --board-ring: #0e0e10;
+  --board-numeral: #e8e2d4;
+  --board-wire: #7a7a82;
+  --board-steel: #33333a;
+  --board-steel-lit: #8a8a94;
+  --board-steel-dark: #17171b;
+  --board-wire-groove: #0b0b0d;
+  --board-key-light: #fff3dc;
+  --board-vignette: #000000;
+  /* The white the material filters composite against: it is a mask source,
+     not a colour the user ever sees. */
+  --board-source-white: #ffffff;
+
+  /* --- Score-sheet chrome --- */
+  --sheet-row-rule: 1px solid var(--color-rule);
+  --sheet-col-gutter: var(--color-ink-faint);
+  --sheet-active-rail: 2px solid var(--color-brass);
+
+  /* --- Type scale --- */
+  --text-display: 2rem;
+  --text-display--line-height: 2.25rem;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.875rem;
+  --text-heading: 1.125rem;
+  --text-heading--line-height: 1.5rem;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5rem;
+  --text-label: 0.8125rem;
+  --text-label--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.125rem;
+  --text-score-xl: 3rem;
+  --text-score-xl--line-height: 3rem;
+  --text-score-lg: 2rem;
+  --text-score-lg--line-height: 2.25rem;
+  --text-score-md: 1.5rem;
+  --text-score-md--line-height: 1.875rem;
+  --text-score-sm: 1.125rem;
+  --text-score-sm--line-height: 1.5rem;
+
+  /* --- Spacing: the token names, used by hand-written CSS --- */
+  --space-xs: 2px;
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  --space-4xl: 48px;
+
+  /* --- Spacing: the utility-generating aliases --- */
+  /* --space-* feeds only space-x-* / space-y-*; these feed p-*, m-*, gap-*
+     and size-*. Both are declared so every spacing utility exists. */
+  --spacing-xs: 2px;
+  --spacing-sm: 4px;
+  --spacing-md: 8px;
+  --spacing-lg: 12px;
+  --spacing-xl: 16px;
+  --spacing-2xl: 24px;
+  --spacing-3xl: 32px;
+  --spacing-4xl: 48px;
+
+  /* --- Container scale, restored --- */
+  /* max-w-* resolves --max-width, then --spacing, then --container. The
+     --spacing-* aliases above shadow the container scale, so max-w-4xl would
+     become 48px instead of 56rem. These pin the stock container values. */
+  --max-width-xs: 20rem;
+  --max-width-sm: 24rem;
+  --max-width-md: 28rem;
+  --max-width-lg: 32rem;
+  --max-width-xl: 36rem;
+  --max-width-2xl: 42rem;
+  --max-width-3xl: 48rem;
+  --max-width-4xl: 56rem;
+
+  /* --- Radius: 4px is the maximum on any rectangle --- */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-full: 9999px; /* genuine circles only: the bull, the turn dot */
+
+  /* --- Motion --- */
+  --duration-instant: 80ms; /* press feedback */
+  --duration-fast: 120ms; /* hover, focus, small state change */
+  --duration-base: 200ms; /* panel, sheet, expansion */
+  --transition-duration-instant: 80ms;
+  --transition-duration-fast: 120ms;
+  --transition-duration-base: 200ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Elevation: overlays only --- */
+  --shadow-overlay: 0 16px 40px -12px rgb(0 0 0 / 0.7);
+}
+
+/*
+ * The three loaded families. `inline` resolves the stack into the utility so
+ * the next/font variable on <html> is what actually renders; the variable
+ * names stay distinct from the token names above.
+ */
+@theme inline {
+  --font-display: var(--font-barlow-condensed), "Arial Narrow", ui-sans-serif, sans-serif;
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
+/*
+ * The role utilities carry a family AND a weight, which a font theme token
+ * cannot express (MASTER.md 4.4). font-display and font-mono come from the
+ * @theme block above and carry the family only.
+ */
+@utility font-body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+@utility font-label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+@utility font-caption {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+/*
+ * The published utility vocabulary. The token layer is the contract: these
+ * utilities exist in every build whether or not a component uses them yet.
+ *
+ * ONE string, not adjacent string literals: the inline-source parser drops the
+ * last candidate of every literal but the last one.
+ */
+@source inline("bg-board bg-surface bg-raised bg-sunken bg-brass bg-treble bg-double text-ink text-ink-muted text-ink-faint text-brass text-board text-treble text-double border-rule border-edge border-brass font-display font-sans font-mono font-body font-label font-caption text-display text-title text-heading text-body text-label text-caption text-score-xl text-score-lg text-score-md text-score-sm rounded-xs rounded-sm rounded-md rounded-full p-xs p-sm p-md p-lg p-xl p-2xl p-3xl p-4xl gap-xs gap-sm gap-md gap-lg gap-xl gap-2xl gap-3xl gap-4xl space-y-xs space-y-sm space-y-md space-y-lg space-y-xl space-y-2xl space-y-3xl space-y-4xl duration-instant duration-fast duration-base ease-out ease-in ease-standard shadow-overlay");
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-board text-ink font-body;
+  }
+
+  /*
+   * The house focus ring is always cream, so it never animates in from the
+   * element's own text colour. `outline-color` defaults to `currentColor`,
+   * and a control whose text is `text-board` (a brass fill) would otherwise
+   * fade from board-black to cream.
+   */
+  :where(a, button, input, select, textarea, summary, [tabindex]) {
+    outline-color: var(--color-ink);
+  }
+}
+
+/* Reduced motion is a hard requirement (MASTER.md 8.1). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

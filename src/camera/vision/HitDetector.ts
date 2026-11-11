@@ -9,15 +9,15 @@
  * 1. Receive the board-space impact point produced by the segmentation of
  *    the perspective-corrected (top-down) frame — the dart tip/flight
  *    region located in board-plane millimetres.
- * 2. Validate the point against the legal board area (inside the outer
- *    double ring; otherwise the throw is a miss, `score: 0`).
- * 3. Derive the awarded score from the standard dart-board segment
- *    geometry: radius rings (double/triple/small-bull/bull) and the 20
- *    angular wedges (20 at the top, clockwise 1, 18, 4, ...).
- * 4. Emit the throw as a {@link CameraDTO}: impact coordinates in
+ * 2. Resolve the point with `resolveBoardHit` from the shared board
+ *    module (`@/board/boardGeometry`), which owns the band radii and the
+ *    20 angular wedges (20 at the top, clockwise 1, 18, 4, ...). The CV
+ *    pipeline must not re-implement the geometry.
+ * 3. Emit the throw as a {@link CameraDTO}: impact coordinates in
  *    board-plane millimetres relative to the board centre (x positive =
  *    right, y positive = above centre — the semantics of the `x`/`y`
- *    fields), the derived `score`, and the current wall-clock `timestamp`.
+ *    fields), the resolved `score` and `segment`, and the current
+ *    wall-clock `timestamp`.
  */
 import type { CameraDTO } from "../CameraDTO";
 import { NotImplementedInCvPhaseError } from "./NotImplementedInCvPhaseError";

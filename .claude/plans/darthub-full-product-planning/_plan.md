@@ -4,7 +4,7 @@
 2026-11-07
 
 ## Status
-ready
+in_progress
 
 ## Objective
 Define, design, and prepare all components needed to build the DartHub platform according to the confirmed architectural decisions, covering user model, ranking, AI, multiplayer, camera integration, social features, GDPR compliance, deployment, career mode, and supporting documentation. **MVP implementation complete — 48/48 tasks done.**

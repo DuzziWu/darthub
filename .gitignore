@@ -34,5 +34,10 @@ yarn-error.log*
 
 # Generated / scratch directories
 reports/
+
+# Generated Playwright artifacts
+playwright-report/
+test-results/
+.playwright-mcp/
 tmp-precommit-scratch/
 *.tmp-debug*

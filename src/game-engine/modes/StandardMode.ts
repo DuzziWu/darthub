@@ -1,4 +1,5 @@
 import {
+  GameEngineBustError,
   GameEngineStateError,
   GameEngineValidationError,
   type DartGameMode,
@@ -102,7 +103,7 @@ export class StandardMode implements DartGameMode {
       throwRecord.segment,
     );
     if (remaining === null) {
-      throw new GameEngineStateError(
+      throw new GameEngineBustError(
         `Bust: ${throwRecord.points} points is not a valid result for player "${player.id}" ` +
           `under the ${this.activeOutRule.id} out rule`,
       );
@@ -118,6 +119,23 @@ export class StandardMode implements DartGameMode {
       return this.readLegSetProgress(state.modeData)?.matchWinnerId != null;
     }
     return state.players.some((player) => player.totalPoints === 0);
+  }
+
+  /**
+   * Describes the result of the match — the legs and sets won and the
+   * player standing at zero — so the engine can tell that a correction
+   * changed the outcome rather than only a score.
+   */
+  resultSignature(state: MatchState): string {
+    const progress = this.readLegSetProgress(state.modeData);
+    const legs = progress ? formatCounts(progress.legsWon) : "";
+    const sets = progress ? formatCounts(progress.setsWon) : "";
+    const winners = state.players
+      .filter((player) => player.totalPoints === 0)
+      .map((player) => player.id)
+      .sort()
+      .join(",");
+    return `${legs}|${sets}|${progress?.matchWinnerId ?? ""}|${winners}`;
   }
 
   /** Records a leg win, advances sets and starts a fresh leg when needed. */
@@ -185,17 +203,23 @@ function describeMatchFormat(legs: number | undefined, sets: number | undefined)
   return `-legs${legsPart}-sets${setsPart}`;
 }
 
-/** Convenience wrapper: classic "501" game. */
+/**
+ * Convenience wrapper: classic "501" game.
+ *
+ * The x01 wrappers default to double out — the rule the Game Center
+ * advertises and the one a standard 501 match is played under. The mode's
+ * own default stays "straight"; only these two wrappers pin "double".
+ */
 export class Standard501Mode extends StandardMode {
   constructor() {
-    super({ startScore: 501 });
+    super({ startScore: 501, outRule: "double" });
   }
 }
 
-/** Convenience wrapper: classic "301" game. */
+/** Convenience wrapper: classic "301" game, played under double out. */
 export class Standard301Mode extends StandardMode {
   constructor() {
-    super({ startScore: 301 });
+    super({ startScore: 301, outRule: "double" });
   }
 }
 
@@ -203,4 +227,12 @@ function validateStartScore(startScore: number): void {
   if (typeof startScore !== "number" || !Number.isInteger(startScore) || startScore < 1) {
     throw new GameEngineValidationError("Start score must be a positive integer");
   }
+}
+
+/** Formats a per-player counter map in a stable order. */
+function formatCounts(counts: Record<string, number>): string {
+  return Object.entries(counts)
+    .map(([playerId, count]) => `${playerId}:${count}`)
+    .sort()
+    .join(",");
 }

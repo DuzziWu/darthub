@@ -1,0 +1,6 @@
+
+> darthub@0.1.0 typecheck
+> tsc --noEmit --incremental false
+
+tests/app/api/privacy/account/route.ts(1,10): error TS2305: Module '"../../../../app/api/privacy/account/route"' has no exported member 'DELETE'.
+tests/unit/privacy/deleteAccountRoute.test.ts(4,10): error TS2305: Module '"../../../app/api/privacy/account/route"' has no exported member 'deleteAccountRouteDELETE'.

@@ -1,0 +1,93 @@
+
+ RUN  v4.1.12 E:/coding/darthub
+
+stderr | tests/integration/linkGuest.test.ts > POST /api/auth/link-guest > accepts a guest token and new user credentials
+PrismaClientInitializationError: Can't reach database server at `localhost:5432`
+
+Please make sure your database server is running at `localhost:5432`.
+    at r (E:\coding\darthub\node_modules\@prisma\client\runtime\library.js:112:2770)
+    at async Qr.transaction (E:\coding\darthub\node_modules\@prisma\client\runtime\library.js:111:11048)
+    at async Proxy._transactionWithCallback (E:\coding\darthub\node_modules\@prisma\client\runtime\library.js:130:8044)
+    at POST (E:/coding/darthub/app/api/auth/link-guest/route.ts:25:36)
+    at E:/coding/darthub/tests/integration/linkGuest.test.ts:18:18
+    at async file:///E:/coding/darthub/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:20 {
+  clientVersion: '6.19.3',
+  errorCode: 'P1001',
+  retryable: undefined
+}
+
+ ❯ tests/integration/linkGuest.test.ts (1 test | 1 failed) 4176ms
+     × accepts a guest token and new user credentials 4171ms
+[realtime] socket connected (LucmeL7v3vbkEFlRAAAA)
+[realtime] socket disconnected (LucmeL7v3vbkEFlRAAAA): client namespace disconnect
+[realtime] socket connected (WEYT7Wo0BEE3s44XAAAB)
+[realtime] room created (LKHWLN)
+[realtime] socket connected (1PU-L3ufruo341RdAAAC)
+[realtime] socket admitted to room (LKHWLN)
+[realtime] socket disconnected (WEYT7Wo0BEE3s44XAAAB): client namespace disconnect
+[realtime] socket disconnected (1PU-L3ufruo341RdAAAC): client namespace disconnect
+[realtime] socket connected (pDnufBo3-I8gZR2hAAAD)
+[realtime] room created (YEM7C2)
+[realtime] socket connected (yCRFFRsNLxvOPINDAAAE)
+[realtime] socket admitted to room (YEM7C2)
+[realtime] match started
+[realtime] socket connected (BnzG0n5dqlmQOr4LAAAF)
+[realtime] room created (YFTQN7)
+[realtime] socket connected (w6FaaOiZe1BFtuNyAAAG)
+[realtime] socket admitted to room (YFTQN7)
+[realtime] match started
+[realtime] socket connected (Genlf0nyrWVHRFSzAAAH)
+[realtime] room created (URF2AA)
+[realtime] socket connected (x2owQlxds3E07dGbAAAI)
+[realtime] socket admitted to room (URF2AA)
+[realtime] match started
+[realtime] socket disconnected (x2owQlxds3E07dGbAAAI): client namespace disconnect
+[realtime] socket connected (yy9VCh17epWL84-UAAAJ)
+[realtime] socket admitted to room (URF2AA)
+[realtime] socket connected (UB6cE-Gn_WwcoMPpAAAK)
+[realtime] room created (9C6D9Q)
+[realtime] socket connected (LabyAWpbmIlQ46-6AAAL)
+[realtime] socket admitted to room (9C6D9Q)
+[realtime] match started
+[realtime] socket connected (AXY1w1-LmhfrEXrAAAAM)
+[realtime] socket disconnected (pDnufBo3-I8gZR2hAAAD): client namespace disconnect
+[realtime] socket disconnected (yCRFFRsNLxvOPINDAAAE): client namespace disconnect
+[realtime] socket disconnected (BnzG0n5dqlmQOr4LAAAF): client namespace disconnect
+[realtime] socket disconnected (w6FaaOiZe1BFtuNyAAAG): client namespace disconnect
+[realtime] socket disconnected (Genlf0nyrWVHRFSzAAAH): client namespace disconnect
+[realtime] socket disconnected (yy9VCh17epWL84-UAAAJ): client namespace disconnect
+[realtime] socket disconnected (UB6cE-Gn_WwcoMPpAAAK): client namespace disconnect
+[realtime] socket disconnected (LabyAWpbmIlQ46-6AAAL): client namespace disconnect
+[realtime] socket disconnected (AXY1w1-LmhfrEXrAAAAM): client namespace disconnect
+[realtime] socket connected (NMMFO7HboCzPRg9OAAAA)
+[realtime] room created (FVDTUG)
+[realtime] match started
+[realtime] socket disconnected (NMMFO7HboCzPRg9OAAAA): client namespace disconnect
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/integration/linkGuest.test.ts > POST /api/auth/link-guest > accepts a guest token and new user credentials
+AssertionError: expected 500 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 500
+
+ ❯ tests/integration/linkGuest.test.ts:19:25
+     17|     // Since the guest does not exist, we expect a 400 response.
+     18|     const resp = await POST(req);
+     19|     expect(resp.status).toBe(400);
+       |                         ^
+     20|   });
+     21| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 67 passed (68)
+      Tests  1 failed | 265 passed (266)
+   Start at  22:02:32
+   Duration  46.50s (transform 3.90s, setup 0ms, import 22.49s, tests 268.93s, environment 29ms)
+

@@ -33,3 +33,8 @@ export function consumeInviteCode(code: string): string | undefined {
 export function listActiveInvites(): readonly { code: string; roomId: string }[] {
   return Array.from(codeToRoom.entries()).map(([code, roomId]) => ({ code, roomId }));
 }
+
+/** Test-only: clear all invite codes. */
+export function __resetInviteState(): void {
+  codeToRoom.clear();
+}

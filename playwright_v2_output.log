@@ -1,0 +1,12 @@
+
+Running 7 tests using 6 workers
+
+  -  1 [chromium] › e2e\career.spec.ts:15:8 › Career flow › shows career quest display
+  -  2 [chromium] › e2e\career.spec.ts:39:8 › Career flow › completes a quest and sees reward
+  -  3 [chromium] › e2e\career.spec.ts:69:8 › Career flow › records rating changes after a game
+  -  4 [chromium] › e2e\login.spec.ts:15:8 › Login flow › signs up a new user and logs in
+  -  5 [chromium] › e2e\login.spec.ts:44:8 › Login flow › converts a guest session to a registered account
+  -  6 [chromium] › e2e\matchmaking.spec.ts:15:8 › Matchmaking flow › joins a public matchmaking queue and is paired
+  -  7 [chromium] › e2e\matchmaking.spec.ts:47:8 › Matchmaking flow › records rating changes after a game
+
+  7 skipped

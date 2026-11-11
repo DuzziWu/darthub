@@ -1,0 +1,24 @@
+﻿
+ RUN  v4.1.12 E:/coding/darthub
+
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > returns an 8-character alphanumeric string 5ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > associates the code with the given roomId 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > multiple codes for the same roomId are all valid 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > consumeInviteCode with a valid code returns the roomId and invalidates it 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > consumeInviteCode returns undefined for a nonexistent code 0ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > consumeInviteCode returns undefined for an already-consumed code (single-use) 0ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > listActiveInvites reflects active (non-consumed) codes 1ms
+ ✓ tests/unit/realtime/inviteService.test.ts > inviteService > collision resistance: generating many codes does not produce duplicates 1ms
+ ✓ tests/integration/invite/createRoute.test.ts > POST /api/invite/create > returns 200 with a code string for a valid roomId 9ms
+ ✓ tests/integration/invite/createRoute.test.ts > POST /api/invite/create > returns 400 when roomId is missing 1ms
+ ✓ tests/integration/invite/createRoute.test.ts > POST /api/invite/create > returns 400 when roomId is an empty string 1ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 200 and roomId for a valid unused code 9ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 400 for a nonexistent code 1ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 400 for a code that has already been consumed 2ms
+ ✓ tests/integration/invite/joinRoute.test.ts > POST /api/invite/join > returns 400 when code is missing from body 2ms
+
+ Test Files  3 passed (3)
+      Tests  15 passed (15)
+   Start at  21:17:22
+   Duration  735ms (transform 150ms, setup 0ms, import 650ms, tests 40ms, environment 0ms)
+

@@ -1,0 +1,51 @@
+
+> darthub@0.1.0 build
+> next build
+
+▲ Next.js 16.4.5 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 136ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+  Finished TypeScript in 6.7s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/23) ...
+  Generating static pages using 11 workers (5/23) 
+  Generating static pages using 11 workers (11/23) 
+  Generating static pages using 11 workers (17/23) 
+✓ Generating static pages using 11 workers (23/23) in 929ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /api/auth/[...nextauth]
+├ ƒ /api/auth/invitation
+├ ƒ /api/auth/link-guest
+├ ƒ /api/career/complete
+├ ƒ /api/career/progress
+├ ƒ /api/career/quest
+├ ƒ /api/friends
+├ ƒ /api/friends/[requestId]
+├ ƒ /api/invite/create
+├ ƒ /api/invite/join
+├ ƒ /api/privacy/account
+├ ƒ /api/privacy/export
+├ ƒ /api/rating/[userId]
+├ ƒ /api/rating/game
+├ ○ /career
+├ ○ /dashboard
+├ ○ /game
+├ ○ /game-center
+├ ○ /game/301
+├ ○ /game/around-the-clock
+├ ○ /game/cricket
+├ ○ /game/shanghai
+└ ○ /lobby
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

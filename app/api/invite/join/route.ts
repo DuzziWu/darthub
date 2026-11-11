@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from "next";
+import { NextRequest, NextResponse } from "next/server";
 import { consumeInviteCode } from "@/realtime/inviteService";
 
 /**
@@ -6,18 +6,14 @@ import { consumeInviteCode } from "@/realtime/inviteService";
  * Body: { code: string }
  * Returns: { roomId: string } on success.
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
-    return res.status(405).end("Method Not Allowed");
-  }
-  const { code } = req.body as { code?: string };
+export async function POST(req: NextRequest) {
+  const { code } = (await req.json()) as { code?: string };
   if (!code) {
-    return res.status(400).json({ error: "Missing code" });
+    return NextResponse.json({ error: "Missing code" }, { status: 400 });
   }
   const roomId = consumeInviteCode(code);
   if (!roomId) {
-    return res.status(400).json({ error: "Invalid or used invitation code" });
+    return NextResponse.json({ error: "Invalid or used invitation code" }, { status: 400 });
   }
-  return res.status(200).json({ roomId });
+  return NextResponse.json({ roomId });
 }

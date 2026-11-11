@@ -5,6 +5,8 @@
  * impact position and score of one throw from the camera layer into the
  * domain/runtime layers.
  */
+import type { BoardSegment } from "@/board/boardGeometry";
+
 export interface CameraDTO {
   /**
    * Horizontal impact coordinate, in millimetres, relative to the centre
@@ -22,6 +24,14 @@ export interface CameraDTO {
    * Score awarded for this throw (0 in case of a miss).
    */
   score: number;
+
+  /**
+   * Board segment hit by this throw, as resolved by the shared board
+   * geometry. Optional for now so the existing stub producers keep
+   * compiling; a score alone is ambiguous (24 is D12 or T8), so without
+   * the segment a camera could never win a Double Out.
+   */
+  segment?: BoardSegment;
 
   /**
    * Wall-clock capture time as epoch milliseconds (UTC).

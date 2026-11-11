@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "projectId": "",
+  "monitoring": {
+    "enabled": false,
+    "recordSessionEvents": false,
+    "recordTaskEvents": false
+  },
+  "memory": {
+    "enabled": true,
+    "sourceOfTruth": "git-repository"
+  },
+  "recovery": {
+    "autoHandoffOnSessionEnd": false
+  },
+  "resources": {
+    "tokenBudget": {
+      "S": 100000,
+      "M": 300000,
+      "L": 600000
+    },
+    "thresholds": {
+      "notice": 0.7,
+      "warn": 0.8,
+      "stop": 1
+    },
+    "maxParallelAgents": 2,
+    "maxDistinctSpecialists": {
+      "S": 2,
+      "M": 4,
+      "L": 6
+    },
+    "maxReviewPasses": {
+      "S": 1,
+      "M": 2,
+      "L": 2
+    },
+    "provider": {
+      "parallelStreams": 2,
+      "maxTokensPerTask": null
+    },
+    "pricing": {
+      "currency": "USD",
+      "perMillionTokens": null
+    }
+  }
+}

@@ -7,16 +7,25 @@ export { GameEngine, DARTS_PER_TURN } from "@/game-engine/GameEngine";
 export { NeutralScoreMode } from "@/game-engine/NeutralScoreMode";
 export { OUT_RULES, getOutRule, LegSetManager } from "@/game-engine/rules";
 export type { OutRule, LegSetConfig, LegSetOutcome, LegSetProgress } from "@/game-engine/rules";
-export { GameEngineStateError, GameEngineValidationError } from "@/game-engine/types";
+export { deriveVisitIndexes, groupVisits } from "@/game-engine/throwLedger";
+export {
+  GameEngineBustError,
+  GameEngineStateError,
+  GameEngineValidationError,
+} from "@/game-engine/types";
 export type {
   OutRuleId,
   ThrowSegment,
+  CorrectionRecord,
+  CorrectionValue,
   DartGameMode,
   MatchConfig,
   MatchState,
+  MatchVisit,
   MutableMatchState,
   MutablePlayerState,
   PlayerState,
+  RecordedThrow,
   ThrowInput,
   ThrowRecord,
   MatchStatus,

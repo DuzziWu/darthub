@@ -1,0 +1,2 @@
+﻿.next/types/validator.ts(207,31): error TS2559: Type 'typeof import("E:/coding/darthub/app/api/invite/create/route")' has no properties in common with type 'RouteHandlerConfig<"/api/invite/create">'.
+.next/types/validator.ts(217,31): error TS2559: Type 'typeof import("E:/coding/darthub/app/api/invite/join/route")' has no properties in common with type 'RouteHandlerConfig<"/api/invite/join">'.

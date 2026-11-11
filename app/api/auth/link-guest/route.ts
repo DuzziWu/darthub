@@ -21,21 +21,21 @@ export async function POST(request: Request) {
       displayName: string;
     } = await request.json();
 
-    // 1️⃣ Create the real user account.
+    // 1. Create the real user account.
     const { user, sessionToken } = await defaultAuthRuntime.authService.registerUser({
       email,
       password,
       displayName,
     });
 
-    // 2️⃣ Migrate the guest data atomically.
+    // 2. Migrate the guest data atomically.
     await defaultAuthRuntime.guestService.migrateGuestToUser({
       guestId,
       migrationToken,
       targetUserId: user.id,
     });
 
-    // 3️⃣ Return a fresh JWT for the linked account.
+    // 3. Return a fresh JWT for the linked account.
     return NextResponse.json({ sessionToken });
   } catch (err) {
     // Map known domain errors to user‑friendly HTTP responses.

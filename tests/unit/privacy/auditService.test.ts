@@ -26,7 +26,8 @@ describe("auditService", () => {
     const appendFileCalls = (fsPromises.appendFile as ReturnType<typeof vi.fn>).mock.calls;
     const logCall = appendFileCalls.find((c: unknown[]) => (c[0] as string).endsWith(".log"));
     expect(logCall).toBeDefined();
-    const loggedEvent = JSON.parse((logCall[1] as string).split("\n")[0]);
+    if (!logCall) return;
+    const loggedEvent = JSON.parse((logCall[1] as string).split("\n")[0]!);
     expect(loggedEvent).toMatchObject({
       userId: "user-123",
       action: "export",
@@ -46,7 +47,8 @@ describe("auditService", () => {
     const appendFileCalls = (fsPromises.appendFile as ReturnType<typeof vi.fn>).mock.calls;
     const logCall = appendFileCalls.find((c: unknown[]) => (c[0] as string).endsWith(".log"));
     expect(logCall).toBeDefined();
-    const loggedEvent = JSON.parse((logCall[1] as string).split("\n")[0]);
+    if (!logCall) return;
+    const loggedEvent = JSON.parse((logCall[1] as string).split("\n")[0]!);
     expect(loggedEvent.action).toBe("delete");
     expect(loggedEvent.userId).toBe("user-456");
   });
@@ -81,7 +83,7 @@ describe("auditService", () => {
     (fsPromises.readFile as ReturnType<typeof vi.fn>).mockResolvedValue(mockLog);
     const events = await queryAuditEvents("user-789");
     expect(events).toHaveLength(2);
-    expect(events[0].action).toBe("delete");
-    expect(events[1].action).toBe("export");
+    expect(events[0]!.action).toBe("delete");
+    expect(events[1]!.action).toBe("export");
   });
 });

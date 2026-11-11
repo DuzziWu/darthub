@@ -8,11 +8,10 @@
  */
 
 import { readdirSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { basename, join, resolve } from "node:path";
 import { validateQuest, type Quest } from "./questSchema";
 
-const DEFAULT_QUESTS_DIR = fileURLToPath(new URL("./quests", import.meta.url));
+const DEFAULT_QUESTS_DIR = resolve(/*turbopackIgnore: true*/ process.cwd(), "src/career/quests");
 const QUEST_FILE_PATTERN = /\.json$/u;
 
 export interface QuestLoader {

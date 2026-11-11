@@ -17,9 +17,21 @@ function playThrows(engine: GameEngine, throws: readonly ThrowInput[]): MatchSta
   return state ?? engine.getState();
 }
 
+/** Plays plain darts until the player has `target` points left. */
+function driveTo(engine: GameEngine, target: number): MatchState {
+  let state = engine.getState();
+  while (state.players[0]!.totalPoints > target) {
+    const remaining = state.players[0]!.totalPoints;
+    state = engine.recordThrow({ playerId: "alice", points: Math.min(60, remaining - target) });
+  }
+  return state;
+}
+
 describe("StandardMode (x01)", () => {
   it("it starts a match at 501 and allows scoring down to zero", () => {
-    const engine = new GameEngine(new Standard501Mode());
+    // The plain mode keeps its own "straight" default: this case is about
+    // plain-mode behaviour, so it says so explicitly.
+    const engine = new GameEngine(new StandardMode({ startScore: 501 }));
 
     const started = engine.startMatch({ playerIds: ["alice", "bob"] });
     expect(started.status).toBe("inProgress");
@@ -75,7 +87,8 @@ describe("StandardMode (x01)", () => {
   });
 
   it("it starts a match at 301 and behaves identically with a lower start score", () => {
-    const engine = new GameEngine(new Standard301Mode());
+    // The plain mode again: this case is about plain-mode behaviour.
+    const engine = new GameEngine(new StandardMode({ startScore: 301 }));
 
     const started = engine.startMatch({ playerIds: ["alice"] });
     expect(started.status).toBe("inProgress");
@@ -113,7 +126,9 @@ describe("StandardMode (x01)", () => {
   });
 
   it("it rejects throws that would reduce the score below zero (bust)", () => {
-    const engine = new GameEngine(new Standard501Mode());
+    // The plain mode again: sitting on one point and overshooting is plain
+    // mode behaviour, and the x01 wrappers no longer allow it.
+    const engine = new GameEngine(new StandardMode({ startScore: 501 }));
     engine.startMatch({ playerIds: ["alice"] });
 
     // Drive alice down: 501 - 180 = 321, 321 - 180 = 141, 141 - 140 = 1.
@@ -173,5 +188,46 @@ describe("StandardMode (x01)", () => {
     expect(() => new StandardMode({ startScore: 0 })).toThrow(GameEngineValidationError);
     expect(() => new StandardMode({ startScore: -1 })).toThrow(GameEngineValidationError);
     expect(() => new StandardMode({ startScore: 50.5 })).toThrow(GameEngineValidationError);
+  });
+
+  it("it lets a double finish the leg under the double out rule", () => {
+    const engine = new GameEngine(new StandardMode({ startScore: 501, outRule: "double" }));
+    engine.startMatch({ playerIds: ["alice"] });
+
+    // Alice is on 2.
+    expect(driveTo(engine, 2).players[0]!.totalPoints).toBe(2);
+
+    // A double 1 is two points, and it finishes the leg.
+    const finished = engine.recordThrow({ playerId: "alice", points: 2, segment: "double" });
+    expect(finished.status).toBe("completed");
+    expect(finished.players[0]!.totalPoints).toBe(0);
+  });
+
+  it("it rejects a non-double finish under the double out rule", () => {
+    const engine = new GameEngine(new StandardMode({ startScore: 501, outRule: "double" }));
+    engine.startMatch({ playerIds: ["alice"] });
+    expect(driveTo(engine, 2).players[0]!.totalPoints).toBe(2);
+
+    // The same two points as a single do not finish the leg.
+    expect(() =>
+      engine.recordThrow({ playerId: "alice", points: 2, segment: "single" }),
+    ).toThrowError(GameEngineStateError);
+
+    // The rejected throw leaves the match state untouched.
+    const state = engine.getState();
+    expect(state.status).toBe("inProgress");
+    expect(state.players[0]!.totalPoints).toBe(2);
+  });
+
+  it("it defaults 501 and 301 to double out", () => {
+    for (const mode of [new Standard501Mode(), new Standard301Mode()]) {
+      const engine = new GameEngine(mode);
+      engine.startMatch({ playerIds: ["alice"] });
+      expect(driveTo(engine, 2).players[0]!.totalPoints).toBe(2);
+
+      // A double finishes the leg under the wrappers' default rule.
+      const finished = engine.recordThrow({ playerId: "alice", points: 2, segment: "double" });
+      expect(finished.status).toBe("completed");
+    }
   });
 });

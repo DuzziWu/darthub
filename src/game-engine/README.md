@@ -65,6 +65,9 @@ engine.startMatch({ playerIds: ["alice", "bob"], outRule: "double", legs: 5, set
 - **`outRule: "double" | "master" | "straight"`** — which darts may finish a
   leg on exactly zero. `"straight"` (default) accepts any finish, `"master"`
   any double or the inner bull (50), `"double"` only a board double.
+  `StandardMode`'s own default is `"straight"`; the `Standard501Mode` and
+  `Standard301Mode` wrappers default to `"double"`, so a standard x01 match is
+  played under double out unless the match configuration says otherwise.
 - **`legs` / `sets`** — "best of N" sizes: winning a round takes more than
   half of N (best of 5 legs = first to 3). On every non-final leg all scores
   reset to the start score; per-leg/set progress is tracked JSON-safely in

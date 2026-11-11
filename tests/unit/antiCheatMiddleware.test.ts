@@ -32,9 +32,19 @@ describe("Anti‑cheat middleware", () => {
     // First start should succeed.
     room.startMatch(room.getHostSeat().playerId);
     // Second start should be blocked by middleware.
-    expect(() => validateMatchStart(room, room.getHostSeat().playerId)).toThrowError(
-      (e: unknown) =>
-        e instanceof RoomChangeError && e.code === RoomRejectionCode.matchAlreadyStarted,
-    );
+    // Note: toThrowError with an arrow-function predicate is avoided here due to
+    // a vitest 4.x quirk where it tries to read .prototype.constructor.name on
+    // the predicate function. Instead we catch the error and assert its properties.
+    let caughtError: unknown;
+    expect(() => {
+      try {
+        validateMatchStart(room, room.getHostSeat().playerId);
+      } catch (e) {
+        caughtError = e;
+        throw e;
+      }
+    }).toThrowError(RoomChangeError);
+    expect(caughtError).toBeInstanceOf(RoomChangeError);
+    expect((caughtError as RoomChangeError).code).toBe(RoomRejectionCode.matchAlreadyStarted);
   });
 });

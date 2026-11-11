@@ -5,3 +5,8 @@ prisma
 package-lock.json
 .claude
 CLAUDE.md
+
+# Generated Playwright artifacts
+playwright-report/
+test-results/
+.playwright-mcp/

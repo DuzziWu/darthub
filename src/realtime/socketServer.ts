@@ -7,7 +7,8 @@
  * turn order and state changes are decided by the server only.
  */
 import type { Server as HttpServer } from "node:http";
-import type { Socket as ServerSocket, Server as SocketIoServerType } from "socket.io";
+import type { Socket as ServerSocket } from "socket.io";
+import { Server as SocketIoServerType } from "socket.io";
 import {
   enforceSingleSocketPerPlayer,
   validateThrowPoints,
@@ -194,7 +195,7 @@ export function createSocketIoServer(
   httpServer: HttpServer,
   options: RealtimeServerOptions = {},
 ): SocketIoServerType {
-  const io = new SocketIoServer(httpServer, {
+  const io = new SocketIoServerType(httpServer, {
     cors: { origin: DEFAULT_CORS_ORIGINS, methods: ["GET", "POST"] },
   });
   const registry = new RoomRegistry({ store: options.roomStore ?? createRoomStore() });

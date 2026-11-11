@@ -1,49 +1,87 @@
-import { describe, it, expect } from "vitest";
-import { renderToString } from "react-dom/server";
+// @vitest-environment jsdom
+import { describe, expect, it } from "vitest";
+import { render } from "@testing-library/react";
+import { createQuestLoaderService } from "@/career/questLoader";
+import CareerPage from "../../../app/career/page";
 
 /**
- * Unit tests for Career page component.
+ * The career page's contract: the real quest catalogue read through the
+ * loader, honest empty states where there is no player progress, and one
+ * primary action.
  */
 describe("Career Page", () => {
-  it("renders career screen with sections", async () => {
-    const { default: CareerPage } = await import("../../../app/career/page");
-    const html = renderToString(<CareerPage />);
-    expect(html).toContain("Career Mode");
-    expect(html).toContain("Current Quest");
-    expect(html).toContain("Progress");
-    expect(html).toContain("Training");
+  it("renders the career heading and its three sections", () => {
+    const { container } = render(<CareerPage />);
+
+    expect(container.querySelector("h1")?.textContent).toBe("Career Mode");
+
+    const headings = [...container.querySelectorAll("h2")].map((heading) =>
+      heading.textContent?.trim(),
+    );
+    expect(headings).toEqual(["Current Quest", "Progress", "Training"]);
   });
 
-  it("displays current quest placeholder", async () => {
-    const { default: CareerPage } = await import("../../../app/career/page");
-    const html = renderToString(<CareerPage />);
-    expect(html).toContain("No active quest");
+  it("shows the empty states instead of an invented quest or percentage", () => {
+    const { container } = render(<CareerPage />);
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("No active quest.");
+    expect(text).toContain("Finish a match to unlock your first training quest.");
+    expect(text).toContain("No progress yet.");
+    expect(text).toContain("Complete a training lesson to see your progress here.");
+
+    // No progress bar standing in for a percentage nobody has earned.
+    expect(container.querySelectorAll('[role="progressbar"]').length).toBe(0);
+    expect(text).not.toContain("0%");
   });
 
-  it("shows progress bar", async () => {
-    const { default: CareerPage } = await import("../../../app/career/page");
-    const html = renderToString(<CareerPage />);
-    expect(html).toContain("bg-slate-700");
-    expect(html).toContain("bg-blue-600");
-    expect(html).toContain('style="width:0%"');
+  it("lists the quests the loader returns", async () => {
+    const loader = createQuestLoaderService();
+    await loader.load();
+    const quests = loader.getQuests();
+
+    const { container } = render(<CareerPage />);
+    const text = container.textContent ?? "";
+
+    expect(quests.length).toBeGreaterThan(0);
+    for (const quest of quests) {
+      expect(text, `the page must show the quest "${quest.name}"`).toContain(quest.name);
+      expect(text, `the page must show the quest "${quest.name}" description`).toContain(
+        quest.description,
+      );
+    }
   });
 
-  it("shows training placeholder", async () => {
-    const { default: CareerPage } = await import("../../../app/career/page");
-    const html = renderToString(<CareerPage />);
-    expect(html).toContain("No training available");
+  it("uses the semantic token layer", () => {
+    const { container } = render(<CareerPage />);
+
+    const classes = [...container.querySelectorAll("*")].map(
+      (element) => element.getAttribute("class") ?? "",
+    );
+
+    expect(classes.join(" ")).toContain("text-ink");
+    expect(classes.join(" ")).toContain("bg-brass");
+    for (const className of classes) {
+      expect(className).not.toMatch(
+        /(?:bg|text|border)-(?:slate|gray|blue|green|red|amber|emerald|zinc|neutral|stone|sky|violet|purple|pink|rose|orange|yellow|lime|teal|cyan|indigo|fuchsia)/,
+      );
+    }
   });
 
-  it("matches snapshot structure", async () => {
-    const { default: CareerPage } = await import("../../../app/career/page");
-    const html = renderToString(<CareerPage />);
-    expect(html).toMatchSnapshot();
+  it("offers one primary action", () => {
+    const { container } = render(<CareerPage />);
+
+    const primary = [...container.querySelectorAll("a, button")].filter((element) =>
+      (element.getAttribute("class") ?? "").split(/\s+/).includes("bg-brass"),
+    );
+
+    expect(primary).toHaveLength(1);
+    expect(primary[0]?.getAttribute("href")).toBe("/game-center");
   });
 
-  it("uses responsive design classes", async () => {
-    const { default: CareerPage } = await import("../../../app/career/page");
-    const html = renderToString(<CareerPage />);
-    expect(html).toContain("min-h-screen");
-    expect(html).toContain("md:p-8");
+  it("renders no landmark of its own", () => {
+    const { container } = render(<CareerPage />);
+
+    expect(container.querySelectorAll("main, footer, nav, header.sticky").length).toBe(0);
   });
 });

@@ -6,7 +6,7 @@
  */
 import Redis from "ioredis";
 import type { IRoomStore } from "@/realtime/IRoomStore";
-import type { GameRoom } from "@/realtime/GameRoom";
+import { GameRoom } from "@/realtime/GameRoom";
 
 const REDIS_KEY_PREFIX = "darthub:room:";
 
