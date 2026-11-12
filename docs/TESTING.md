@@ -38,11 +38,12 @@ Tests mirror the source structure under `tests/`:
 tests/
   unit/        mirrors src modules, one test file per module
   integration/ service and repository flows
-  e2e/         Playwright specs
   support/     shared helpers and fixtures
+e2e/           Playwright specs (*.spec.ts)
 ```
 
-Test files are named `*.test.ts` and live beside their mirrored module path.
+Test files are named `*.test.ts` and live beside their mirrored module path. Playwright
+specs live in the top-level `e2e/` directory and are named `*.spec.ts`.
 
 ## Naming Conventions
 

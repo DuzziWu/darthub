@@ -56,7 +56,7 @@ This document describes the planned product. Items are marked as **designed** (a
 
 **Designed. Engine module under construction (task 035 and follow-ups).**
 
-The engine is isolated in `src/game/` and is importable by both client (for local practice rendering) and server (for authoritative play). It covers:
+The engine is isolated in `src/game-engine/` and is importable by both client (for local practice rendering) and server (for authoritative play). It covers:
 
 - 501 and 301 countdown modes with double-out start and finish options.
 - Cricket with standard scoring and closing rules.

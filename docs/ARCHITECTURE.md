@@ -29,71 +29,71 @@ This document describes the designed system. Modules marked as under constructio
 ```text
 Browser client (React, Tailwind, shadcn/ui)
         |  REST (route handlers)        |  Socket.IO events
-Next.js server                           Real-time server (src/realtime)
+Next.js server (app/)                    Real-time server (src/realtime)
         \                                /
-         Domain services (src/services)
+         Feature services (src/auth, src/career, src/friends,
+                            src/privacy, src/rating)
                   |
-            Domain core (src/domain, src/game, src/ai)
+            Domain core (src/game-engine, src/ai, src/board, src/camera)
                   |
-            Repositories (src/repositories)
+            Repository layer (src/friends, src/rating — Prisma adapters)
                   |
-            Prisma client (src/infrastructure) -> PostgreSQL
+            Prisma client (prisma/schema.prisma) -> PostgreSQL
 ```
 
 The client never writes game state directly. REST handles profile, social, privacy, and career APIs; Socket.IO handles live match state.
 
 ## Modules and Responsibilities
 
-| Module                | Responsibility                                                                 | Status      |
-| --------------------- | ------------------------------------------------------------------------------ | ----------- |
-| `src/app/`            | Next.js App Router layout, route handlers for REST endpoints, page shells      | in progress |
-| `src/pages/`          | Page routes for Next.js pages-router flows and redirect targets                | designed    |
-| `src/components/`     | React UI components built on shadcn/ui primitives with Tailwind styling        | in progress |
-| `src/services/`       | Service classes encapsulating business logic between transport and domain      | in progress |
-| `src/repositories/`   | Repository abstractions over Prisma for all data access                        | in progress |
-| `src/dto/`            | Data transfer objects shaping payloads across layer boundaries                 | in progress |
-| `src/domain/`         | Domain entities, invariants, and core DDD logic including the camera interface | in progress |
-| `src/infrastructure/` | Prisma client wiring, external adapters, and database migrations               | in progress |
-| `src/auth/`           | Auth.js configuration, strategies, guest sessions, and access tokens           | in progress |
-| `src/game/`           | Independent dart game engine shared by client and server                       | in progress |
-| `src/realtime/`       | Socket.IO server, authoritative game loop, rooms, and matchmaking              | in progress |
-| `src/ai/`             | Stateless statistical AI opponent with difficulty tiers and personalities      | in progress |
-| `src/camera/`         | Camera abstraction exposing ICameraService plus the smartphone stub            | in progress |
-| `src/privacy/`        | GDPR export and deletion services plus the audit logger                        | in progress |
-| `src/career/`         | Career mode quest engine and JSON quest definitions                            | in progress |
+| Module             | Responsibility                                                            | Status      |
+| ------------------ | ------------------------------------------------------------------------- | ----------- |
+| `app/`             | Next.js App Router pages, route handlers for REST endpoints, page shells  | in progress |
+| `src/components/`  | React UI components built on shadcn/ui primitives with Tailwind styling   | in progress |
+| `src/game-engine/` | Independent dart game engine shared by client and server                  | in progress |
+| `src/realtime/`    | Socket.IO server, authoritative game loop, rooms, and matchmaking         | in progress |
+| `src/ai/`          | Stateless statistical AI opponent with difficulty tiers and personalities | in progress |
+| `src/auth/`        | Auth.js configuration, strategies, guest sessions, and access tokens      | in progress |
+| `src/camera/`      | Camera abstraction exposing ICameraService plus the smartphone stub       | in progress |
+| `src/board/`       | Board geometry and board-source abstraction shared by client and engine   | in progress |
+| `src/privacy/`     | GDPR export and deletion services plus the audit logger                   | in progress |
+| `src/career/`      | Career mode quest engine and JSON quest definitions                       | in progress |
+| `src/friends/`     | Friend service and its Prisma-backed repository adapter                   | in progress |
+| `src/rating/`      | Elo rating, performance records, and their repository adapters            | in progress |
+| `prisma/`          | Prisma schema, migrations, and the generated client                       | in progress |
+| `tests/`           | Vitest unit and integration suites, plus Playwright end-to-end specs      | in progress |
+| `e2e/`             | Playwright end-to-end specs and fixtures                                  | in progress |
 
 ## Directory Structure
 
 ```text
+app/             Next.js App Router pages and REST route handlers
 src/
   components/    React UI components (shadcn/ui, Tailwind styling)
-  pages/         Next.js page routes
-  app/           App Router layout and route handlers
-  services/      Service-class implementations (business logic)
-  repositories/  Repository abstractions for data access (Prisma ORM)
-  dto/           Data transfer objects used between layers
-  domain/        Domain entities and core DDD logic
-  infrastructure/ Prisma client, external adapters, DB migrations
-  auth/          Auth.js configuration and strategies
-  game/          Independent Dart game engine
+  game-engine/   Independent Dart game engine
   realtime/      Socket.IO real-time authority layer
   ai/            Statistical AI opponent engine
+  auth/          Auth.js configuration and strategies
+  board/         Board geometry and board-source abstraction
   camera/        Camera abstraction and smartphone stub
   privacy/       GDPR services and audit logger
   career/        Career mode engine and quest JSON content
+  friends/       Friend service and Prisma repository adapter
+  rating/        Elo rating, performance records, repository adapters
+prisma/          Prisma schema and migrations
 public/          Static assets
-styles/          Tailwind config and global CSS
+design-system/   Design tokens and shared visual primitives
 tests/
   unit/          Unit tests (Vitest)
   integration/   Integration tests (Vitest)
-  e2e/           End-to-end tests (Playwright)
+e2e/             End-to-end tests (Playwright)
 docs/            Product and engineering documentation
+.agents/skills/  OpenHands project skills (see docs/ai-skills/README.md)
 ```
 
 ## Patterns Used
 
-- **Service classes**: business logic lives in `src/services/` and never leaks into route handlers or UI.
-- **Repository pattern**: all persistence flows through `src/repositories/` using Prisma.
+- **Feature-scoped services**: business logic lives beside the feature that owns it (`src/auth`, `src/career`, `src/friends`, `src/privacy`, `src/rating`) and never leaks into route handlers or UI.
+- **Repository pattern**: persistence flows through feature-local repository adapters (for example `src/friends/prismaFriendRepository.ts`) over Prisma, with in-memory implementations for tests.
 - **DTOs**: data flowing between layers is shaped explicitly, never passed as raw ORM entities.
 - **Dependency injection**: the AI engine and camera implementations are injected via provider interfaces.
 - **Layered DDD**: the domain layer contains core game rules and entities with no framework imports.
@@ -101,7 +101,7 @@ docs/            Product and engineering documentation
 
 ## Key Integrations
 
-- **Prisma**: ORM for PostgreSQL; the generated client lives in `src/infrastructure/`.
+- **Prisma**: ORM for PostgreSQL; the schema lives in `prisma/schema.prisma` and the generated client is consumed by the feature repository adapters.
 - **Auth.js**: authentication with OAuth providers and guest session support.
 - **Socket.IO**: real-time multiplayer authority server under `src/realtime/`.
 - **Playwright**: end-to-end testing of UI flows.
@@ -125,8 +125,8 @@ docs/            Product and engineering documentation
 
 ## Extension Points
 
-- **Camera recognition**: `ICameraService` in `src/domain/` (implemented in `src/camera/`) accepts new hardware sources such as USB or HDMI capture without touching game logic.
-- **Modular game engine**: isolated in `src/game/` and importable by both client and server.
+- **Camera recognition**: `ICameraService` in `src/camera/` (with `ICameraProcessor` alongside it) accepts new hardware sources such as USB or HDMI capture without touching game logic.
+- **Modular game engine**: isolated in `src/game-engine/` and importable by both client and server.
 - **Room persistence backends**: the matchmaking and room store is pluggable, with a Redis backend planned (see `docs/DECISIONS.md`).
 - **Ranking scopes**: the rating tables are keyed by mode, allowing regional boards later without schema rework.
 

@@ -46,7 +46,7 @@ Security posture for DartHub rests on server authority, exhaustive validation, s
 
 ## Input Validation
 
-- All payloads pass through DTO validation from `src/dto/` before reaching services.
+- All payloads pass through the DTO validation of the feature that owns the endpoint before reaching services.
 - Socket events are rejected with a typed error event on validation failure and logged at debug level.
 - Database access is exclusively through Prisma with parameterised queries; no string-built SQL.
 

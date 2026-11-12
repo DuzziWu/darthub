@@ -1,41 +1,33 @@
 # Testing Configuration
 
-## Test Framework
-None (to be configured later). Preferred: Vitest with parallel execution.
+The authoritative testing reference is [`docs/TESTING.md`](../docs/TESTING.md).
+It describes the frameworks, the test pyramid, the directory organisation, the naming
+conventions, the coverage targets and the CI pipeline.
 
-## TDD Methodology
+This file used to say "None (to be configured later)" and claimed Vitest was not yet
+installed. Both were wrong — Vitest and Playwright are configured and the suites run.
+The file now points at the single source of truth instead of repeating it.
 
-Each task follows strict Red → Green → Refactor:
+## Quick reference
 
-1. Write a failing test for one requirement
-2. Write minimum code to pass the test
-3. Refactor while tests stay green
-4. Repeat for next requirement
-5. Commit when task complete
-
-## Commands
 ```bash
-# Run all tests (parallel) – placeholder
-# Once Vitest is set up, use the npm script `test` which runs Vitest in watch mode.
-
-npm run test
-# NOTE: command not yet functional – Vitest scripts not installed
+npm run test            vitest run, full parallel suite
+npx vitest run <path>   single file or directory while iterating
+npm run lint            eslint over the repository
+npm run typecheck       tsc --noEmit
+npm run format          prettier write
 ```
 
-## Parallel Execution
-- **Default**: Tests should run in parallel once Vitest is set up.
-- **Parallel command**: `npm run test`
-- **Sequential fallback**: `npm run test`
+## Test file locations
 
-## Test File Locations
 - Unit tests: `tests/unit/`
 - Integration tests: `tests/integration/`
-- End‑to‑end tests: `tests/e2e/`
+- Shared helpers and fixtures: `tests/support/`
+- End-to-end tests: `e2e/` (Playwright, `*.spec.ts`)
 
-## Coverage Requirements
-- Minimum: 80%
-- New code must have tests
+## Conventions
 
-## Test Naming Convention
-- Test files: `*.test.ts` or `*.spec.ts`
-- Test titles: descriptive sentences using `it('...')`
+- Test files are named `*.test.ts`; Playwright specs are named `*.spec.ts`.
+- Test titles are descriptive sentences using `it('...')`; a test name states the
+  requirement it verifies, so a failing test reads as the missing behaviour.
+- A task is not started until its tests exist and fail.

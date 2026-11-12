@@ -22,7 +22,7 @@ DartHub exposes two transport surfaces: REST route handlers for profile, social,
 ## Conventions
 
 - All payloads are JSON encoded as UTF-8.
-- Requests and responses use DTOs from `src/dto/`; raw ORM entities are never serialised.
+- Requests and responses use the DTO types defined by the feature that owns the endpoint; raw ORM entities are never serialised.
 - Authentication uses an Auth.js session cookie; Socket.IO connections present the same session during the handshake.
 - Endpoints return problem-oriented errors in the shape `{ "error": { "code": string, "message": string } }`.
 - Guest requests are allowed where noted; guests receive rate limits identical to registered users for write operations.

@@ -13,12 +13,12 @@
 
 ## Overview
 
-All durable state lives in a single PostgreSQL database accessed exclusively through Prisma repositories in `src/repositories/`. No other layer may issue queries. This document describes the designed schema; the Prisma schema file itself is being delivered by task 002.
+All durable state lives in a single PostgreSQL database accessed exclusively through Prisma repository adapters. These adapters live with the feature that owns them (`src/friends/prismaFriendRepository.ts`, `src/rating/prismaRatingRepository.ts`, `src/career/careerProgressRepository.ts`); no other layer may issue queries. This document describes the designed schema; the Prisma schema file itself is being delivered by task 002.
 
 ## Technology
 
 - **Database**: PostgreSQL 16.
-- **ORM**: Prisma with the generated client in `src/infrastructure/`.
+- **ORM**: Prisma with the schema in `prisma/schema.prisma` and the generated client imported from `@prisma/client`.
 - **Access pattern**: repository classes only; services depend on repository interfaces, not on Prisma directly.
 
 ## Entity Overview
@@ -131,7 +131,7 @@ Append-only privacy audit trail used by `src/privacy/` (see `docs/SECURITY.md`):
 
 ## Migrations
 
-- Migrations live in `src/infrastructure/` and are applied by `prisma migrate deploy` inside the Docker image entry point.
+- Migrations live in `prisma/migrations/` and are applied by `prisma migrate deploy` inside the Docker image entry point.
 - Every schema change ships with a migration in the same change set; no manual SQL in deployment docs.
 
 ## Retention and Cleanup
