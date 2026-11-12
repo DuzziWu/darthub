@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, posix } from "node:path";
 import { describe, it, expect } from "vitest";
 
@@ -16,23 +16,15 @@ const REQUIRED_DOCS = [
   "DECISIONS.md",
 ] as const;
 
-const MODULES_UNDER_SRC = [
-  "components",
-  "pages",
-  "app",
-  "services",
-  "repositories",
-  "dto",
-  "domain",
-  "infrastructure",
-  "auth",
-  "game",
-  "realtime",
-  "ai",
-  "camera",
-  "privacy",
-  "career",
-];
+const SRC_DIR = resolve(import.meta.dirname, "../../../src");
+
+/** Every module directory that actually exists under `src/`. The list is read
+ * from disk rather than hard-coded so the documentation check can never drift
+ * away from the repository layout again. */
+const MODULES_UNDER_SRC = readdirSync(SRC_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
 
 type Heading = { level: number; text: string; slug: string };
 

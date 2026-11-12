@@ -214,11 +214,13 @@ describe("dockerignore", () => {
       "no .next content may reach the build context",
     ).toBe(false);
 
-    // Live level of verification: only runnable when a Docker CLI is present.
-    // In environments without Docker the structural checks above are the
-    // available verification level and the task file records that the live
-    // build/size check is deferred.
-    const docker = runCommand("docker --version");
+    // Live level of verification: only runnable when a Docker daemon is
+    // reachable. `docker --version` only proves the CLI is installed — the
+    // build needs a running daemon, so probe the daemon and skip the live
+    // checks when it is unavailable. In environments without Docker the
+    // structural checks above are the available verification level and the
+    // task file records that the live build/size check is deferred.
+    const docker = runCommand("docker info");
     if (docker.exitCode !== 0) {
       return;
     }
