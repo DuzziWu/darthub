@@ -46,6 +46,8 @@ function acceptsFinish(mode: StandardMode, segment: ThrowSegment, points: number
     currentPlayerId: "p",
     throwsInCurrentTurn: 0,
     throwCount: 0,
+    throws: [],
+    corrections: [],
   };
   mode.initializeMatch(draft);
   draft.players[0]!.totalPoints = points;

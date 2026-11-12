@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Target } from "lucide-react";
 import { GameEngine } from "@/game-engine/GameEngine";
-import {} from "@/game-engine/modes/CricketMode";
+import { CRICKET_TARGETS, MARKS_TO_CLOSE, CricketMode } from "@/game-engine/modes/CricketMode";
 import type { CricketModeData } from "@/game-engine/modes/CricketMode";
 import type { MatchState, ThrowSegment } from "@/game-engine/types";
 import { boardSourceLabel } from "@/board";

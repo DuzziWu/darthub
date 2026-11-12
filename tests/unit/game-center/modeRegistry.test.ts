@@ -16,6 +16,8 @@ function startScoreOf(mode: Standard501Mode | Standard301Mode): number {
     currentPlayerId: "p",
     throwsInCurrentTurn: 0,
     throwCount: 0,
+    throws: [],
+    corrections: [],
   };
   mode.initializeMatch(draft);
   return draft.players[0]!.totalPoints;
