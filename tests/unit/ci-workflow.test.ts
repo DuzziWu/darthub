@@ -25,11 +25,32 @@ describe("ci", () => {
     expect(workflow.on?.push).toBeDefined();
   });
 
+  it("runs the end-to-end suite in its own job, with the browsers installed", () => {
+    const workflow = loadWorkflow();
+    const jobs = workflow.jobs ?? {};
+    const e2eJob = Object.values(jobs).find((job) =>
+      job.steps?.some((step) => step.run === "npm run test:e2e"),
+    );
+
+    expect(e2eJob, "no CI job runs the Playwright suite").toBeDefined();
+
+    const steps = e2eJob?.steps ?? [];
+    expect(
+      steps.some((step) => step.run?.includes("playwright install")),
+      "the e2e job must install the Playwright browsers",
+    ).toBe(true);
+  });
+
   it("runs the CI workflow successfully on push", { timeout: 600_000 }, () => {
     const workflow = loadWorkflow();
     const steps = Object.values(workflow.jobs ?? {}).flatMap((job) => job.steps ?? []);
     const npmSteps = steps.filter(
-      (step) => step.run?.startsWith("npm run") && step.run !== "npm run test",
+      (step) =>
+        step.run?.startsWith("npm run") &&
+        step.run !== "npm run test" &&
+        // The e2e job needs the Playwright browsers, which this job's
+        // environment does not have. It is replayed by its own CI job.
+        step.run !== "npm run test:e2e",
     );
 
     expect(npmSteps.length, "workflow must define npm script steps").toBeGreaterThan(0);

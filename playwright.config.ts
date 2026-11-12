@@ -18,11 +18,23 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: process.env.CI
-    ? {
-        command: "npm run dev",
-        url: "http://localhost:3000",
-        reuseExistingServer: !process.env.CI,
-      }
-    : undefined,
+  // The suite runs against a production build, not `next dev`. The dev server
+  // recompiles every route on demand and its hot-reload runtime keeps the
+  // page busy, so Playwright's actionability checks stall: the visual QC
+  // specs took 8+ minutes and failed on timeouts against `next dev`, while
+  // the same specs pass in under a minute against a production build.
+  //
+  // `output: "standalone"` in next.config.ts means `next start` cannot serve
+  // the app, so the standalone server is started directly. The static assets
+  // are copied next to it the same way the Dockerfile's runner stage does.
+  //
+  // `HOSTNAME` is pinned to 127.0.0.1: without it the standalone server binds
+  // to the machine's hostname, which is not reachable at localhost.
+  webServer: {
+    command:
+      "npm run build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && HOSTNAME=127.0.0.1 node .next/standalone/server.js",
+    url: "http://127.0.0.1:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 300_000,
+  },
 });

@@ -25,6 +25,17 @@ Two checks are conditional on the environment and skip rather than fail:
 
 `tests/unit/ci-workflow.test.ts` runs the CI steps locally, so it fails whenever typecheck or the test suite fails.
 
+## End-to-end tests
+
+`npm run test:e2e` runs the Playwright suite in `e2e/`. Two things about it are easy to get wrong:
+
+- It runs against a **production build**, not `next dev`. `playwright.config.ts` owns the server: it runs `npm run build`, copies `public/` and `.next/static/` next to the standalone server the way the Dockerfile's runner stage does, and starts `node .next/standalone/server.js` with `HOSTNAME=127.0.0.1`. Against `next dev` the visual QC specs took 8+ minutes and failed on timeouts, because the dev server recompiles every route on demand and keeps the page busy enough to stall Playwright's actionability checks; against the production build the same specs pass in about 40 seconds.
+- `next.config.ts` sets `output: "standalone"`, so `next start` **cannot** serve the app. Use the standalone server directly, or `npm run dev` for interactive work.
+
+The browsers are not installed by `npm ci`. Run `npx playwright install chromium` once before the first local e2e run (`npx playwright install --with-deps chromium` needs root, so it is the CI job that does it).
+
+Seven tests are `test.skip(...)` placeholders for features that are not built yet — the career, login and matchmaking flows. They are skipped by design, not by an environment check.
+
 ## Testing conventions
 
 - Component tests need a per-file `// @vitest-environment jsdom` docblock; the global environment stays `"node"`.
