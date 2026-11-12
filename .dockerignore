@@ -12,6 +12,7 @@ next-env.d.ts
 .gitattributes
 .github/
 .claude/
+.agents/
 .husky/
 .vscode/
 .prettierrc

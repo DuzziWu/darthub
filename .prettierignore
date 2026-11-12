@@ -5,6 +5,7 @@ prisma
 package-lock.json
 .claude
 CLAUDE.md
+.agents
 
 # Generated Playwright artifacts
 playwright-report/

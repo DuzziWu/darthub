@@ -3,12 +3,22 @@ import prettierConfig from "eslint-config-prettier";
 import importX from "eslint-plugin-import-x";
 
 export default tseslint.config(
-  // `.claude/**` holds tool and plugin assets (skills, agent definitions,
-  // plan files) and `reports/**` holds gitignored local artefacts. Prettier
-  // already skips both — it honours .prettierignore and .gitignore — but
-  // ESLint does not honour .gitignore, so it must be told explicitly or
-  // third-party skill scripts and scratch prototypes break the lint gate.
-  { ignores: ["node_modules/**", ".next/**", "coverage/**", ".claude/**", "reports/**"] },
+  // `.claude/**` and `.agents/**` hold tool and plugin assets (skills, agent
+  // definitions, plan files) and `reports/**` holds gitignored local
+  // artefacts. Prettier already skips all three — it honours .prettierignore
+  // and .gitignore — but ESLint does not honour .gitignore, so it must be
+  // told explicitly or third-party skill scripts and scratch prototypes break
+  // the lint gate.
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "coverage/**",
+      ".claude/**",
+      ".agents/**",
+      "reports/**",
+    ],
+  },
   ...tseslint.configs.recommended,
   {
     files: ["**/*.ts", "**/*.tsx"],
