@@ -16,7 +16,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Environment setup notes
 
 - npm 12 blocks install scripts by default. After `npm install`, `@prisma/client`, `@prisma/engines`, `esbuild` and `prisma` never run their postinstall, so the Prisma client is not generated. Run `npx prisma generate` explicitly; esbuild ships its platform binary as an optional dependency and works without the script.
-- The build is **green**: typecheck, lint, format check and the full Vitest suite (96 files, 447 tests) all pass.
+- The Prisma client is **not** checked in, and `npm ci` does not generate it either. Any environment that compiles the app from a clean install must run `npx prisma generate` first — including the Dockerfile's builder stage, which does this explicitly. `prisma generate` needs no database: it reads the schema, not the datasource URL, so it succeeds without `DATABASE_URL` set.
+- The build is **green**: typecheck, lint, format check and the full Vitest suite (96 files, 448 tests) all pass.
 
 Two checks are conditional on the environment and skip rather than fail:
 
@@ -35,6 +36,14 @@ Two checks are conditional on the environment and skip rather than fail:
 The browsers are not installed by `npm ci`. Run `npx playwright install chromium` once before the first local e2e run (`npx playwright install --with-deps chromium` needs root, so it is the CI job that does it).
 
 Seven tests are `test.skip(...)` placeholders for features that are not built yet — the career, login and matchmaking flows. They are skipped by design, not by an environment check.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` has two jobs. `Lint, format, typecheck, test` runs the gates above. `End-to-end (Playwright)` installs the Chromium browser and runs `npm run test:e2e`.
+
+`tests/unit/ci-workflow.test.ts` guards both jobs: it asserts an e2e job exists and installs the browsers, and it replays the workflow's `npm run` steps locally so a broken gate fails before it reaches GitHub. The e2e step is excluded from that replay, because the replay environment has no browsers.
+
+Pushing a change to `.github/workflows/` needs a GitHub token with the `workflow` scope. A token with only `repo` is rejected by GitHub with _"refusing to allow a Personal Access Token to create or update workflow"_, and the REST API answers `404` for the same reason — the scope is not a repository permission, so a repository admin token still cannot write workflow files without it.
 
 ## Testing conventions
 
