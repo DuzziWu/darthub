@@ -16,6 +16,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# The Prisma client is generated, not checked in, and `npm ci` does not
+# generate it: the client is produced from prisma/schema.prisma, so the
+# build needs it before `next build` type-checks the repositories.
+RUN npx prisma generate
 RUN npm run build
 
 # --- runner: minimal production image containing only the standalone server.
