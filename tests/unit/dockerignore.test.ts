@@ -184,57 +184,63 @@ describe("dockerignore", () => {
     ).toBe(true);
   });
 
-  it("docker build respects the ignore file and image size stays below 200 MB", () => {
-    // Structural level of verification (always executed): the simulated build
-    // context, i.e. the repository tree filtered through `.dockerignore`, must
-    // not contain the heavyweight artifacts that would otherwise end up in the
-    // image or bloat the build.
-    const mustNotBeInContext = [
-      "node_modules",
-      ".next",
-      ".git",
-      "coverage",
-      ".claude",
-      "docs",
-      "reports",
-      "tests",
-    ];
-    for (const heavyPath of mustNotBeInContext) {
+  it(
+    "docker build respects the ignore file and image size stays below 200 MB",
+    { timeout: 600_000 },
+    () => {
+      // Structural level of verification (always executed): the simulated build
+      // context, i.e. the repository tree filtered through `.dockerignore`, must
+      // not contain the heavyweight artifacts that would otherwise end up in the
+      // image or bloat the build.
+      const mustNotBeInContext = [
+        "node_modules",
+        ".next",
+        ".git",
+        "coverage",
+        ".claude",
+        "docs",
+        "reports",
+        "tests",
+      ];
+      for (const heavyPath of mustNotBeInContext) {
+        expect(
+          isBuildContextExcluded(heavyPath),
+          `expected '${heavyPath}' to be pruned from the build context`,
+        ).toBe(true);
+      }
       expect(
-        isBuildContextExcluded(heavyPath),
-        `expected '${heavyPath}' to be pruned from the build context`,
-      ).toBe(true);
-    }
-    expect(
-      context.included.some((path) => path.startsWith("node_modules/")),
-      "no node_modules content may reach the build context",
-    ).toBe(false);
-    expect(
-      context.included.some((path) => path.startsWith(".next/")),
-      "no .next content may reach the build context",
-    ).toBe(false);
+        context.included.some((path) => path.startsWith("node_modules/")),
+        "no node_modules content may reach the build context",
+      ).toBe(false);
+      expect(
+        context.included.some((path) => path.startsWith(".next/")),
+        "no .next content may reach the build context",
+      ).toBe(false);
 
-    // Live level of verification: only runnable when a Docker daemon is
-    // reachable. `docker --version` only proves the CLI is installed — the
-    // build needs a running daemon, so probe the daemon and skip the live
-    // checks when it is unavailable. In environments without Docker the
-    // structural checks above are the available verification level and the
-    // task file records that the live build/size check is deferred.
-    const docker = runCommand("docker info");
-    if (docker.exitCode !== 0) {
-      return;
-    }
+      // Live level of verification: only runnable when a Docker daemon is
+      // reachable. `docker --version` only proves the CLI is installed — the
+      // build needs a running daemon, so probe the daemon and skip the live
+      // checks when it is unavailable. In environments without Docker the
+      // structural checks above are the available verification level and the
+      // task file records that the live build/size check is deferred.
+      const docker = runCommand("docker info");
+      if (docker.exitCode !== 0) {
+        return;
+      }
 
-    const build = runCommand("docker build -t darthub:dockerignore-test .");
-    expect(build.exitCode, `docker build exited with ${build.exitCode}:\n${build.output}`).toBe(0);
+      const build = runCommand("docker build -t darthub:dockerignore-test .");
+      expect(build.exitCode, `docker build exited with ${build.exitCode}:\n${build.output}`).toBe(
+        0,
+      );
 
-    const size = runCommand("docker image inspect -f {{.Size}} darthub:dockerignore-test");
-    expect(size.exitCode, `image inspection failed:\n${size.output}`).toBe(0);
-    const sizeBytes = Number.parseInt(size.output.trim(), 10);
-    expect(Number.isNaN(sizeBytes), `unexpected image size '${size.output}'`).toBe(false);
-    expect(sizeBytes, `image size ${sizeBytes} bytes must stay below 200 MB`).toBeLessThan(
-      200 * 1024 * 1024,
-    );
-    runCommand("docker rmi darthub:dockerignore-test");
-  });
+      const size = runCommand("docker image inspect -f {{.Size}} darthub:dockerignore-test");
+      expect(size.exitCode, `image inspection failed:\n${size.output}`).toBe(0);
+      const sizeBytes = Number.parseInt(size.output.trim(), 10);
+      expect(Number.isNaN(sizeBytes), `unexpected image size '${size.output}'`).toBe(false);
+      expect(sizeBytes, `image size ${sizeBytes} bytes must stay below 200 MB`).toBeLessThan(
+        200 * 1024 * 1024,
+      );
+      runCommand("docker rmi darthub:dockerignore-test");
+    },
+  );
 });
