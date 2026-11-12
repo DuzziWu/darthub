@@ -1,8 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render } from "@testing-library/react";
 import { createQuestLoaderService } from "@/career/questLoader";
 import CareerPage from "../../../app/career/page";
+
+afterEach(() => {
+  cleanup();
+});
 
 /**
  * The career page's contract: the real quest catalogue read through the
