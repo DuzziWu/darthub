@@ -3,7 +3,7 @@ import { createAuthService } from "@/auth/authService";
 import { InvalidCredentialsError } from "@/auth/errors";
 import { verifyPassword } from "@/auth/password";
 import { verifySessionToken } from "@/auth/session";
-import { createInMemoryAuthRepository } from "./helpers/inMemoryAuthRepository";
+import { createInMemoryAuthRepository } from "../../support/inMemoryAuthRepository";
 
 // 64 hex characters of entropy — tests inject their own strong secret.
 const STRONG_SECRET = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
