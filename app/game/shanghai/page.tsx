@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
+import { withBasePath } from "@/lib/basePath";
 import { GameEngine } from "@/game-engine/GameEngine";
 import { roundTarget, SHANGHAI_ROUNDS, ShanghaiMode } from "@/game-engine/modes/ShanghaiMode";
 import type { ShanghaiModeData } from "@/game-engine/modes/ShanghaiMode";
@@ -133,7 +134,7 @@ export default function ShanghaiPage() {
   }, [options, playerNames, startMatch]);
 
   const handleBackToHub = useCallback(() => {
-    router.push("/game-center");
+    router.push(withBasePath("/game-center"));
   }, [router]);
 
   if (phase === "setup") {

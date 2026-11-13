@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Target } from "lucide-react";
+import { withBasePath } from "@/lib/basePath";
 import { boardSourceLabel, type BoardSourceId } from "@/board";
 import type { ArmedSegment } from "@/components/board";
 import { GameResultBanner } from "@/components/game/GameResultBanner";
@@ -229,7 +230,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           players={[...matchState.players]}
           playerNames={playerNames}
           onPlayAgain={playAgain}
-          onBackToHub={() => router.push("/game-center")}
+          onBackToHub={() => router.push(withBasePath("/game-center"))}
         />
       </div>
     );
@@ -252,7 +253,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           New game
         </button>
       }
-      onBackToHub={() => router.push("/game-center")}
+      onBackToHub={() => router.push(withBasePath("/game-center"))}
       armedSegment={armedSegment}
       onBoardThrow={handleBoardThrow}
     >

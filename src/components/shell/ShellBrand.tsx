@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { VisuallyHidden } from "@/components/ui/VisuallyHidden";
+import { withBasePath } from "@/lib/basePath";
 
 /**
  * The wordmark — the home link.
@@ -16,7 +17,7 @@ export function ShellBrand() {
 
   return (
     <Link
-      href="/"
+      href={withBasePath("/")}
       aria-current={isCurrent ? "page" : undefined}
       className="flex min-h-11 items-center font-display text-title font-bold uppercase tracking-[0.08em] text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
     >

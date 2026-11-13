@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/basePath";
 
 /**
  * The dashboard: the player's own record.
@@ -27,7 +28,7 @@ export default function DashboardPage() {
         <p className="font-body text-body text-ink-muted">
           Finish a leg to see your rating, average and checkout rate here.
         </p>
-        <Link href="/game-center" className={PRIMARY_ACTION}>
+        <Link href={withBasePath("/game-center")} className={PRIMARY_ACTION}>
           Play a match
         </Link>
       </section>

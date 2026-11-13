@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { withBasePath } from "@/lib/basePath";
 import { NAV_DESTINATIONS } from "./navDestinations";
 
 /**
@@ -34,7 +35,7 @@ export function PrimaryNav() {
           return (
             <li key={destination.href}>
               <Link
-                href={destination.href}
+                href={withBasePath(destination.href)}
                 aria-current={isCurrent ? "page" : undefined}
                 className={`flex min-h-11 items-center gap-md border-b-2 px-md text-label transition-colors duration-fast ease-out motion-reduce:transition-none ${
                   isCurrent
@@ -78,7 +79,7 @@ export function MobileTabBar() {
           return (
             <li key={destination.href} className="flex-1">
               <Link
-                href={destination.href}
+                href={withBasePath(destination.href)}
                 aria-current={isCurrent ? "page" : undefined}
                 className={`flex h-full w-full flex-col items-center justify-center gap-xs px-xs py-xs transition-colors duration-fast ease-out motion-reduce:transition-none ${
                   isCurrent ? "font-semibold text-ink" : "font-medium text-ink-muted"

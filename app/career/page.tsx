@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/basePath";
 import { createQuestLoaderService } from "@/career/questLoader";
 
 /**
@@ -44,7 +45,7 @@ export default function CareerPage() {
           <p className="max-w-[70ch] font-body text-body text-ink-muted">
             Finish a match to unlock your first training quest.
           </p>
-          <Link href="/game-center" className={PRIMARY_ACTION}>
+          <Link href={withBasePath("/game-center")} className={PRIMARY_ACTION}>
             Play a match
           </Link>
         </div>

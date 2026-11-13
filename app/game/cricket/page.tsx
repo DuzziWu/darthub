@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Target } from "lucide-react";
+import { withBasePath } from "@/lib/basePath";
 import { GameEngine } from "@/game-engine/GameEngine";
 import { CRICKET_TARGETS, MARKS_TO_CLOSE, CricketMode } from "@/game-engine/modes/CricketMode";
 import type { CricketModeData } from "@/game-engine/modes/CricketMode";
@@ -134,7 +135,7 @@ export default function CricketPage() {
   }, [options, playerNames, startMatch]);
 
   const handleBackToHub = useCallback(() => {
-    router.push("/game-center");
+    router.push(withBasePath("/game-center"));
   }, [router]);
 
   if (phase === "setup") {

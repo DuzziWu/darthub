@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withBasePath } from "@/lib/basePath";
 import { MODE_RULES, sheetFootnote, type ModeRuleEntry } from "@/game-engine/modes/registry";
 
 /**
@@ -104,7 +105,7 @@ export function RuleSheet() {
 /** The mode name is the row's only link, and its name states its destination. */
 function ModeLink({ rule }: { rule: ModeRuleEntry }) {
   return (
-    <Link href={rule.href} aria-label={`Play ${rule.name}`} className={MODE_LINK}>
+    <Link href={withBasePath(rule.href)} aria-label={`Play ${rule.name}`} className={MODE_LINK}>
       {rule.name}
     </Link>
   );

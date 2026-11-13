@@ -9,10 +9,15 @@ export default tseslint.config(
   // and .gitignore — but ESLint does not honour .gitignore, so it must be
   // told explicitly or third-party skill scripts and scratch prototypes break
   // the lint gate.
+  //
+  // `.next-prefixed/**` is the prefixed build's output directory, the
+  // counterpart of `.next/**`. It holds generated code and must be skipped
+  // for the same reason.
   {
     ignores: [
       "node_modules/**",
       ".next/**",
+      ".next-prefixed/**",
       "coverage/**",
       ".claude/**",
       ".agents/**",

@@ -45,23 +45,24 @@ The client never writes game state directly. REST handles profile, social, priva
 
 ## Modules and Responsibilities
 
-| Module             | Responsibility                                                            | Status      |
-| ------------------ | ------------------------------------------------------------------------- | ----------- |
-| `app/`             | Next.js App Router pages, route handlers for REST endpoints, page shells  | in progress |
-| `src/components/`  | React UI components built on shadcn/ui primitives with Tailwind styling   | in progress |
-| `src/game-engine/` | Independent dart game engine shared by client and server                  | in progress |
-| `src/realtime/`    | Socket.IO server, authoritative game loop, rooms, and matchmaking         | in progress |
-| `src/ai/`          | Stateless statistical AI opponent with difficulty tiers and personalities | in progress |
-| `src/auth/`        | Auth.js configuration, strategies, guest sessions, and access tokens      | in progress |
-| `src/camera/`      | Camera abstraction exposing ICameraService plus the smartphone stub       | in progress |
-| `src/board/`       | Board geometry and board-source abstraction shared by client and engine   | in progress |
-| `src/privacy/`     | GDPR export and deletion services plus the audit logger                   | in progress |
-| `src/career/`      | Career mode quest engine and JSON quest definitions                       | in progress |
-| `src/friends/`     | Friend service and its Prisma-backed repository adapter                   | in progress |
-| `src/rating/`      | Elo rating, performance records, and their repository adapters            | in progress |
-| `prisma/`          | Prisma schema, migrations, and the generated client                       | in progress |
-| `tests/`           | Vitest unit and integration suites, plus Playwright end-to-end specs      | in progress |
-| `e2e/`             | Playwright end-to-end specs and fixtures                                  | in progress |
+| Module             | Responsibility                                                                                              | Status      |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- | ----------- |
+| `app/`             | Next.js App Router pages, route handlers for REST endpoints, page shells                                    | in progress |
+| `src/components/`  | React UI components built on shadcn/ui primitives with Tailwind styling                                     | in progress |
+| `src/game-engine/` | Independent dart game engine shared by client and server                                                    | in progress |
+| `src/realtime/`    | Socket.IO server, authoritative game loop, rooms, and matchmaking                                           | in progress |
+| `src/ai/`          | Stateless statistical AI opponent with difficulty tiers and personalities                                   | in progress |
+| `src/auth/`        | Auth.js configuration, strategies, guest sessions, and access tokens                                        | in progress |
+| `src/camera/`      | Camera abstraction exposing ICameraService plus the smartphone stub                                         | in progress |
+| `src/board/`       | Board geometry and board-source abstraction shared by client and engine                                     | in progress |
+| `src/privacy/`     | GDPR export and deletion services plus the audit logger                                                     | in progress |
+| `src/career/`      | Career mode quest engine and JSON quest definitions                                                         | in progress |
+| `src/friends/`     | Friend service and its Prisma-backed repository adapter                                                     | in progress |
+| `src/rating/`      | Elo rating, performance records, and their repository adapters                                              | in progress |
+| `src/lib/`         | Shared helpers that belong to no single feature, such as the path prefix helper that builds the app's links | in progress |
+| `prisma/`          | Prisma schema, migrations, and the generated client                                                         | in progress |
+| `tests/`           | Vitest unit and integration suites, plus Playwright end-to-end specs                                        | in progress |
+| `e2e/`             | Playwright end-to-end specs and fixtures                                                                    | in progress |
 
 ## Directory Structure
 

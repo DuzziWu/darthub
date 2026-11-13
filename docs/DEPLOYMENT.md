@@ -9,6 +9,7 @@ self-hosting on a VPS with Docker Compose.
 - [Local Development](#local-development)
 - [Environment Variables](#environment-variables)
 - [Docker Compose Commands](#docker-compose-commands)
+- [Publishing under a path prefix](#publishing-under-a-path-prefix)
 - [Data Migration](#data-migration)
 - [Updating the Deployment](#updating-the-deployment)
 - [Rollback](#rollback)
@@ -121,6 +122,57 @@ docker compose up -d --build  # rebuild and restart in one step
 
 > Warning: `docker compose down -v` removes the `postgres-data` named volume and
 > with it all game data. Only use it when the data is disposable.
+
+## Publishing under a path prefix
+
+The app can be published under a path prefix — for example behind Tailscale
+Serve, which serves it at `https://<host>.<tailnet>.ts.net/darthub`.
+
+### How the prefix works
+
+Tailscale Serve strips the mount prefix before it forwards the request to the
+backend (`http.StripPrefix` in `ipn/ipnlocal/serve.go`). The backend therefore
+receives `/game` for a browser that asked for `/darthub/game`, while the browser
+resolves the stylesheet and the client bundle against the URL it was given and
+asks for `/darthub/_next/...`.
+
+The build has to account for both halves. `assetPrefix` moves the asset URLs
+under the prefix while the routes stay at the root, and the app builds its own
+links with the prefix so that the router, the navigation and the programmatic
+navigations all stay inside the mount point.
+
+### Build variable
+
+`BASE_PATH` sets the prefix at build time:
+
+```bash
+BASE_PATH=/darthub npm run build
+```
+
+Without it the app is served from the root, which is what a local development
+run (`http://localhost:3000`) expects. The prefix is read when the config is
+loaded, so it must be set for the build, not only for the server.
+
+`npm run build:prefixed` is the ready-made command for the `/darthub` prefix.
+It writes to `.next-prefixed/` so it does not overwrite a root build.
+
+### Serving it with Tailscale
+
+Serve the container's port under the mount point:
+
+```bash
+tailscale serve --set-path=/darthub http://127.0.0.1:3000
+```
+
+The prefix in the build and the prefix in `--set-path` must be the same. If they
+differ, the asset URLs point at a path the proxy does not serve and the page
+arrives unstyled and unhydrated.
+
+### Checking it
+
+The end-to-end suite covers this setup: `e2e/subpath-preview.spec.ts` starts the
+proxy that behaves like Tailscale Serve and asserts that the pages, the assets,
+the hydration and the client-side navigation all work through the prefix.
 
 ## Data Migration
 

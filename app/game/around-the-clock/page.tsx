@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
 import { GameEngine } from "@/game-engine/GameEngine";
+import { withBasePath } from "@/lib/basePath";
 import {
   AROUND_THE_CLOCK_TARGETS,
   AroundTheClockMode,
@@ -111,7 +112,7 @@ export default function AroundTheClockPage() {
   }, [options, playerNames, startMatch]);
 
   const handleBackToHub = useCallback(() => {
-    router.push("/game-center");
+    router.push(withBasePath("/game-center"));
   }, [router]);
 
   if (phase === "setup") {

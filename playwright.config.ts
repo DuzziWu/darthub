@@ -30,11 +30,26 @@ export default defineConfig({
   //
   // `HOSTNAME` is pinned to 127.0.0.1: without it the standalone server binds
   // to the machine's hostname, which is not reachable at localhost.
-  webServer: {
-    command:
-      "npm run build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && HOSTNAME=127.0.0.1 node .next/standalone/server.js",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 300_000,
-  },
+  //
+  // The suite needs two builds: the root build for the specs that exercise
+  // the app as a developer runs it, and a build that carries the path prefix
+  // for the sub-path preview, which publishes the app under `/darthub`. The
+  // second build writes to its own directory so the two do not overwrite
+  // each other.
+  webServer: [
+    {
+      command:
+        "npm run build && rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && HOSTNAME=127.0.0.1 node .next/standalone/server.js",
+      url: "http://127.0.0.1:3000",
+      reuseExistingServer: !process.env.CI,
+      timeout: 300_000,
+    },
+    {
+      command:
+        "npm run build:prefixed && rm -rf .next-prefixed/standalone/public .next-prefixed/standalone/.next-prefixed/static && cp -r public .next-prefixed/standalone/public && cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static && HOSTNAME=127.0.0.1 PORT=3111 node .next-prefixed/standalone/server.js",
+      url: "http://127.0.0.1:3111",
+      reuseExistingServer: !process.env.CI,
+      timeout: 300_000,
+    },
+  ],
 });
