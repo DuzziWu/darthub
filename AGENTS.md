@@ -43,6 +43,19 @@ Diagnosing this: a page that renders but does not respond is the symptom. Compar
 
 `tests/unit/devOrigins.test.ts` guards this with Next.js's own `blockCrossSiteDEV`, and `e2e/start-match.spec.ts` guards the behaviour end to end.
 
+### The HMR WebSocket is what blocks hydration
+
+The refused request that matters is `/_next/hmr`. The Turbopack dev client connects to it **before** it hydrates, and a refused connection leaves the page rendered from the server HTML but never hydrated — so "Start match" is visible, un-disabled and completely inert.
+
+This is reproducible without any proxy: block the WebSocket with Playwright's `page.routeWebSocket("**/_next/hmr**", ws => ws.close())` and the button loses its `__react` fiber key while every `_next/static/chunks/*` request still answers 200. Nothing in the network panel points at the cause, because the failing request is a WebSocket handshake and the HTML and the chunks are fine.
+
+Two consequences worth remembering:
+
+- The allowlist must cover the host the **browser** uses, not the host the server binds. `allowedDevOrigins` is matched against the `Origin` header's hostname, so a Tailscale MagicDNS name (`<host>.<tailnet>.ts.net`) has to be in it; the loopback and container addresses being there does not help.
+- A production build is immune: `blockCrossSiteDEV` only runs in development (`node_modules/next/dist/server/lib/router-server.js`), and the production server hydrates through the prefix proxy without trouble.
+
+To see which host Next.js refused, read `.next/dev/logs/next-development.log` — it logs one `Blocked cross-origin request to Next.js dev resource /_next/hmr from "<host>"` warning naming the exact host to add.
+
 ## End-to-end tests
 
 `npm run test:e2e` runs the Playwright suite in `e2e/`. Two things about it are easy to get wrong:
@@ -63,6 +76,30 @@ Seven tests are `test.skip(...)` placeholders for features that are not built ye
 - `usePathname()` reports the path **without** the prefix, so the comparisons in `ShellNav` and `ShellBrand` stay unprefixed. Compare them against the unprefixed route.
 - `npm run build:prefixed` builds `/darthub` into `.next-prefixed/`. The standalone server then lives at `.next-prefixed/standalone/server.js` and its assets under `.next-prefixed/standalone/.next-prefixed/static/` — the dist directory is repeated inside the standalone tree, because the server resolves `.next-prefixed` relative to its own directory.
 - The proxy must strip **only** the path and forward the query string as it is. Tailscale keeps it, and the client router asks for `?_rsc=…`; a proxy that swallows the query breaks every client-side navigation. `e2e/subpath-preview.spec.ts` reproduces this and is the regression test.
+
+### Serving the live preview
+
+The preview is served by the standalone server of the prefixed build, not by `next dev`:
+
+```bash
+cd /projects/darthub
+npm run build:prefixed
+cp -r public .next-prefixed/standalone/public
+cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
+setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
+```
+
+`next dev` compiles on demand, so a cold route drops requests while it compiles and the preview flickers. The standalone server is the same server the Docker runner stage uses, and it is stable under a proxy.
+
+The server must be started with `setsid -f`. Without the `-f` the process stays a child of the shell that started it, and it dies with the session. With it, the process is adopted by PID 1 and outlives the agent session:
+
+```bash
+ps -o pid,ppid,sid,cmd -p <pid>   # PPID 1 and a SID of its own means it is detached
+```
+
+`HOSTNAME=0.0.0.0` binds every interface. The container reaches itself at `172.18.0.2`, which is the address Tailscale Serve forwards to, so `curl http://172.18.0.2:3000/` is the check that the host side can reach the server.
+
+The server answers the routes at the root, not at `/darthub`: Tailscale Serve strips the mount prefix before it forwards. `/darthub` on the backend answers 404, and that is correct — it is the proxy that turns `/darthub` into `/`. The assets are served under both paths, so either direction resolves them.
 
 ## Continuous integration
 
