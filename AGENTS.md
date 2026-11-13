@@ -15,9 +15,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Environment setup notes
 
-- npm 12 blocks install scripts by default. After `npm install`, `@prisma/client`, `@prisma/engines`, `esbuild` and `prisma` never run their postinstall, so the Prisma client is not generated. Run `npx prisma generate` explicitly; esbuild ships its platform binary as an optional dependency and works without the script.
-- The Prisma client is **not** checked in, and `npm ci` does not generate it either. Any environment that compiles the app from a clean install must run `npx prisma generate` first — including the Dockerfile's builder stage, which does this explicitly. `prisma generate` needs no database: it reads the schema, not the datasource URL, so it succeeds without `DATABASE_URL` set.
-- The build is **green**: typecheck, lint, format check and the full Vitest suite (96 files, 448 tests) all pass.
+- npm 12 blocks **dependency** install scripts unless they are allowlisted, so `npm install` and `npm ci` never run `@prisma/client`'s postinstall and the Prisma client is not generated. Run `npx prisma generate` explicitly after every install; esbuild ships its platform binary as an optional dependency and works without the script. The root project's own scripts (like `prepare`) still run — only the dependencies' scripts are blocked.
+- The Prisma client is **not** checked in, and `npm ci` does not generate it either. Any environment that compiles the app from a clean install must run `npx prisma generate` first — including the Dockerfile's builder stage and both CI jobs, which do this explicitly. `prisma generate` needs no database: it reads the schema, not the datasource URL, so it succeeds without `DATABASE_URL` set. Without it, `npm run typecheck` and `npm run build` both fail with `Module '"@prisma/client"' has no exported member 'PrismaClient'`.
+- The build is **green**: typecheck, lint, format check and the full Vitest suite (97 files, 456 tests) all pass.
 
 Two checks are conditional on the environment and skip rather than fail:
 
@@ -26,12 +26,29 @@ Two checks are conditional on the environment and skip rather than fail:
 
 `tests/unit/ci-workflow.test.ts` runs the CI steps locally, so it fails whenever typecheck or the test suite fails.
 
+## Development server origins
+
+Next.js 16 blocks cross-origin requests to dev-only assets and answers a refused request with **403**. The refused request breaks the app in a way that looks alive but is not: the server HTML still renders, so the setup form and the "Start match" button appear, but the client bundle never hydrates, so React attaches no handler and the button does nothing.
+
+This is why the app must be reached through an origin in `allowedDevOrigins` in `next.config.ts`:
+
+- `localhost` and its subdomains are allowed by Next.js itself.
+- `127.0.0.1`, `[::1]` and `0.0.0.0` are allowlisted explicitly.
+- The machine's own network addresses are allowlisted automatically, so the "Network:" URL the dev server prints is usable.
+- Anything else — a LAN hostname, a tunnel — goes in the `ALLOWED_DEV_ORIGINS` environment variable, as a comma-separated list of hostnames with no scheme and no port.
+
+Only the hostname of the `Origin` header is matched, so entries are written as bare hostnames. IPv6 addresses are bracketed, because that is the form Next.js parses an `Origin` hostname into.
+
+Diagnosing this: a page that renders but does not respond is the symptom. Compare `Object.keys(button).some((key) => key.startsWith("__react"))` on the button — a hydrated React element has a fiber key on its DOM node, an unhydrated one does not. The dev server logs the refused request with the host it wants allowlisted.
+
+`tests/unit/devOrigins.test.ts` guards this with Next.js's own `blockCrossSiteDEV`, and `e2e/start-match.spec.ts` guards the behaviour end to end.
+
 ## End-to-end tests
 
 `npm run test:e2e` runs the Playwright suite in `e2e/`. Two things about it are easy to get wrong:
 
 - It runs against a **production build**, not `next dev`. `playwright.config.ts` owns the server: it runs `npm run build`, copies `public/` and `.next/static/` next to the standalone server the way the Dockerfile's runner stage does, and starts `node .next/standalone/server.js` with `HOSTNAME=127.0.0.1`. Against `next dev` the visual QC specs took 8+ minutes and failed on timeouts, because the dev server recompiles every route on demand and keeps the page busy enough to stall Playwright's actionability checks; against the production build the same specs pass in about 40 seconds.
-- `next.config.ts` sets `output: "standalone"`, so `next start` **cannot** serve the app. Use the standalone server directly, or `npm run dev` for interactive work.
+- `next.config.ts` sets `output: "standalone"`, so `next start` prints a warning ("does not work with output: standalone"), but it **does** serve the app and all the routes work. For the production-like server the suite runs against, use the standalone server directly as `playwright.config.ts` does — it is what the Docker image runs.
 
 The browsers are not installed by `npm ci`. Run `npx playwright install chromium` once before the first local e2e run (`npx playwright install --with-deps chromium` needs root, so it is the CI job that does it).
 
@@ -39,7 +56,7 @@ Seven tests are `test.skip(...)` placeholders for features that are not built ye
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` has two jobs. `Lint, format, typecheck, test` runs the gates above. `End-to-end (Playwright)` installs the Chromium browser and runs `npm run test:e2e`.
+`.github/workflows/ci.yml` has two jobs. `Lint, format, typecheck, test` runs the gates above. `End-to-end (Playwright)` installs the Chromium browser and runs `npm run test:e2e`. Both jobs run `npx prisma generate` after `npm ci`, because npm 12 blocks the Prisma postinstall and the typecheck and the build both fail without a generated client.
 
 `tests/unit/ci-workflow.test.ts` guards both jobs: it asserts an e2e job exists and installs the browsers, and it replays the workflow's `npm run` steps locally so a broken gate fails before it reaches GitHub. The e2e step is excluded from that replay, because the replay environment has no browsers.
 
