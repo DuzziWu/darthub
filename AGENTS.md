@@ -56,7 +56,9 @@ Seven tests are `test.skip(...)` placeholders for features that are not built ye
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` has two jobs. `Lint, format, typecheck, test` runs the gates above. `End-to-end (Playwright)` installs the Chromium browser and runs `npm run test:e2e`. Both jobs run `npx prisma generate` after `npm ci`, so the build does not depend on whether npm's install-script policy runs the Prisma postinstall — CI's Node 22 ships npm 10, which does run it, but a local npm 12 does not.
+`.github/workflows/ci.yml` has two jobs. `Lint, format, typecheck, test` runs the gates above. `End-to-end (Playwright)` installs the Chromium browser and runs `npm run test:e2e`. Both jobs run `npx prisma generate` after `npm ci`, so the build does not depend on npm's install-script policy: CI's Node 22 ships npm 10, which runs the Prisma postinstall, but a local npm 12 blocks it, and the typecheck and the build both fail on an ungenerated client.
+
+The e2e job was missing from the committed workflow until 2026-11-13, while `tests/unit/ci-workflow.test.ts` already required one, so every push ran red on that test alone.
 
 `tests/unit/ci-workflow.test.ts` guards both jobs: it asserts an e2e job exists and installs the browsers, and it replays the workflow's `npm run` steps locally so a broken gate fails before it reaches GitHub. The e2e step is excluded from that replay, because the replay environment has no browsers.
 

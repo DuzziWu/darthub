@@ -22,10 +22,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # npm 12 blocks dependency install scripts unless they are explicitly
-      # allowlisted, so `npm ci` never runs Prisma's postinstall and the
-      # client is never generated. Typecheck and the build both fail on the
-      # ungenerated client, so it is generated explicitly here.
+      # Generated explicitly so the build does not depend on npm's
+      # install-script policy: this npm runs the Prisma postinstall, but a
+      # newer npm blocks dependency install scripts, and the typecheck and
+      # the build both fail on an ungenerated client.
       - name: Generate Prisma client
         run: npx prisma generate
 
@@ -58,8 +58,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # See the quality job: npm 12 blocks the Prisma postinstall, so the
-      # client is generated explicitly before the build the suite runs.
+      # See the quality job: the client is generated explicitly, so the
+      # suite runs against a generated client whichever npm is in play.
       - name: Generate Prisma client
         run: npx prisma generate
 
