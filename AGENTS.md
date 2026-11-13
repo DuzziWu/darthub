@@ -54,6 +54,16 @@ The browsers are not installed by `npm ci`. Run `npx playwright install chromium
 
 Seven tests are `test.skip(...)` placeholders for features that are not built yet — the career, login and matchmaking flows. They are skipped by design, not by an environment check.
 
+## Publishing under a path prefix
+
+`BASE_PATH` publishes the app under a sub-path, e.g. `/darthub` behind Tailscale Serve. It is read when `next.config.ts` is loaded, so it must be set **for the build**, not only for the server.
+
+- `assetPrefix` moves the asset URLs under the prefix; `basePath` is deliberately **not** set. Tailscale Serve strips the mount prefix before it forwards the request (`http.StripPrefix` in `ipn/ipnlocal/serve.go`), so the backend sees `/game` for a browser that asked for `/darthub/game`. Next.js answers 404 for a path that does not start with the `basePath`, so moving the routes would break them.
+- The app's own links are prefixed through `NEXT_PUBLIC_BASE_PATH` and `src/lib/basePath.ts`. `next/link` cannot be used for this, because it derives the prefix from `basePath`.
+- `usePathname()` reports the path **without** the prefix, so the comparisons in `ShellNav` and `ShellBrand` stay unprefixed. Compare them against the unprefixed route.
+- `npm run build:prefixed` builds `/darthub` into `.next-prefixed/`. The standalone server then lives at `.next-prefixed/standalone/server.js` and its assets under `.next-prefixed/standalone/.next-prefixed/static/` — the dist directory is repeated inside the standalone tree, because the server resolves `.next-prefixed` relative to its own directory.
+- The proxy must strip **only** the path and forward the query string as it is. Tailscale keeps it, and the client router asks for `?_rsc=…`; a proxy that swallows the query breaks every client-side navigation. `e2e/subpath-preview.spec.ts` reproduces this and is the regression test.
+
 ## Continuous integration
 
 `.github/workflows/ci.yml` has two jobs. `Lint, format, typecheck, test` runs the gates above. `End-to-end (Playwright)` installs the Chromium browser and runs `npm run test:e2e`. Both jobs run `npx prisma generate` after `npm ci`, so the build does not depend on npm's install-script policy: CI's Node 22 ships npm 10, which runs the Prisma postinstall, but a local npm 12 blocks it, and the typecheck and the build both fail on an ungenerated client.
@@ -61,6 +71,8 @@ Seven tests are `test.skip(...)` placeholders for features that are not built ye
 The e2e job was missing from the committed workflow until 2026-11-13, while `tests/unit/ci-workflow.test.ts` already required one, so every push ran red on that test alone.
 
 `tests/unit/ci-workflow.test.ts` guards both jobs: it asserts an e2e job exists and installs the browsers, and it replays the workflow's `npm run` steps locally so a broken gate fails before it reaches GitHub. The e2e step is excluded from that replay, because the replay environment has no browsers.
+
+The lint gate was red for a long time without anybody noticing: ESLint does not honour `.gitignore`, and the generated `.next/**` bundles were being linted as if they were source, which produced ~9 300 errors in `tests/unit/linting.test.ts` and `tests/unit/ci-workflow.test.ts`. `eslint.config.mjs` now ignores `.next-prefixed/**` as well, and the source tree lints clean. **A build output directory must be added to `eslint.config.mjs` when one is introduced** — otherwise the gate goes red with errors that have nothing to do with the code.
 
 Pushing a change to `.github/workflows/` needs a GitHub token with the `workflow` scope. A token with only `repo` is rejected by GitHub with _"refusing to allow a Personal Access Token to create or update workflow"_, and the REST API answers `404` for the same reason — the scope is not a repository permission, so a repository admin token still cannot write workflow files without it.
 
