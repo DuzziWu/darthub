@@ -113,6 +113,20 @@ The lint gate was red for a long time without anybody noticing: ESLint does not 
 
 Pushing a change to `.github/workflows/` needs a GitHub token with the `workflow` scope. A token with only `repo` is rejected by GitHub with _"refusing to allow a Personal Access Token to create or update workflow"_, and the REST API answers `404` for the same reason — the scope is not a repository permission, so a repository admin token still cannot write workflow files without it.
 
+## The lint gate does not check the hooks
+
+`eslint.config.mjs` runs `typescript-eslint`'s recommended set, `import-x/order` and Prettier — but **not** `eslint-plugin-react-hooks`. The plugin is not even a dependency. So a stale closure in a `useCallback` dependency array passes the gate silently.
+
+That is not hypothetical: Shanghai's `recordThrow` listed `[engine, matchState, phase]` and left out the `history` hook. The callback kept a closure from before the correction target was armed, so correcting a dart in Shanghai **appended a second dart** instead of replacing the first. The lint gate was green, the unit tests were green, and only the browser showed the defect.
+
+**When a view starts using a hook inside a `useCallback`, put the hook in the dependency array.** The `react-hooks` plugin would catch the omission; until it is added, check it by hand.
+
+## The ledger is the only record of a dart
+
+`GameEngine.recordThrow` writes a busting dart into the ledger with `bust: true` and then throws `GameEngineBustError`, and `replay` re-derives the bust flag when the ledger is re-read. A bust therefore **appears in the visit strip** and counts for nothing in the score — that is the intended behaviour, not a defect.
+
+Undo removes the last dart of the ledger, busting or not, and the score stays where the bust left it. Both were verified in the browser on 2026-11-13: 4× T20 left 61 remaining, the fifth T20 busted (61 − 60 = 1, and a single 1 is no double checkout), the strip showed the bust, and the undo removed it while the score stayed at 61.
+
 ## Testing conventions
 
 - Component tests need a per-file `// @vitest-environment jsdom` docblock; the global environment stays `"node"`.
