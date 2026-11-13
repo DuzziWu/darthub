@@ -26,15 +26,23 @@ export function useMatchHistory(options: {
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const throws = matchState?.throws ?? [];
-  const currentVisit: readonly RecordedThrow[] =
-    engine !== null && throws.length > 0 ? (engine.getVisits().at(-1)?.throws ?? []) : [];
+  const visits = engine !== null && throws.length > 0 ? engine.getVisits() : [];
+  const currentVisit: readonly RecordedThrow[] = visits.at(-1)?.throws ?? [];
+  /**
+   * Where the visit in progress starts in the ledger.
+   *
+   * The strip shows one visit, but the engine indexes the whole ledger. A
+   * chip's position in the strip is therefore not its index in the ledger,
+   * and the two differ from the second visit on.
+   */
+  const currentVisitOffset = Math.max(0, throws.length - currentVisit.length);
   const canUndo = throws.length > 0;
 
   const selectThrow = useCallback(
     (dartIndex: number) => {
       if (!engine || !matchState || dartIndex >= matchState.throws.length) return;
-      const visits = deriveVisitIndexes(matchState.throws, DARTS_PER_TURN);
-      const inCurrentVisit = visits[dartIndex] === Math.max(...visits);
+      const visitIndexes = deriveVisitIndexes(matchState.throws, DARTS_PER_TURN);
+      const inCurrentVisit = visitIndexes[dartIndex] === Math.max(...visitIndexes);
       setCorrectionTarget(dartIndex);
       setAwaitingConfirmation(!inCurrentVisit);
     },
@@ -54,13 +62,16 @@ export function useMatchHistory(options: {
     (input: { points: number; segment?: ThrowSegment }) => {
       if (!engine || !matchState) return null;
       const playerId = matchState.currentPlayerId ?? "";
+      // A miss carries no segment: the engine rejects a segment on a
+      // zero-scoring throw.
+      const throwInput = input.points > 0 ? input : { points: input.points };
       if (correctionTarget !== null) {
-        const state = engine.correctThrow(correctionTarget, input);
+        const state = engine.correctThrow(correctionTarget, throwInput);
         setCorrectionTarget(null);
         setAwaitingConfirmation(false);
         return state;
       }
-      return engine.recordThrow({ playerId, ...input });
+      return engine.recordThrow({ playerId, ...throwInput });
     },
     [engine, matchState, correctionTarget],
   );
@@ -74,6 +85,7 @@ export function useMatchHistory(options: {
 
   return {
     currentVisit,
+    currentVisitOffset,
     canUndo,
     correctionTarget,
     awaitingConfirmation,

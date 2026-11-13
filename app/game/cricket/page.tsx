@@ -19,6 +19,7 @@ import { PlayerSetup } from "@/components/game/PlayerSetup";
 import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
+import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
 import type { BoardThrow } from "@/components/game/types";
 
@@ -58,6 +59,7 @@ export default function CricketPage() {
   // The engine's ledger is the only record of the darts; the strip, the
   // undo button and the correction flow all read from it.
   const history = useMatchHistory({ engine, matchState });
+  const inputMode = useInputMode();
 
   const startMatch = useCallback((names: string[], options: PlayerSetupOptions) => {
     const eng = new GameEngine(new CricketMode());
@@ -161,12 +163,23 @@ export default function CricketPage() {
 
   return (
     <MatchLayout
+      input={
+        <ThrowInputPad
+          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
+          armedSegment={armedSegment}
+          onArmedSegmentChange={setArmedSegment}
+          onThrow={recordThrow}
+        />
+      }
+      inputMode={inputMode.mode}
+      onInputModeChange={inputMode.onChange}
       modeName="Cricket"
       badge={`${closed} / ${CRICKET_TARGETS.length} closed`}
       sourceLabel={boardSourceLabel(options.boardSource)}
       visit={
         <ThrowHistoryControls
           throws={history.currentVisit}
+          visitOffset={history.currentVisitOffset}
           correctionTarget={history.correctionTarget}
           awaitingConfirmation={history.awaitingConfirmation}
           canUndo={history.canUndo}
@@ -192,9 +205,7 @@ export default function CricketPage() {
         marksToClose={MARKS_TO_CLOSE}
         playerName={playerNames[PLAYER_ID]}
       />
-
       <MatchStatus message={message} />
-
       {phase === "result" ? (
         <GameResultBanner
           winnerId={winnerId}
@@ -204,14 +215,7 @@ export default function CricketPage() {
           onBackToHub={handleBackToHub}
           onUndo={handleUndo}
         />
-      ) : (
-        <ThrowInputPad
-          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
-          armedSegment={armedSegment}
-          onArmedSegmentChange={setArmedSegment}
-          onThrow={recordThrow}
-        />
-      )}
+      ) : null}
     </MatchLayout>
   );
 }

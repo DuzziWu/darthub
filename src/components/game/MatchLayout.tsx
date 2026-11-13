@@ -1,6 +1,7 @@
 "use client";
 
 import { DartBoard } from "@/components/board";
+import { InputModeSwitch } from "./InputModeSwitch";
 import { useIsCompact } from "./useIsCompact";
 import type { MatchLayoutProps } from "./types";
 import { MATCH_BADGE, MATCH_SOURCE, MATCH_STRIP, MATCH_TITLE, SECONDARY_BUTTON } from "./classes";
@@ -22,6 +23,8 @@ import { MATCH_BADGE, MATCH_SOURCE, MATCH_STRIP, MATCH_TITLE, SECONDARY_BUTTON }
  */
 export function MatchLayout({
   modeName,
+  inputMode = "manual",
+  onInputModeChange,
   badge,
   sourceLabel,
   visit,
@@ -30,17 +33,25 @@ export function MatchLayout({
   armedSegment,
   onBoardThrow,
   children,
+  input,
 }: MatchLayoutProps) {
   const compact = useIsCompact();
+  // Below the md breakpoint the board stops being an input of its own: its
+  // treble band is a handful of pixels tall and a finger is far wider. The
+  // player chooses the board explicitly, so the board follows that choice
+  // rather than the width.
+  const boardIsInput = inputMode === "board";
+  const boardReadOnly = compact && !boardIsInput;
 
   return (
     <div className="mx-auto w-full max-w-[1200px] space-y-xl py-xl">
       {/* The throw strip. */}
       <section aria-label="Match header" className={MATCH_STRIP}>
-        <div className="flex items-baseline gap-lg">
+        <div className="flex flex-wrap items-center gap-lg">
           <h1 className={MATCH_TITLE}>{modeName}</h1>
           {badge && <span className={MATCH_BADGE}>{badge}</span>}
           {sourceLabel && <span className={MATCH_SOURCE}>{sourceLabel}</span>}
+          {onInputModeChange && <InputModeSwitch mode={inputMode} onChange={onInputModeChange} />}
         </div>
 
         {visit}
@@ -56,9 +67,11 @@ export function MatchLayout({
       {/* The board on one side, the mode's surface on the other. */}
       <div className="grid gap-xl lg:grid-cols-[minmax(0,1fr)_25rem] xl:grid-cols-[minmax(0,1fr)_30rem] lg:items-start">
         {/* The board is last in the reading order on a phone: the pad is the input. */}
-        <div className="order-2 flex flex-col items-center lg:order-1">
-          <DartBoard armedSegment={armedSegment} onThrow={onBoardThrow} readOnly={compact} />
-          {compact && (
+        <div
+          className={`flex flex-col items-center ${boardIsInput ? "order-1" : "order-2"} lg:order-1`}
+        >
+          <DartBoard armedSegment={armedSegment} onThrow={onBoardThrow} readOnly={boardReadOnly} />
+          {compact && !boardIsInput && (
             <div className="mt-md max-w-[44ch] text-center">
               <p className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
                 Last dart
@@ -69,7 +82,16 @@ export function MatchLayout({
             </div>
           )}
         </div>
-        <div className="order-1 space-y-xl lg:order-2">{children}</div>
+        <div className="flex flex-col gap-xl lg:order-2">
+          {/* The pad is the input of the manual mode and stands above the
+              score sheet on a phone: the darts are entered before the score
+              of the turn is read. In the board mode the board takes that
+              place, so the score sheet comes first. */}
+          {input && (
+            <div className={`${boardIsInput ? "order-2" : "order-1"} lg:order-2`}>{input}</div>
+          )}
+          <div className={`${boardIsInput ? "order-1" : "order-2"} lg:order-1`}>{children}</div>
+        </div>
       </div>
     </div>
   );

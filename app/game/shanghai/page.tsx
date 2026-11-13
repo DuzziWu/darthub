@@ -17,10 +17,12 @@ import { MatchStatus } from "@/components/game/MatchStatus";
 import { PlayerSetup } from "@/components/game/PlayerSetup";
 import { ScoreDisplay } from "@/components/game/ScoreDisplay";
 import { ShanghaiScoreSheet } from "@/components/game/ShanghaiScoreSheet";
+import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
-import { VisitChips } from "@/components/game/VisitChips";
+import { useMatchHistory } from "@/components/game/useMatchHistory";
+import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
-import type { BoardThrow, VisitEntry } from "@/components/game/types";
+import type { BoardThrow } from "@/components/game/types";
 
 /** The solo player of a shanghai match. */
 const PLAYER_ID = "player1";
@@ -44,19 +46,39 @@ function marksFor(points: number, target: number): number {
   return 0;
 }
 
+/**
+ * The marks every round has scored, read back from the ledger.
+ *
+ * The mode keeps only the round in play, so the rounds that are done are
+ * derived here: every three darts close a round, and the target of a round
+ * is its own number. Deriving the marks keeps them correct after an undo
+ * or a correction, which the engine re-derives the whole ledger from.
+ */
+function marksByRound(throws: readonly { points: number }[]): Record<string, number> {
+  const marks: Record<string, number> = {};
+  throws.forEach((dart, index) => {
+    const round = Math.floor(index / 3) + 1;
+    const target = roundTarget(Math.min(round, SHANGHAI_ROUNDS));
+    const scored = marksFor(dart.points, target);
+    if (scored > 0) marks[String(round)] = (marks[String(round)] ?? 0) + scored;
+  });
+  return marks;
+}
 export default function ShanghaiPage() {
   const router = useRouter();
   const [phase, setPhase] = useState<"setup" | "playing" | "result">("setup");
   const [engine, setEngine] = useState<GameEngine | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
-  const [visit, setVisit] = useState<VisitEntry[]>([]);
   /** The marks of every round, computed from the throws that scored them. */
-  const [roundMarks, setRoundMarks] = useState<Record<string, number>>({});
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   // The armed band is owned here and shared by the pad and the board.
   const [armedSegment, setArmedSegment] = useState<ArmedSegment>("single");
+  // The engine's ledger is the only record of the darts; the strip, the
+  // undo button and the correction flow all read from it.
+  const history = useMatchHistory({ engine, matchState });
+  const inputMode = useInputMode();
   // The setup choices in force, so a replay is played the same way.
   const [options, setOptions] = useState<PlayerSetupOptions>({
     outRule: "double",
@@ -69,8 +91,6 @@ export default function ShanghaiPage() {
     setEngine(eng);
     setMatchState(state);
     setPlayerNames({ [PLAYER_ID]: names[0] ?? "Player 1" });
-    setVisit([]);
-    setRoundMarks({});
     setWinnerId(null);
     setMessage("");
     setOptions(options);
@@ -86,22 +106,17 @@ export default function ShanghaiPage() {
       const { points, segment } = throwInput;
       const round = ((matchState.modeData as ShanghaiModeData | undefined)?.currentRound ?? 0) + 1;
       const target = roundTarget(Math.min(round, SHANGHAI_ROUNDS));
-      // A visit opens when the engine starts a new turn.
-      const opensVisit = matchState.throwsInCurrentTurn === 0;
       const marks = marksFor(points, target);
 
       try {
         // Shanghai scores from the point value alone: the segment is a label
         // on the visit, never an input to the mode.
-        const state = engine.recordThrow({ playerId, points });
+        // The hook owns the correction flow: with an armed target it
+        // replaces that dart, otherwise it records a new one.
+        const state = history.submitThrow({ points, segment });
+        if (!state) return;
 
         setMatchState(state);
-        const entry: VisitEntry = { playerId, points, segment };
-        setVisit((previous) => (opensVisit ? [entry] : [...previous, entry]));
-        if (marks > 0) {
-          const key = String(round);
-          setRoundMarks((previous) => ({ ...previous, [key]: (previous[key] ?? 0) + marks }));
-        }
 
         if (state.status === "completed") {
           setWinnerId(playerId);
@@ -119,7 +134,7 @@ export default function ShanghaiPage() {
         setMessage((error as Error).message || "Invalid throw");
       }
     },
-    [engine, matchState, phase],
+    [engine, matchState, phase, history],
   );
 
   const handleBoardThrow = useCallback(
@@ -128,6 +143,17 @@ export default function ShanghaiPage() {
     },
     [recordThrow],
   );
+
+  const handleUndo = useCallback(() => {
+    if (!engine) return;
+    const state = history.undo();
+    if (state) {
+      setMatchState(state);
+      setWinnerId(null);
+      setMessage("Last dart removed.");
+      setPhase("playing");
+    }
+  }, [engine, history]);
 
   const handlePlayAgain = useCallback(() => {
     startMatch(Object.values(playerNames), options);
@@ -161,14 +187,38 @@ export default function ShanghaiPage() {
     double: record?.hitDouble ?? false,
     triple: record?.hitTriple ?? false,
   };
+  const roundMarks = marksByRound(matchState?.throws ?? []);
   const totalMarks = Object.values(roundMarks).reduce((sum, marks) => sum + marks, 0);
 
   return (
     <MatchLayout
+      input={
+        <ThrowInputPad
+          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
+          armedSegment={armedSegment}
+          onArmedSegmentChange={setArmedSegment}
+          onThrow={recordThrow}
+        />
+      }
+      inputMode={inputMode.mode}
+      onInputModeChange={inputMode.onChange}
       modeName="Shanghai"
       badge={`${totalMarks} marks`}
       sourceLabel={boardSourceLabel(options.boardSource)}
-      visit={<VisitChips visit={visit} />}
+      visit={
+        <ThrowHistoryControls
+          throws={history.currentVisit}
+          visitOffset={history.currentVisitOffset}
+          correctionTarget={history.correctionTarget}
+          awaitingConfirmation={history.awaitingConfirmation}
+          canUndo={history.canUndo}
+          correctionsDisabled={matchState?.status === "completed"}
+          onSelectThrow={history.selectThrow}
+          onUndo={handleUndo}
+          onConfirm={history.confirmCorrection}
+          onCancel={history.cancelCorrection}
+        />
+      }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>
           New game
@@ -185,17 +235,14 @@ export default function ShanghaiPage() {
         marksByRound={roundMarks}
         hit={hit}
       />
-
       <ScoreDisplay
         players={matchState ? [...matchState.players] : []}
         currentPlayerId={matchState?.currentPlayerId ?? null}
         playerNames={playerNames}
-        throwHistory={visit}
+        throwHistory={matchState ? [...matchState.throws] : []}
         caption="Marks"
       />
-
       <MatchStatus message={message} />
-
       {phase === "result" ? (
         <GameResultBanner
           winnerId={winnerId}
@@ -204,14 +251,7 @@ export default function ShanghaiPage() {
           onPlayAgain={handlePlayAgain}
           onBackToHub={handleBackToHub}
         />
-      ) : (
-        <ThrowInputPad
-          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
-          armedSegment={armedSegment}
-          onArmedSegmentChange={setArmedSegment}
-          onThrow={recordThrow}
-        />
-      )}
+      ) : null}
     </MatchLayout>
   );
 }

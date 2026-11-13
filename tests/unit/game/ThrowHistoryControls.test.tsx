@@ -62,6 +62,25 @@ describe("ThrowHistoryControls", () => {
     expect(onSelectThrow).toHaveBeenCalledWith(1);
   });
 
+  it("reports the ledger index of a chip, not its position in the strip", () => {
+    // The strip shows one visit; the engine indexes the whole ledger.
+    const { onSelectThrow } = setup({ visitOffset: 6 });
+    fireEvent.click(screen.getByRole("button", { name: "Dart 1: T20" }));
+    expect(onSelectThrow).toHaveBeenCalledWith(6);
+    fireEvent.click(screen.getByRole("button", { name: "Dart 2: BUST" }));
+    expect(onSelectThrow).toHaveBeenCalledWith(7);
+  });
+
+  it("marks the armed dart by its ledger index", () => {
+    setup({ visitOffset: 6, correctionTarget: 7 });
+    expect(screen.getByRole("button", { name: "Dart 2: BUST" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Dart 1: T20" }).getAttribute("aria-pressed")).toBe(
+      "false",
+    );
+  });
+
   it("the armed dart is visibly pressed", () => {
     setup({ correctionTarget: 1 });
     expect(screen.getByRole("button", { name: "Dart 2: BUST" }).getAttribute("aria-pressed")).toBe(

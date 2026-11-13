@@ -33,12 +33,12 @@ export const SECONDARY_BUTTON = `${TARGET_SIZE} rounded-sm border border-edge bg
  * The match strip: the band across the top of a match.
  *
  * The five modes share one strip, so its type and its chrome are declared
- * once here rather than in each match view. From the md breakpoint up it is
- * sticky directly below the app header, so the mode and the visit stay on
- * screen while the sheet is read; on a phone it is compact and scrolls away.
+ * once here rather than in each match view. It is sticky directly below the
+ * app header at every width, so the mode, the visit and the undo stay on
+ * screen while the sheet is read.
  */
 export const MATCH_STRIP =
-  "flex min-h-14 flex-wrap items-center gap-md border-b border-rule bg-surface px-md py-sm md:sticky md:top-14 md:z-30";
+  "sticky top-14 z-30 flex min-h-14 flex-wrap items-center gap-md border-b border-rule bg-surface px-md py-sm";
 
 /** The mode's name in the strip. */
 export const MATCH_TITLE = "font-display text-heading text-ink";

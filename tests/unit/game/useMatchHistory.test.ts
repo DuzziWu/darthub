@@ -82,6 +82,42 @@ describe("useMatchHistory", () => {
     expect(engine.getState().throws).toHaveLength(4); // nothing changed
   });
 
+  it("corrects the tapped dart in a later visit, not an earlier one", () => {
+    // Seven darts make three visits: the strip shows the last one, whose
+    // first chip sits at ledger index 6, not at index 0.
+    const engine = new GameEngine(new NeutralScoreMode());
+    const { harness, run } = drive(engine, engine.startMatch({ playerIds: ["a"] }));
+    for (const points of [20, 20, 20, 11, 11, 11, 11]) {
+      run(() => harness.result.current.submitThrow({ points }));
+    }
+    expect(harness.result.current.currentVisit).toHaveLength(1);
+    expect(harness.result.current.currentVisitOffset).toBe(6);
+
+    // The chip the player tapped is the first of the visit in progress.
+    act(() => harness.result.current.selectThrow(harness.result.current.currentVisitOffset));
+    expect(harness.result.current.correctionTarget).toBe(6);
+    expect(harness.result.current.awaitingConfirmation).toBe(false);
+
+    run(() => harness.result.current.submitThrow({ points: 50 }));
+
+    const state = engine.getState();
+    expect(state.throws).toHaveLength(7); // replaced, not appended
+    expect(state.throws.map((dart) => dart.points)).toEqual([20, 20, 20, 11, 11, 11, 50]);
+  });
+
+  it("asks for confirmation for a dart of an earlier visit in a later visit", () => {
+    const engine = new GameEngine(new NeutralScoreMode());
+    const { harness, run } = drive(engine, engine.startMatch({ playerIds: ["a"] }));
+    for (const points of [20, 20, 20, 11, 11, 11, 11]) {
+      run(() => harness.result.current.submitThrow({ points }));
+    }
+
+    // Dart 0 belongs to the first visit, which is finished.
+    act(() => harness.result.current.selectThrow(0));
+    expect(harness.result.current.correctionTarget).toBe(0);
+    expect(harness.result.current.awaitingConfirmation).toBe(true);
+  });
+
   it("keeps the dart armed when the correction is refused", () => {
     const engine = new GameEngine(new StandardMode({ startScore: 50 }));
     const { harness, run } = drive(

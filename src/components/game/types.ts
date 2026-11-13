@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { BoardSourceId } from "@/board";
 import type { ArmedSegment } from "@/components/board";
+import type { InputMode } from "@/components/game/InputModeSwitch";
 import type { OutRuleId, ThrowSegment } from "@/game-engine/types";
 
 /**
@@ -119,6 +120,15 @@ export interface BoardThrow {
 export interface MatchLayoutProps {
   /** The mode's name, e.g. "Cricket". */
   modeName: string;
+  /**
+   * The way the player enters darts: the board or the pad.
+   *
+   * The switch is a view concern: it changes which surface takes the tap,
+   * never the match state.
+   */
+  inputMode?: InputMode;
+  /** Fired when the player switches the input mode. */
+  onInputModeChange?: (mode: InputMode) => void;
   /** The mode's live state, e.g. "Round 3 / 7". */
   badge?: string;
   /** The board the darts come from, e.g. "Virtual Board". */
@@ -133,7 +143,16 @@ export interface MatchLayoutProps {
   armedSegment: ArmedSegment;
   /** Fired with a resolved dart from the board. */
   onBoardThrow: (hit: BoardThrow) => void;
-  /** The mode's score surface and its input, in the right-hand column. */
+  /**
+   * The dart pad: the input of the manual mode.
+   *
+   * It is a prop of its own rather than part of `children`, because where it
+   * belongs depends on the input mode: on a phone the pad is the input and
+   * stands above the score sheet, while the board is the input and stands
+   * above everything.
+   */
+  input?: ReactNode;
+  /** The mode's score surface, in the right-hand column. */
   children: ReactNode;
 }
 

@@ -12,9 +12,12 @@ import { MatchStatus } from "@/components/game/MatchStatus";
 import { PlayerSetup } from "@/components/game/PlayerSetup";
 import { ScoreDisplay } from "@/components/game/ScoreDisplay";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
-import { VisitChips, visitBadge } from "@/components/game/VisitChips";
+import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
+import { visitBadge } from "@/components/game/VisitChips";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
-import type { PlayerSetupOptions, VisitEntry } from "@/components/game/types";
+import type { PlayerSetupOptions } from "@/components/game/types";
+import { useMatchHistory } from "@/components/game/useMatchHistory";
+import { useInputMode } from "@/components/game/useInputMode";
 import { GameEngine } from "@/game-engine/GameEngine";
 import { StandardMode } from "@/game-engine/modes/StandardMode";
 import { OUT_RULE_CHOICES } from "@/game-engine/modes/registry";
@@ -23,7 +26,6 @@ import {
   GameEngineStateError,
   type MatchState,
   type OutRuleId,
-  type ThrowInput,
   type ThrowSegment,
 } from "@/game-engine/types";
 
@@ -36,13 +38,10 @@ import {
  *
  * - the **armed band** (`1×` / `2×` / `3×`), which the dart pad owns and the
  *   board reads, so the two surfaces are two views of one thing;
- * - the **visit** of every player — the darts of the turn in progress, each
- *   with the segment it landed on, so the score sheet can name a visit `T20`,
- *   `D16` or `S7`;
- * - the **bust record**, which is this view's own: the engine rejects a
- *   busting throw with a `GameEngineStateError` and leaves the match state
- *   untouched, so the BUST chip is decided here — from the rule in force and
- *   the score before the dart, never by reading the error's message.
+ * - the **visit** and the **bust record**, which the engine's ledger owns:
+ *   a busting dart lands in the ledger and counts for nothing, so the strip,
+ *   the score sheet, the undo button and the correction flow all read the
+ *   same record. The view keeps no second copy of the darts.
  */
 export interface X01MatchViewProps {
   /** The score every player starts from, e.g. 501. */
@@ -88,12 +87,12 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
   const [outRule, setOutRule] = useState<OutRuleId>("double");
   const [boardSource, setBoardSource] = useState<BoardSourceId>("virtual");
   const [armedSegment, setArmedSegment] = useState<ArmedSegment>("single");
-  /** The visit of every player: the darts of the turn in progress. */
-  const [visits, setVisits] = useState<Record<string, VisitEntry[]>>({});
-  /** The player whose visit the strip shows — the last one to throw a dart. */
-  const [visitOwner, setVisitOwner] = useState<string | null>(null);
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  // The engine's ledger is the only record of the darts; the strip, the
+  // score sheet, the undo button and the correction flow all read from it.
+  const history = useMatchHistory({ engine, matchState });
+  const inputMode = useInputMode();
 
   const startMatch = useCallback(
     (names: string[], options: PlayerSetupOptions) => {
@@ -114,8 +113,6 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
       setPlayerNames(namesById);
       setOutRule(options.outRule);
       setBoardSource(options.boardSource);
-      setVisits({});
-      setVisitOwner(null);
       setWinnerId(null);
       setAnnouncement("");
       setPhase("playing");
@@ -136,37 +133,19 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
       const segment = input.points > 0 ? input.segment : undefined;
       const bust = isBustThrow(getOutRule(outRule), remainingBefore, input.points, segment);
 
-      const previous = visits[playerId] ?? [];
-      // A visit opens when the engine starts a new turn, and a busted visit
-      // is void: the next dart opens a fresh one.
-      const opensVisit =
-        matchState.throwsInCurrentTurn === 0 || previous[previous.length - 1]?.bust === true;
-
       try {
-        // A miss carries no segment at all: the engine rejects a segment on
-        // a zero-scoring throw.
-        const throwInput: ThrowInput =
-          segment === undefined
-            ? { playerId, points: input.points }
-            : { playerId, points: input.points, segment };
-        const state = engine.recordThrow(throwInput);
+        // The hook owns the correction flow: with an armed target it
+        // replaces that dart, otherwise it records a new one. A miss
+        // carries no segment at all: the engine rejects a segment on a
+        // zero-scoring throw.
+        const state = history.submitThrow({ points: input.points, segment });
+        if (!state) return;
         const remainingAfter =
           state.players.find((player) => player.id === playerId)?.totalPoints ?? remainingBefore;
-        const entry: VisitEntry = {
-          playerId,
-          points: input.points,
-          remaining: remainingAfter,
-          segment,
-        };
 
-        setVisits((current) => ({
-          ...current,
-          [playerId]: opensVisit ? [entry] : [...(current[playerId] ?? []), entry],
-        }));
         setMatchState(state);
-        setVisitOwner(playerId);
         setAnnouncement(
-          `${visitBadge(entry)}, ${input.points} points. ${remainingAfter} remaining.`,
+          `${visitBadge({ points: input.points, segment })}, ${input.points} points. ${remainingAfter} remaining.`,
         );
 
         if (state.status === "completed") {
@@ -175,24 +154,17 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
         }
       } catch (error) {
         if (bust && error instanceof GameEngineStateError) {
-          // A bust consumes no dart and leaves the score alone, so the chip
-          // is this view's own record of it.
-          const entry: VisitEntry = {
-            playerId,
-            points: input.points,
-            remaining: remainingBefore,
-            segment,
-            bust: true,
-          };
-          setVisits((current) => ({ ...current, [playerId]: [entry] }));
-          setVisitOwner(playerId);
+          // A bust counts for nothing but is still entered in the ledger,
+          // so the strip shows it from there.
+          setMatchState(engine.getState());
           setAnnouncement(`Bust. ${remainingBefore} remaining.`);
         } else {
           setAnnouncement(error instanceof Error ? error.message : "Invalid throw");
+          setMatchState(engine.getState());
         }
       }
     },
-    [engine, matchState, outRule, visits],
+    [engine, matchState, outRule, history],
   );
 
   const handleBoardThrow = useCallback(
@@ -201,6 +173,17 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
     },
     [recordThrow],
   );
+
+  const handleUndo = useCallback(() => {
+    if (!engine) return;
+    const state = history.undo();
+    if (state) {
+      setMatchState(state);
+      setWinnerId(null);
+      setAnnouncement("Last dart removed.");
+      setPhase("playing");
+    }
+  }, [engine, history]);
 
   const playAgain = useCallback(() => {
     const names = Object.entries(playerNames).map(([, name]) => name);
@@ -239,15 +222,39 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
   const currentPlayerId = matchState?.currentPlayerId ?? null;
   // The strip follows the player who just threw, so the darts of the visit in
   // play stay on screen when the turn passes.
-  const stripOwner = visitOwner ?? currentPlayerId;
-  const strip = stripOwner ? (visits[stripOwner] ?? []) : [];
+  // The darts of the visit in progress, straight from the ledger.
+  const strip = history.currentVisit;
 
   return (
     <MatchLayout
+      input={
+        <ThrowInputPad
+          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
+          armedSegment={armedSegment}
+          onArmedSegmentChange={setArmedSegment}
+          onThrow={recordThrow}
+          disabled={matchState?.status === "completed"}
+        />
+      }
+      inputMode={inputMode.mode}
+      onInputModeChange={inputMode.onChange}
       modeName={modeName}
       badge={checkoutLabel(outRule)}
       sourceLabel={boardSourceLabel(boardSource)}
-      visit={<VisitChips visit={strip} />}
+      visit={
+        <ThrowHistoryControls
+          throws={strip}
+          visitOffset={history.currentVisitOffset}
+          correctionTarget={history.correctionTarget}
+          awaitingConfirmation={history.awaitingConfirmation}
+          canUndo={history.canUndo}
+          correctionsDisabled={matchState?.status === "completed"}
+          onSelectThrow={history.selectThrow}
+          onUndo={handleUndo}
+          onConfirm={history.confirmCorrection}
+          onCancel={history.cancelCorrection}
+        />
+      }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>
           New game
@@ -262,20 +269,11 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           players={[...matchState.players]}
           currentPlayerId={currentPlayerId}
           playerNames={playerNames}
-          throwHistory={Object.values(visits).flat()}
+          throwHistory={[...matchState.throws]}
           caption="Remaining"
         />
       )}
-
       <MatchStatus message={announcement} />
-
-      <ThrowInputPad
-        throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
-        armedSegment={armedSegment}
-        onArmedSegmentChange={setArmedSegment}
-        onThrow={recordThrow}
-        disabled={matchState?.status === "completed"}
-      />
     </MatchLayout>
   );
 }

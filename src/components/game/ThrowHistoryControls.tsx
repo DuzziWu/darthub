@@ -16,6 +16,14 @@ import { DISABLED, FOCUS_RING, SECONDARY_BUTTON } from "./classes";
 export interface ThrowHistoryControlsProps {
   /** The darts of the visit in progress, oldest first. */
   readonly throws: readonly RecordedThrow[];
+  /**
+   * Where the visit in progress starts in the ledger.
+   *
+   * The strip shows one visit, the engine indexes the whole ledger: a chip's
+   * position in the strip is not its index in the ledger, and the two differ
+   * from the second visit on. The offset maps one onto the other.
+   */
+  readonly visitOffset?: number;
   /** The dart armed as the correction target, or null. */
   readonly correctionTarget: number | null;
   /** The armed target sits in a finished visit and needs confirmation. */
@@ -60,6 +68,7 @@ function DartChipButton(props: {
 export function ThrowHistoryControls(props: ThrowHistoryControlsProps) {
   const {
     throws,
+    visitOffset = 0,
     correctionTarget,
     awaitingConfirmation,
     canUndo,
@@ -69,7 +78,8 @@ export function ThrowHistoryControls(props: ThrowHistoryControlsProps) {
     onConfirm,
     onCancel,
   } = props;
-  const armedDart = correctionTarget === null ? null : (throws[correctionTarget] ?? null);
+  const armedDart =
+    correctionTarget === null ? null : (throws[correctionTarget - visitOffset] ?? null);
 
   return (
     <div className="flex flex-wrap items-center gap-xs">
@@ -79,9 +89,9 @@ export function ThrowHistoryControls(props: ThrowHistoryControlsProps) {
             <DartChipButton
               dart={dart}
               index={index}
-              armed={correctionTarget === index}
+              armed={correctionTarget === index + visitOffset}
               disabled={correctionsDisabled}
-              onSelect={() => onSelectThrow(index)}
+              onSelect={() => onSelectThrow(index + visitOffset)}
             />
           </li>
         ))}

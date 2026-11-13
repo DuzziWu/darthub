@@ -20,10 +20,12 @@ import { MatchLayout } from "@/components/game/MatchLayout";
 import { MatchStatus } from "@/components/game/MatchStatus";
 import { PlayerSetup } from "@/components/game/PlayerSetup";
 import { ScoreDisplay } from "@/components/game/ScoreDisplay";
+import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
-import { VisitChips } from "@/components/game/VisitChips";
+import { useMatchHistory } from "@/components/game/useMatchHistory";
+import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
-import type { BoardThrow, VisitEntry } from "@/components/game/types";
+import type { BoardThrow } from "@/components/game/types";
 
 /** The solo player of an around the clock match. */
 const PLAYER_ID = "player1";
@@ -34,11 +36,14 @@ export default function AroundTheClockPage() {
   const [engine, setEngine] = useState<GameEngine | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
-  const [visit, setVisit] = useState<VisitEntry[]>([]);
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   // The armed band is owned here and shared by the pad and the board.
   const [armedSegment, setArmedSegment] = useState<ArmedSegment>("single");
+  // The engine's ledger is the only record of the darts; the strip, the
+  // undo button and the correction flow all read from it.
+  const history = useMatchHistory({ engine, matchState });
+  const inputMode = useInputMode();
   // The setup choices in force, so a replay is played the same way.
   const [options, setOptions] = useState<PlayerSetupOptions>({
     outRule: "double",
@@ -51,7 +56,6 @@ export default function AroundTheClockPage() {
     setEngine(eng);
     setMatchState(state);
     setPlayerNames({ [PLAYER_ID]: names[0] ?? "Player 1" });
-    setVisit([]);
     setWinnerId(null);
     setMessage("");
     setOptions(options);
@@ -67,19 +71,17 @@ export default function AroundTheClockPage() {
       const { points, segment } = throwInput;
       const before =
         (matchState.modeData as AroundTheClockModeData | undefined)?.currentTargetIndex ?? 0;
-      // A visit opens when the engine starts a new turn.
-      const opensVisit = matchState.throwsInCurrentTurn === 0;
-
       try {
         // Around the clock scores from the point value alone: a single, a
         // double or a triple of the target in play all count as one hit.
-        const state = engine.recordThrow({ playerId, points });
+        // The hook owns the correction flow: with an armed target it
+        // replaces that dart, otherwise it records a new one.
+        const state = history.submitThrow({ points, segment });
+        if (!state) return;
         const after =
           (state.modeData as AroundTheClockModeData | undefined)?.currentTargetIndex ?? before;
 
         setMatchState(state);
-        const entry: VisitEntry = { playerId, points, segment };
-        setVisit((previous) => (opensVisit ? [entry] : [...previous, entry]));
 
         if (state.status === "completed") {
           setWinnerId(playerId);
@@ -97,7 +99,7 @@ export default function AroundTheClockPage() {
         setMessage((error as Error).message || "Invalid throw");
       }
     },
-    [engine, matchState, phase],
+    [engine, matchState, phase, history],
   );
 
   const handleBoardThrow = useCallback(
@@ -106,6 +108,17 @@ export default function AroundTheClockPage() {
     },
     [recordThrow],
   );
+
+  const handleUndo = useCallback(() => {
+    if (!engine) return;
+    const state = history.undo();
+    if (state) {
+      setMatchState(state);
+      setWinnerId(null);
+      setMessage("Last dart removed.");
+      setPhase("playing");
+    }
+  }, [engine, history]);
 
   const handlePlayAgain = useCallback(() => {
     startMatch(Object.values(playerNames), options);
@@ -137,10 +150,33 @@ export default function AroundTheClockPage() {
 
   return (
     <MatchLayout
+      input={
+        <ThrowInputPad
+          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
+          armedSegment={armedSegment}
+          onArmedSegmentChange={setArmedSegment}
+          onThrow={recordThrow}
+        />
+      }
+      inputMode={inputMode.mode}
+      onInputModeChange={inputMode.onChange}
       modeName="Around the Clock"
       badge={`Target ${currentTarget}`}
       sourceLabel={boardSourceLabel(options.boardSource)}
-      visit={<VisitChips visit={visit} />}
+      visit={
+        <ThrowHistoryControls
+          throws={history.currentVisit}
+          visitOffset={history.currentVisitOffset}
+          correctionTarget={history.correctionTarget}
+          awaitingConfirmation={history.awaitingConfirmation}
+          canUndo={history.canUndo}
+          correctionsDisabled={matchState?.status === "completed"}
+          onSelectThrow={history.selectThrow}
+          onUndo={handleUndo}
+          onConfirm={history.confirmCorrection}
+          onCancel={history.cancelCorrection}
+        />
+      }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>
           New game
@@ -151,17 +187,14 @@ export default function AroundTheClockPage() {
       onBoardThrow={handleBoardThrow}
     >
       <AroundTheClockScoreSheet targets={AROUND_THE_CLOCK_TARGETS} currentIndex={currentIndex} />
-
       <ScoreDisplay
         players={matchState ? [...matchState.players] : []}
         currentPlayerId={matchState?.currentPlayerId ?? null}
         playerNames={playerNames}
-        throwHistory={visit}
+        throwHistory={matchState ? [...matchState.throws] : []}
         caption="Hit"
       />
-
       <MatchStatus message={message} />
-
       {phase === "result" ? (
         <GameResultBanner
           winnerId={winnerId}
@@ -170,14 +203,7 @@ export default function AroundTheClockPage() {
           onPlayAgain={handlePlayAgain}
           onBackToHub={handleBackToHub}
         />
-      ) : (
-        <ThrowInputPad
-          throwsInCurrentTurn={matchState?.throwsInCurrentTurn ?? 0}
-          armedSegment={armedSegment}
-          onArmedSegmentChange={setArmedSegment}
-          onThrow={recordThrow}
-        />
-      )}
+      ) : null}
     </MatchLayout>
   );
 }
