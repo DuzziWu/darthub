@@ -8,6 +8,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:prefixed": "BASE_PATH=/darthub NEXT_DIST_DIR=.next-prefixed next build",
+    "check:prefix": "node scripts/check-asset-prefix.mjs",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

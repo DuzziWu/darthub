@@ -21,6 +21,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # build needs it before `next build` type-checks the repositories.
 RUN npx prisma generate
 RUN npm run build
+# The asset URLs have to carry the prefix the app is published under. A build
+# without it hands out URLs the proxy does not serve, and the page arrives
+# unstyled and unhydrated — so the build fails here rather than at runtime.
+RUN node scripts/check-asset-prefix.mjs
 
 # --- runner: minimal production image containing only the standalone server.
 FROM node:22-alpine AS runner

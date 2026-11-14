@@ -174,6 +174,34 @@ The end-to-end suite covers this setup: `e2e/subpath-preview.spec.ts` starts the
 proxy that behaves like Tailscale Serve and asserts that the pages, the assets,
 the hydration and the client-side navigation all work through the prefix.
 
+There is also a gate that catches the most damaging misconfiguration before
+the build is published:
+
+```bash
+BASE_PATH=/darthub NEXT_DIST_DIR=.next-prefixed npm run check:prefix
+```
+
+It reads the rendered HTML of a route and checks that the asset URLs carry the
+prefix the app is published under. A build without `BASE_PATH` hands out asset
+URLs without the prefix; the proxy strips the prefix from the path, so those
+requests find no mount and answer 404. The check fails on that and on the
+opposite mistake — a prefixed build published at the root.
+
+### Recognising the broken state
+
+The failure is quiet: the HTML arrives with **200**, so the page looks
+structured, but every asset request answers **404**. What the user sees:
+
+- browser-default buttons and inputs, default blue links, the default serif
+  font, no dark mode,
+- **both** navigation bars at once, because the CSS that hides one of them
+  never loaded,
+- controls that do nothing, because the client bundle never hydrated.
+
+The fastest confirmation is the network tab: a **404 on `/_next/*.css`** while
+the document itself is **200**. The check above reports the same thing without
+a browser.
+
 ## Data Migration
 
 The PostgreSQL schema is managed by Prisma migrations (the initial migration lives
