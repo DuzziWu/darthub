@@ -49,9 +49,7 @@ for (const mode of MODES) {
         await page.goto(mode.path);
         await startMatch(page, "Alice");
 
-        await expect(page.locator(".font-mono.text-score-xl").first()).toContainText(
-          mode.startScore as string,
-        );
+        await expect(page.locator("[data-score]").first()).toContainText(mode.startScore as string);
       });
     }
   });

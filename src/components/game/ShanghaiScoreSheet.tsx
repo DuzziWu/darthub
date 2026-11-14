@@ -41,7 +41,7 @@ export function ShanghaiScoreSheet({
       </header>
 
       {/* Every round: its number, its target and the marks it scored. */}
-      <ul className="grid grid-cols-7 gap-xs p-md">
+      <ul className="grid grid-cols-7 gap-xs p-sm md:grid-cols-7 md:p-md">
         {targets.map((value, index) => {
           const number = index + 1;
           const marks = marksByRound[String(number)] ?? 0;

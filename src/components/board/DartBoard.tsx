@@ -483,7 +483,7 @@ export function DartBoard({ armedSegment, onThrow, markers, readOnly = false }: 
         inline-block shrink-wraps to the SVG's intrinsic 300 px and the caps
         never bite.
       */}
-      <div className="mx-auto w-full max-w-[318px] rounded-md border border-rule bg-sunken p-md lg:max-w-[538px] xl:max-w-[634px] xl:p-xl">
+      <div className="mx-auto w-full max-w-[400px] rounded-md border border-rule bg-sunken p-sm md:max-w-[538px] md:p-md lg:max-w-[538px] xl:max-w-[634px] xl:p-xl">
         <svg
           viewBox={VIEW_BOX}
           aria-hidden="true"
@@ -669,38 +669,45 @@ export function DartBoard({ armedSegment, onThrow, markers, readOnly = false }: 
             </text>
           </g>
 
-          {/* Procedural materials: sisal over the beds, brushed steel on the ring. */}
-          <circle
-            r={BOARD_RADII_MM.doubleOuter}
-            fill="var(--board-source-white)"
-            filter="url(#dh-sisal)"
-            mask="url(#dh-bed-mask)"
-            opacity={0.15}
-            style={{ mixBlendMode: "overlay" }}
-          />
-          <circle
-            r={BOARD_DIAMETER_MM / 2 - 3}
-            fill="var(--board-source-white)"
-            filter="url(#dh-steel)"
-            mask="url(#dh-ring-mask)"
-            opacity={0.1}
-            style={{ mixBlendMode: "overlay" }}
-          />
+          {/* Procedural materials: sisal over the beds, brushed steel on the
+              ring. The grain and the lights are painted over the numerals,
+              so the group takes no pointer events: otherwise they swallow
+              the tap on a numeral and the throw falls back to a coordinate
+              hit, which misses the sector the player aimed at. */}
+          <g style={{ pointerEvents: "none" }}>
+            <circle
+              r={BOARD_RADII_MM.doubleOuter}
+              fill="var(--board-source-white)"
+              filter="url(#dh-sisal)"
+              mask="url(#dh-bed-mask)"
+              opacity={0.15}
+              style={{ mixBlendMode: "overlay" }}
+            />
+            <circle
+              r={BOARD_DIAMETER_MM / 2 - 3}
+              fill="var(--board-source-white)"
+              filter="url(#dh-steel)"
+              mask="url(#dh-ring-mask)"
+              opacity={0.1}
+              style={{ mixBlendMode: "overlay" }}
+            />
 
-          {/* Lighting: key light and vignette. */}
-          <circle
-            r={BOARD_DIAMETER_MM / 2 - 3}
-            fill="url(#dh-key-light)"
-            style={{ mixBlendMode: "screen" }}
-          />
-          <circle
-            r={BOARD_DIAMETER_MM / 2 - 3}
-            fill="url(#dh-vignette)"
-            style={{ mixBlendMode: "multiply" }}
-          />
+            {/* Lighting: key light and vignette. */}
+            <circle
+              r={BOARD_DIAMETER_MM / 2 - 3}
+              fill="url(#dh-key-light)"
+              style={{ mixBlendMode: "screen" }}
+            />
+            <circle
+              r={BOARD_DIAMETER_MM / 2 - 3}
+              fill="url(#dh-vignette)"
+              style={{ mixBlendMode: "multiply" }}
+            />
+          </g>
 
-          {/* The armed band, outlined in brass. */}
-          <g data-part="armed" fill="none">
+          {/* The armed band, outlined in brass. Like the lights, it is
+              painted over the numerals and takes no pointer events. */}
+          <g data-part="armed" fill="none" style={{ pointerEvents: "none" }}>
             {armedSegment === "double" && (
               <path
                 data-armed="double"

@@ -59,7 +59,7 @@ export function ScoreDisplay({
             <li
               key={player.id}
               data-row={player.id}
-              className="relative flex min-h-16 items-center gap-md border-b border-rule px-md md:min-h-14"
+              className="relative flex min-h-11 items-center gap-md border-b border-rule px-md md:min-h-14"
             >
               {isCurrent && (
                 <span aria-hidden="true" className="absolute inset-y-0 left-0 w-0.5 bg-brass" />
@@ -100,7 +100,7 @@ export function ScoreDisplay({
               {/* The remaining score: a fixed column of tabular figures. */}
               <span
                 data-score={player.id}
-                className="min-w-[3ch] text-right font-mono text-score-xl font-bold tabular-nums text-ink"
+                className="min-w-[3ch] text-right font-mono text-score-lg font-bold tabular-nums text-ink md:text-score-xl"
               >
                 {player.totalPoints}
               </span>

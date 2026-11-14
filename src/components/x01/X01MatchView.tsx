@@ -262,6 +262,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
       }
       onBackToHub={() => router.push(withBasePath("/game-center"))}
       armedSegment={armedSegment}
+      onArmedSegmentChange={setArmedSegment}
       onBoardThrow={handleBoardThrow}
     >
       {matchState && (

@@ -30,13 +30,13 @@ export function AroundTheClockScoreSheet({ targets, currentIndex }: AroundTheClo
 
       <p
         data-current-target
-        className="mt-md font-mono text-score-xl font-bold tabular-nums text-brass"
+        className="mt-xs font-mono text-score-md font-bold tabular-nums text-brass md:mt-md md:text-score-xl"
       >
         {complete ? currentIndex : target}
       </p>
 
       {/* The run: every target, hit, in play or still to come. */}
-      <ul className="mt-md grid grid-cols-7 gap-xs">
+      <ul className="mt-xs grid grid-cols-11 gap-xs md:mt-md md:grid-cols-7">
         {targets.map((value, index) => {
           const hit = index < currentIndex;
           const active = index === currentIndex;

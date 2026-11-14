@@ -226,6 +226,7 @@ export default function ShanghaiPage() {
       }
       onBackToHub={handleBackToHub}
       armedSegment={armedSegment}
+      onArmedSegmentChange={setArmedSegment}
       onBoardThrow={handleBoardThrow}
     >
       <ShanghaiScoreSheet

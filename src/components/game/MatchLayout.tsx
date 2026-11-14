@@ -1,10 +1,20 @@
 "use client";
 
+import { LayoutGrid } from "lucide-react";
 import { DartBoard } from "@/components/board";
 import { InputModeSwitch } from "./InputModeSwitch";
+import { SegmentControl } from "./SegmentControl";
 import { useIsCompact } from "./useIsCompact";
 import type { MatchLayoutProps } from "./types";
-import { MATCH_BADGE, MATCH_SOURCE, MATCH_STRIP, MATCH_TITLE, SECONDARY_BUTTON } from "./classes";
+import {
+  FOCUS_RING,
+  MATCH_BADGE,
+  MATCH_SOURCE,
+  MATCH_STRIP,
+  MATCH_TITLE,
+  SECONDARY_BUTTON,
+  TARGET_SIZE,
+} from "./classes";
 
 /**
  * The match view.
@@ -31,6 +41,7 @@ export function MatchLayout({
   actions,
   onBackToHub,
   armedSegment,
+  onArmedSegmentChange,
   onBoardThrow,
   children,
   input,
@@ -50,13 +61,31 @@ export function MatchLayout({
         <div className="flex flex-wrap items-center gap-lg">
           <h1 className={MATCH_TITLE}>{modeName}</h1>
           {badge && <span className={MATCH_BADGE}>{badge}</span>}
-          {sourceLabel && <span className={MATCH_SOURCE}>{sourceLabel}</span>}
+          {/* The source is a note, not a control: on a phone it costs a
+              whole extra row in the strip, so it stays on the wide layout. */}
+          {sourceLabel && <span className={`${MATCH_SOURCE} hidden md:inline`}>{sourceLabel}</span>}
           {onInputModeChange && <InputModeSwitch mode={inputMode} onChange={onInputModeChange} />}
         </div>
 
-        {visit}
+        {/* The darts of the visit and the actions share one row on a phone:
+            three rows of strip push the board and the score sheet out of
+            the fold. */}
+        <div className="flex flex-wrap items-center gap-md">
+          <div className="min-w-0 flex-1">{visit}</div>
+          <div className="ml-auto flex items-center gap-sm md:hidden">
+            {actions}
+            <button
+              type="button"
+              onClick={onBackToHub}
+              aria-label="Game Center"
+              className={`${TARGET_SIZE} rounded-sm border border-edge bg-raised px-sm font-label text-label text-ink transition-colors duration-fast hover:border-brass-deep hover:bg-board ${FOCUS_RING}`}
+            >
+              <LayoutGrid aria-hidden="true" className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
-        <div className="ml-auto flex items-center gap-md">
+        <div className="hidden items-center gap-md md:ml-auto md:flex">
           {actions}
           <button type="button" onClick={onBackToHub} className={SECONDARY_BUTTON}>
             Game Center
@@ -64,34 +93,48 @@ export function MatchLayout({
         </div>
       </section>
 
-      {/* The board on one side, the mode's surface on the other. */}
-      <div className="grid gap-xl lg:grid-cols-[minmax(0,1fr)_25rem] xl:grid-cols-[minmax(0,1fr)_30rem] lg:items-start">
-        {/* The board is last in the reading order on a phone: the pad is the input. */}
-        <div
-          className={`flex flex-col items-center ${boardIsInput ? "order-1" : "order-2"} lg:order-1`}
-        >
-          <DartBoard armedSegment={armedSegment} onThrow={onBoardThrow} readOnly={boardReadOnly} />
-          {compact && !boardIsInput && (
-            <div className="mt-md max-w-[44ch] text-center">
-              <p className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
-                Last dart
-              </p>
-              <p className="mt-xs font-body text-caption text-ink-faint">
-                The board is a preview at this width — the pad is the input.
-              </p>
+      {/* The board on one side, the mode's surface on the other. On a phone the
+          grid has one column and the three blocks are sorted with order: the
+          pad first, because it holds the miss key, then the board, then the
+          score sheet. From lg on the two columns return and the desktop
+          arrangement is placed explicitly: board left, pad and score right. */}
+      <div className="grid gap-xl lg:grid-cols-[minmax(0,1fr)_25rem] lg:grid-rows-[auto_auto] xl:grid-cols-[minmax(0,1fr)_30rem] lg:items-start">
+        {/* The board. On a phone it is the read-only preview at the end in the
+            manual mode and the scored surface right under the pad in the
+            board mode. */}
+        <div className="order-2 flex flex-col items-center lg:order-1 lg:col-start-1 lg:row-start-1">
+          {/* The band the board scores is chosen above the board: a treble
+              band on a phone board is a few pixels tall and a finger is far
+              wider, so the arming comes first and the wide single band is
+              the tap target. On a phone the pad above carries the same
+              arming, so the board does not repeat it in a block of its own. */}
+          {boardIsInput && onArmedSegmentChange && (
+            <div className="mb-md hidden w-full max-w-[400px] rounded-md border border-rule bg-surface p-md lg:block">
+              <SegmentControl
+                armedSegment={armedSegment}
+                onArmedSegmentChange={onArmedSegmentChange}
+                idPrefix="board-segment"
+                compact
+              />
             </div>
           )}
-        </div>
-        <div className="flex flex-col gap-xl lg:order-2">
-          {/* The pad is the input of the manual mode and stands above the
-              score sheet on a phone: the darts are entered before the score
-              of the turn is read. In the board mode the board takes that
-              place, so the score sheet comes first. */}
-          {input && (
-            <div className={`${boardIsInput ? "order-2" : "order-1"} lg:order-2`}>{input}</div>
+          <DartBoard armedSegment={armedSegment} onThrow={onBoardThrow} readOnly={boardReadOnly} />
+          {compact && !boardIsInput && (
+            /* The preview's label, not a separate block: the design calls the
+               board a preview labelled "LAST DART", and a caption of its own
+               costs a whole row of the phone's fold. One line, so it costs a
+               line and not two. */
+            <p className="mt-sm text-center font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
+              Last dart · preview only
+            </p>
           )}
-          <div className={`${boardIsInput ? "order-1" : "order-2"} lg:order-1`}>{children}</div>
         </div>
+        {/* The pad. It comes first on a phone in both modes: the miss key has
+            to stay above the tab bar, also when the board is the surface. */}
+        {input && <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1">{input}</div>}
+        {/* The score sheet. On a phone it is the last block, under the board:
+            the pad and the board are the input, the sheet is read. */}
+        <div className="order-3 lg:order-3 lg:col-start-2 lg:row-start-2">{children}</div>
       </div>
     </div>
   );

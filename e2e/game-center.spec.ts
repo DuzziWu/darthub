@@ -49,8 +49,8 @@ test.describe("501 Game", () => {
     await page.getByLabel("Player 1").fill("Alice");
     await page.getByRole("button", { name: "Start Match" }).click();
 
-    // Verify game started — ScoreDisplay uses text-3xl font-bold font-mono
-    await expect(page.locator(".font-mono.text-score-xl").first()).toContainText("501");
+    // Verify game started — the score of the first player is on the sheet
+    await expect(page.locator("[data-score]").first()).toContainText("501");
 
     // Play a throw - click the 20 button
     const btns = page.locator("button.font-mono");
@@ -65,14 +65,14 @@ test.describe("501 Game", () => {
     await btns.filter({ hasText: "20" }).first().click();
 
     // Score should have decreased
-    await expect(page.locator(".font-mono.text-score-xl").first()).not.toContainText("501");
+    await expect(page.locator("[data-score]").first()).not.toContainText("501");
   });
 
   test("new game button returns to start screen", async ({ page }) => {
     await page.goto("/game");
     await page.getByLabel("Player 1").fill("Bob");
     await page.getByRole("button", { name: "Start Match" }).click();
-    await expect(page.locator(".font-mono.text-score-xl").first()).toBeVisible();
+    await expect(page.locator("[data-score]").first()).toBeVisible();
     // The 501 page has "New Game" that returns to setup phase
     await page.getByRole("button", { name: "New Game" }).click();
     await expect(page.getByLabel("Player 1")).toBeVisible();

@@ -197,6 +197,7 @@ export default function CricketPage() {
       }
       onBackToHub={handleBackToHub}
       armedSegment={armedSegment}
+      onArmedSegmentChange={setArmedSegment}
       onBoardThrow={handleBoardThrow}
     >
       <CricketScoreSheet

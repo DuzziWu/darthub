@@ -33,7 +33,9 @@ export function CricketScoreSheet({
         </p>
       </header>
 
-      <ul className="grid grid-cols-4 gap-md p-md">
+      {/* Five columns on a phone: the twenty targets are a readout, not
+          touch targets, so they can be denser than the input pad. */}
+      <ul className="grid grid-cols-5 gap-sm p-sm md:grid-cols-4 md:gap-md md:p-md">
         {targets.map((target) => {
           const key = String(target);
           const count = marks[key] ?? 0;
@@ -44,12 +46,12 @@ export function CricketScoreSheet({
             <li
               key={key}
               aria-label={`${label}, ${count} of ${marksToClose} marks${closed ? ", closed" : ""}`}
-              className={`rounded-sm border p-md text-center ${
+              className={`rounded-sm border p-xs text-center md:p-md ${
                 closed ? "border-brass bg-raised" : "border-rule bg-sunken"
               }`}
             >
               <span
-                className={`block font-mono text-heading font-bold ${
+                className={`block font-mono text-body font-bold md:text-heading ${
                   closed ? "text-brass" : "text-ink"
                 }`}
               >

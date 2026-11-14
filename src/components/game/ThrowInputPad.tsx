@@ -1,6 +1,7 @@
 "use client";
 
-import type { ArmedSegment, ThrowInputPadProps } from "./types";
+import type { ThrowInputPadProps } from "./types";
+import { SegmentControl, SEGMENT_MULTIPLIER, SEGMENT_NAME } from "./SegmentControl";
 import { DISABLED, FOCUS_RING, TARGET_SIZE } from "./classes";
 
 /**
@@ -14,18 +15,6 @@ import { DISABLED, FOCUS_RING, TARGET_SIZE } from "./classes";
  * The armed band is shared state: it is owned by the match view and read by
  * the board as well, so the two surfaces are two views of one thing.
  */
-
-/** The three bands the numeral route can score. */
-const SEGMENTS: ReadonlyArray<{
-  id: ArmedSegment;
-  label: string;
-  name: string;
-  multiplier: number;
-}> = [
-  { id: "single", label: "1× Single", name: "Single", multiplier: 1 },
-  { id: "double", label: "2× Double", name: "Double", multiplier: 2 },
-  { id: "triple", label: "3× Treble", name: "Treble", multiplier: 3 },
-];
 
 /** The twenty sectors of the board. */
 const SECTORS: readonly number[] = Array.from({ length: 20 }, (_unused, index) => index + 1);
@@ -43,23 +32,10 @@ export function ThrowInputPad({
   onThrow,
   disabled = false,
 }: ThrowInputPadProps) {
-  const armed = SEGMENTS.find((segment) => segment.id === armedSegment) ?? SEGMENTS[0]!;
-
-  /** Arrow keys move the armed band, the way a radio group does. */
-  function handleSegmentKeyDown(event: React.KeyboardEvent<HTMLButtonElement>, index: number) {
-    const forward = event.key === "ArrowRight" || event.key === "ArrowDown";
-    const back = event.key === "ArrowLeft" || event.key === "ArrowUp";
-    if (!forward && !back) return;
-    event.preventDefault();
-    const next = SEGMENTS[(index + (forward ? 1 : -1) + SEGMENTS.length) % SEGMENTS.length]!;
-    onArmedSegmentChange(next.id);
-    document.getElementById(`dart-pad-segment-${next.id}`)?.focus();
-  }
-
   return (
     <section
       aria-label="Dart pad"
-      className="rounded-md border border-rule bg-surface p-lg space-y-lg"
+      className="rounded-md border border-rule bg-surface p-md space-y-md md:p-lg md:space-y-lg"
     >
       <div className="flex items-center justify-between">
         <h2 className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
@@ -69,54 +45,30 @@ export function ThrowInputPad({
       </div>
 
       {/* The armed band. The only segment control in the product. */}
-      <div role="radiogroup" aria-labelledby="dart-pad-segment-label">
-        <p
-          id="dart-pad-segment-label"
-          className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint"
-        >
-          Segment: {armed.name} ×{armed.multiplier}
-        </p>
-        <div className="mt-sm grid grid-cols-3 gap-md">
-          {SEGMENTS.map((segment, index) => {
-            const selected = segment.id === armedSegment;
-            return (
-              <button
-                key={segment.id}
-                id={`dart-pad-segment-${segment.id}`}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                tabIndex={selected ? 0 : -1}
-                disabled={disabled}
-                onClick={() => onArmedSegmentChange(segment.id)}
-                onKeyDown={(event) => handleSegmentKeyDown(event, index)}
-                className={`${TARGET_SIZE} rounded-sm border font-label text-label transition-colors duration-fast ${
-                  selected
-                    ? "border-brass bg-brass text-board"
-                    : "border-edge bg-raised text-ink hover:border-brass-deep hover:bg-board"
-                } ${FOCUS_RING} ${DISABLED}`}
-              >
-                {segment.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <SegmentControl
+        armedSegment={armedSegment}
+        onArmedSegmentChange={onArmedSegmentChange}
+        disabled={disabled}
+      />
 
       {/* The twenty sectors. */}
       <div>
-        <p className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
+        {/* On a phone the caption shares the row with the keys: stacked, it
+            costs a row of the fold that the pad cannot spare. */}
+        <p className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint md:mt-sm">
           Sectors
         </p>
-        <div className="mt-sm grid grid-cols-4 gap-md">
+        {/* Five columns keep the pad one row shorter on a phone, which is
+            what lifts the miss row above the tab bar. */}
+        <div className="mt-xs grid grid-cols-5 gap-sm md:mt-sm">
           {SECTORS.map((sector) => {
-            const points = sector * armed.multiplier;
+            const points = sector * SEGMENT_MULTIPLIER[armedSegment];
             return (
               <button
                 key={sector}
                 type="button"
                 disabled={disabled}
-                aria-label={`${armed.name} ${sector}, ${points} points`}
+                aria-label={`${SEGMENT_NAME[armedSegment]} ${sector}, ${points} points`}
                 onClick={() => onThrow({ points, segment: armedSegment })}
                 className={NUMBER_KEY}
               >
@@ -129,10 +81,10 @@ export function ThrowInputPad({
 
       {/* The bulls and the miss. The bull is a place, not a multiplier. */}
       <div>
-        <p className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
+        <p className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint md:mt-sm">
           Bull &amp; miss
         </p>
-        <div className="mt-sm grid grid-cols-3 gap-md">
+        <div className="mt-xs grid grid-cols-3 gap-md md:mt-sm">
           <button
             type="button"
             disabled={disabled}

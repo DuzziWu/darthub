@@ -141,6 +141,14 @@ export interface MatchLayoutProps {
   onBackToHub: () => void;
   /** The armed band. Owned by the match view and shared with the board. */
   armedSegment: ArmedSegment;
+  /**
+   * Fired when the player arms another band.
+   *
+   * The board mode shows the segment control above the board: a treble band
+   * on a phone board is about eleven pixels tall, so the band is chosen first
+   * and the wide single band is the tap target.
+   */
+  onArmedSegmentChange?: (segment: ArmedSegment) => void;
   /** Fired with a resolved dart from the board. */
   onBoardThrow: (hit: BoardThrow) => void;
   /**

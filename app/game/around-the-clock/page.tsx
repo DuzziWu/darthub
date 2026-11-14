@@ -184,6 +184,7 @@ export default function AroundTheClockPage() {
       }
       onBackToHub={handleBackToHub}
       armedSegment={armedSegment}
+      onArmedSegmentChange={setArmedSegment}
       onBoardThrow={handleBoardThrow}
     >
       <AroundTheClockScoreSheet targets={AROUND_THE_CLOCK_TARGETS} currentIndex={currentIndex} />
