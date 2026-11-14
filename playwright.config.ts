@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3100",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -36,11 +36,18 @@ export default defineConfig({
   // for the sub-path preview, which publishes the app under `/darthub`. The
   // second build writes to its own directory so the two do not overwrite
   // each other.
+  //
+  // The root server listens on 3100, not on 3000. Port 3000 belongs to the
+  // live preview (see AGENTS.md, "Serving the live preview"), which serves the
+  // *prefixed* build bound to 0.0.0.0 so the host-side Tailscale Serve proxy
+  // can reach it. With `reuseExistingServer` the suite reuses whatever already
+  // listens on the port, so a root build on 3000 would silently displace the
+  // live preview and leave the published site answering 502.
   webServer: [
     {
       command:
-        "npm run build && rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && HOSTNAME=127.0.0.1 node .next/standalone/server.js",
-      url: "http://127.0.0.1:3000",
+        "npm run build && rm -rf .next/standalone/public .next/standalone/.next/static && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static && HOSTNAME=127.0.0.1 PORT=3100 node .next/standalone/server.js",
+      url: "http://127.0.0.1:3100",
       reuseExistingServer: !process.env.CI,
       timeout: 300_000,
     },

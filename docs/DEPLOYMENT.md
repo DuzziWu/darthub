@@ -168,6 +168,43 @@ The prefix in the build and the prefix in `--set-path` must be the same. If they
 differ, the asset URLs point at a path the proxy does not serve and the page
 arrives unstyled and unhydrated.
 
+### The server must listen on every interface
+
+The proxy above runs on the VPS host, not in the container. It reaches the
+container over the published address, so the server has to accept that
+connection:
+
+```bash
+setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
+```
+
+`HOSTNAME=0.0.0.0` binds every interface; the container answers on
+`172.18.0.2:3000`, which is the address the host forwards to. With the default
+`HOSTNAME=127.0.0.1` the server listens on loopback only, the host's connection
+is **refused**, and Tailscale Serve answers **502 Bad Gateway** — even though
+the application itself answers `200` on `http://127.0.0.1:3000/` the whole time.
+
+That is the failure mode of the outage on 2026-11-14, and it is worth
+recognising it by its shape: a site that is broken for every user while every
+local health check passes. The check that distinguishes it:
+
+```bash
+curl http://172.18.0.2:3000/    # 200 -> the host can reach the server
+```
+
+Note that `playwright.config.ts` starts its own servers with
+`HOSTNAME=127.0.0.1` on ports **3100** and **3111**. Those are deliberately not
+reachable from the host, and port 3000 is reserved for the published app: a
+server on port 3000 that binds loopback only makes the published site answer 502.
+
+### Replacing a running server
+
+A rebuild replaces the build directory under a live server. The old process then
+serves a deleted working directory (`/proc/<pid>/cwd` reports `(deleted)`) and
+keeps holding its port. Stop it by **exact PID** before starting the new one —
+a `pkill` pattern would take the other Next.js servers down with it, including
+the published one.
+
 ### Checking it
 
 The end-to-end suite covers this setup: `e2e/subpath-preview.spec.ts` starts the

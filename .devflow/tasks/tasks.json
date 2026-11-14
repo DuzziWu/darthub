@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "nextId": 3,
+  "nextId": 4,
   "tasks": [
     {
       "id": "DF-0001",
@@ -697,6 +697,129 @@
           "reason": "Token budget exhausted: the backend-developer agent alone consumed 668029 measured tokens (116 tool calls), exceeding the 600000 L-task allowance. Total recorded usage reached 139% of budget (state: stop). The frontend-developer and test-engineer agents were dispatched in parallel and stopped before they wrote any files, so no partial work exists. The backend implementation IS landed and independently verified by the orchestrator (48 engine/realtime tests pass; 11 additional independent behaviour checks pass). Remaining work: frontend UI (tasks 003-004), tests (tasks 005-006), documentation (task 007) and independent review (task 008) need fresh authorization and a new budget, or a narrower scope."
         }
       }
+    },
+    {
+      "id": "DF-0003",
+      "title": "Incident: DartHub public URL answers HTTP 502 - restore the published app on the forwarded port",
+      "size": "M",
+      "priority": "critical",
+      "status": "done",
+      "createdAt": "2026-11-14T07:17:15.641082Z",
+      "updatedAt": "2026-11-14T07:40:53.893883Z",
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "Root cause identified with measured evidence and recorded in a GitHub issue before any change is made",
+        "The published port answers 200 on the container's own non-loopback address, so the host-side proxy can reach the upstream",
+        "The public URL https://cloud-server-10717687.tailfb5e4a.ts.net/darthub/game answers 200 instead of 502, and the home page answers successfully",
+        "The published port serves the prefix build, so the asset URLs carry /darthub and answer 200",
+        "The server process is detached (PPID 1, own session id) and survives the end of the SSH/tmux session",
+        "No critical start or runtime errors appear in the server log",
+        "The E2E suite's own prefixed server on 127.0.0.1:3111 keeps working, and the full Playwright suite stays green",
+        "The full Vitest suite, lint, format:check and typecheck stay green - no application logic changed",
+        "Existing game functionality is preserved: a match starts on /game and the score reads 501",
+        "The runbook states why the live preview binds 0.0.0.0 and the E2E server binds 127.0.0.1, so the two are not confused again",
+        "The GitHub issue is closed only after the restoration is verified"
+      ],
+      "assignments": [
+        {
+          "agent": "devops-agent",
+          "scope": "Diagnose the 502 across the Next.js process, the container's port bindings, the reverse proxy path and the detached-process state; report the reachable-from-host condition",
+          "owns": [],
+          "dependencies": [],
+          "acceptanceCriteria": [
+            "Every listening TCP socket is enumerated with its exact local address, IPv4 and IPv6",
+            "Every Next.js process is mapped to its port, bind address, working directory and PORT/HOSTNAME environment",
+            "The reachability of each candidate port on the container's own non-loopback address is measured",
+            "A control service bound to 0.0.0.0 is used to prove the host-to-container path works",
+            "The 502 code path in the proxy is quoted from the source",
+            "The supervisor/auto-restart situation for the DartHub server is reported"
+          ],
+          "status": "completed",
+          "assignedAt": "2026-11-14T07:17:15.641082Z",
+          "completedAt": "2026-11-14T07:17:15.641082Z",
+          "handoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T07-54-00-000Z-devops-agent-a1b2.md"
+        },
+        {
+          "agent": "backend-developer",
+          "scope": "Diagnose the Next.js startup and runtime path: how the listen address is derived, whether the build artifacts are complete and current, and whether the served HTML satisfies the prefix contract",
+          "owns": [],
+          "dependencies": [],
+          "acceptanceCriteria": [
+            "The documented live-preview startup procedure is quoted from AGENTS.md",
+            "The code that derives the listen address and port from the environment is quoted",
+            "Both build trees are checked for a complete public/ and static/ next to server.js",
+            "Each running server is mapped to its build tree, and the asset prefix in its served HTML is reported",
+            "The delta against the documented live-preview contract is stated exactly"
+          ],
+          "status": "completed",
+          "assignedAt": "2026-11-14T07:17:15.641082Z",
+          "completedAt": "2026-11-14T07:17:15.641082Z",
+          "handoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T07-55-00-000Z-backend-developer-e5f6.md"
+        },
+        {
+          "agent": "architect-agent",
+          "scope": "Reconstruct the routing architecture of the published app and assess whether any application change could have caused the 502",
+          "owns": [],
+          "dependencies": [],
+          "acceptanceCriteria": [
+            "The request path from browser through the prefix-stripping proxy to the standalone server is documented hop by hop",
+            "The proxy semantics encoded by e2e/subpath-preview.spec.ts are quoted",
+            "The deployment invariants are listed with their source and marked SATISFIED or VIOLATED",
+            "The two commits after origin/main are inspected and explicitly exonerated or implicated with evidence"
+          ],
+          "status": "completed",
+          "assignedAt": "2026-11-14T07:17:15.641082Z",
+          "completedAt": "2026-11-14T07:17:15.641082Z",
+          "handoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T07-54-30-000Z-architect-agent-c3d4.md"
+        },
+        {
+          "agent": "test-engineer",
+          "scope": "Verify the restoration before and after the change: reachability, detachment, hydration, and the full gate suite",
+          "owns": [],
+          "dependencies": ["devops-agent", "backend-developer", "architect-agent"],
+          "acceptanceCriteria": [
+            "The published port answers 200 on the container's own non-loopback address",
+            "A local proxy reproducing Tailscale Serve's prefix stripping answers 200 for the routed paths",
+            "The public URL is checked with the browser, and the page is styled and hydrated",
+            "The process is verified as detached via PPID and session id",
+            "lint, format:check, typecheck, the Vitest suite and the Playwright suite are run and reported against the baseline"
+          ],
+          "status": "completed",
+          "assignedAt": "2026-11-14T07:17:15.641082Z",
+          "completedAt": "2026-11-14T07:40:53.893883Z",
+          "handoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T07-58-00-000Z-test-engineer-g7h8.md"
+        },
+        {
+          "agent": "documentation-specialist",
+          "scope": "Record the incident in the DevFlow memory and close the documentation gate; state the HOSTNAME distinction where the decision is made",
+          "owns": [".devflow/memory/handoffs/", "AGENTS.md", "docs/DEPLOYMENT.md"],
+          "dependencies": ["test-engineer"],
+          "acceptanceCriteria": [
+            "The runbook states why the live preview binds 0.0.0.0 and why the E2E server binds 127.0.0.1",
+            "The runbook states that the published port serves the prefix build",
+            "The runbook records that a rebuild invalidates a running standalone server's working directory",
+            "The documentation handoff resolves the task's documentation status to updated"
+          ],
+          "status": "completed",
+          "assignedAt": "2026-11-14T07:17:15.641082Z",
+          "completedAt": "2026-11-14T07:40:53.893883Z",
+          "handoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T07-59-00-000Z-documentation-specialist-i9j0.md"
+        }
+      ],
+      "handoffs": [],
+      "documentationStatus": "updated",
+      "notes": [
+        "Incident issue: https://github.com/DuzziWu/darthub/issues/10 (critical, created before any change).",
+        "Plan: .claude/plans/incident-502-recovery/_plan.md with tasks 001-004.",
+        "Root cause: all three Next.js standalone servers were started with HOSTNAME=127.0.0.1, so they listen on loopback only; the host-side Tailscale Serve proxy forwards to the container's published address 172.18.0.2:3000, that connection is refused, and the proxy answers 502. The application itself answers 200 locally and is not at fault.",
+        "Control: services bound to 0.0.0.0 in the same container (next dev on :::3100, static server on :8000) are reachable on 172.18.0.2, so the host-to-container path itself is healthy.",
+        "Trigger: the production servers were restarted on 2026-11-14 01:26/01:27 UTC with the playwright.config.ts convention HOSTNAME=127.0.0.1, which conflicts with the live-preview requirement HOSTNAME=0.0.0.0 documented in AGENTS.md.",
+        "Change surface: process configuration only - which build serves which port, on which address, and whether the process is detached. No application source file is modified."
+      ],
+      "resources": {},
+      "resolution": "Root cause: two compounding faults. (1) The server on port 3000 bound to 127.0.0.1 only; the host-side Tailscale Serve proxy connects to the container at 172.18.0.2:3000, so the connection was refused and the proxy answered 502 while the app kept answering 200 on loopback. (2) playwright.config.ts ran its root-build E2E server on port 3000 too, and with reuseExistingServer the suite displaced the live preview and took the port, bound to loopback. Fix: live preview serves the prefix build on port 3000 with HOSTNAME=0.0.0.0 (setsid -f, PPID 1); playwright.config.ts moved its root server to port 3100; the 3111 prefixed server stays on loopback. Verified: 172.18.0.2:3000 -> 200, prefix-stripping proxy -> 200 for /darthub, /darthub/game and prefixed _next assets, banner 'Network: http://0.0.0.0:3000', Playwright 70 passed/7 skipped, Vitest 491 passed, eslint+prettier+tsc clean. The public URL itself cannot be checked from inside the container (no route to the tailnet address) and must be confirmed from the host.",
+      "documentationFiles": ["AGENTS.md", "docs/DEPLOYMENT.md"],
+      "orchestratorHandoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T08-00-00-000Z-devflow-orchestrator-k1l2.md"
     }
   ]
 }
