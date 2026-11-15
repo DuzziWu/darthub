@@ -13,6 +13,18 @@ export default tseslint.config(
   // `.next-prefixed/**` is the prefixed build's output directory, the
   // counterpart of `.next/**`. It holds generated code and must be skipped
   // for the same reason.
+  //
+  // `.ai/cezar/**` is the agent runtime directory. Its task worktrees are full
+  // checkouts of this repository, so ESLint would walk into a second copy of
+  // the source tree; `import-x/resolver` then finds two candidate
+  // tsconfig.json files and every parsed file fails with
+  // "No tsconfigRootDir was set". The directory is generated and must be
+  // skipped for the same reason.
+  //
+  // Only the runtime directory is skipped, not `.ai/` as a whole: `.ai/skills/`
+  // and `.ai/cezar/config.json` are versioned project files. A skill directory
+  // with third-party assets gets its own ignore line, like `.claude/**` and
+  // `.agents/**` above.
   {
     ignores: [
       "node_modules/**",
@@ -22,6 +34,7 @@ export default tseslint.config(
       ".claude/**",
       ".agents/**",
       "reports/**",
+      ".ai/cezar/**",
     ],
   },
   ...tseslint.configs.recommended,

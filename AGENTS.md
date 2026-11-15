@@ -182,3 +182,91 @@ the `readOnly` prop is what selects between them.
 The skills are **installed** in `.agents/skills/` — the OpenHands 1.61.0 project-scoped location — and are byte-identical to `docs/ai-skills/skills/`. Edit `docs/ai-skills/skills/` and copy across, or the two will drift. `.claude/skills/` holds Claude Code format skills, which OpenHands does not read.
 
 The skills encode the architectural invariants documented in `docs/ai-skills/README.md` §2.3. Read that section before making a structural change.
+
+---
+
+## OpenCode agent team
+
+The autonomous development team is configured in `.opencode/`:
+
+- Agents: `.opencode/agents/`
+- Skills: `.opencode/skills/`
+- Commands: `.opencode/commands/`
+- Project configuration: `.opencode/opencode.jsonc`
+- Planning: `.opencode/plans/`
+
+The default primary agent is `orchestrator`.
+
+### Agent responsibilities and file ownership
+
+| Agent           | Mode               | Responsibility and ownership                                                                                                                     |
+| --------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `orchestrator`  | primary + subagent | Planning, delegation, verification and integration. The only agent allowed to reassign ownership.                                                |
+| `architect`     | subagent           | Architecture and documentation. Owns `docs/`, `README.md` and `.opencode/plans/`; does not implement application code.                           |
+| `game-engine`   | subagent           | Owns `src/game-engine/`, `src/board/`, `src/ai/`, `src/camera/` and their relevant unit tests.                                                   |
+| `frontend`      | subagent           | Owns `src/components/` and `app/`, except `app/api/`, plus relevant UI tests.                                                                    |
+| `backend`       | subagent           | Owns `src/auth/`, `src/rating/`, `src/career/`, `src/friends/`, `src/privacy/`, `src/realtime/`, `app/api/`, `prisma/` and their relevant tests. |
+| `qa-engineer`   | subagent           | Owns test harness and meta tests in `tests/`, `e2e/`, `vitest.config.ts`, `playwright.config.ts` and `docs/TESTING.md`.                          |
+| `code-reviewer` | subagent           | Independent, strictly read-only reviewer.                                                                                                        |
+
+File ownership is enforced through OpenCode permissions. A specialist must not work around a denied edit. The orchestrator must reassign or sequence work instead.
+
+The architect and code reviewer are additionally restricted to read-only shell operations. Implementers must use their permitted editing tools and must not bypass path restrictions through shell commands.
+
+### Orchestration protocol
+
+1. Plan first: for work beyond a trivial change, create `.opencode/plans/<slug>/_plan.md` using the `project-planning` skill and `.opencode/plans/README.md`.
+2. Obtain user approval before starting substantial implementation.
+3. Give every work package exactly one owning agent and an explicit file list.
+4. Parallelize only independent work. Never let two agents modify the same file concurrently.
+5. Define verifiable acceptance criteria and the commands needed to prove them.
+6. Run the relevant tests after implementation. A claim without test output is not verification.
+7. Have important changes independently reviewed by `code-reviewer` and, where appropriate, `qa-engineer`.
+8. Fix errors or explicitly document why they remain unresolved.
+9. Do not report success without verification.
+10. Maintain progress logs for long-running work, including completed tasks, outstanding tasks and the next step.
+11. For session recovery, read the plan's task table and `## Result` sections. Resume at the first task not marked done.
+
+### Available project skills
+
+Load skills only when relevant to the task:
+
+- `project-planning`
+- `dart-game-engine`
+- `frontend-development`
+- `backend-development`
+- `testing`
+- `code-review`
+
+These are on-demand instructions, not a replacement for reading the actual source code and current project documentation.
+
+### Available project commands
+
+- `/start-feature`: analyze, plan, assign and request approval.
+- `/execute-plan`: execute an approved plan package by package and verify the results.
+- `/review`: independent code review and QA.
+- `/release-check`: lint, format, typecheck, tests, build and security checks.
+
+A release check does not authorize publishing or pushing.
+
+### OpenCode security and approval rules
+
+- Never commit, tag or push without the user's explicit approval for that specific action.
+- Never introduce paid services, APIs or subscriptions without explicit approval.
+- Never modify secrets, credentials or server configuration.
+- Never expose passwords, tokens, session secrets or personal identifiers in logs or responses.
+- Never modify or delete `CLAUDE.md` or `.claude/`; these remain part of the parallel Claude Code workflow.
+- Treat `.env` files as protected.
+- Never delete or overwrite existing project files unless the task explicitly requires it.
+- Do not bypass agent file permissions or shell restrictions.
+
+### UI and design requirements
+
+Before UI work, consult `DESIGN.md`, `design-system/darthub/MASTER.md` and the relevant page-specific design documentation when present.
+
+- Use the established DartHub design tokens; do not introduce arbitrary raw hex colors.
+- Color must not be the only indicator of a game state.
+- Use tabular figures and stable layouts for changing scores and statistics.
+- Render game state from the authoritative engine; never invent statistics in the UI.
+- Preserve keyboard accessibility, visible focus states and reduced-motion preferences.
+- Check responsive layouts at 1440 px, 1024 px and 390 px when changing relevant UI surfaces.
