@@ -18,6 +18,11 @@ describe("game-engine README documentation", () => {
     expect(readme).toContain("startMatch(config: MatchConfig): MatchState");
     expect(readme).toContain("recordThrow(input: ThrowInput): MatchState");
     expect(readme).toContain("getState(): MatchState");
+    expect(readme).toContain("getVisits(): readonly MatchVisit[]");
+    expect(readme).toContain("getCurrentTurn(): readonly RecordedThrow[]");
+    expect(readme).toContain(
+      "deriveTurnThrows(throws: readonly RecordedThrow[], currentPlayerId: string | null, dartsPerTurn: number): RecordedThrow[]",
+    );
 
     // Every documented public name exists on the actual barrel export.
     expect(typeof engine.GameEngine).toBe("function");
@@ -25,6 +30,19 @@ describe("game-engine README documentation", () => {
     expect(engine.DARTS_PER_TURN).toBe(3);
     expect(typeof engine.GameEngineStateError).toBe("function");
     expect(typeof engine.GameEngineValidationError).toBe("function");
+    expect(typeof engine.deriveTurnThrows).toBe("function");
+    expect(typeof engine.deriveVisitIndexes).toBe("function");
+    expect(typeof engine.groupVisits).toBe("function");
+  });
+
+  it("documents the ledger helpers with the arity of the real functions", () => {
+    // The README is a contract: a signature that drifts from the code
+    // must fail here, not in a consumer's editor.
+    expect(engine.deriveTurnThrows).toHaveLength(3);
+    expect(engine.deriveVisitIndexes).toHaveLength(2);
+    expect(engine.groupVisits).toHaveLength(2);
+    expect(typeof engine.GameEngine.prototype.getCurrentTurn).toBe("function");
+    expect(typeof engine.GameEngine.prototype.getVisits).toBe("function");
   });
 
   it("provides example code snippets for both client-side and server-side usage", () => {

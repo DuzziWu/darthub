@@ -65,6 +65,23 @@ From `CLAUDE.md:9-19`, `CLAUDE.md:21-27`, `CLAUDE.md:29-32`, `CLAUDE.md:52-59` a
   consent — `.claude/plans/darthub-design-implementation/_plan.md:139-140`,
   `.claude/plans/game-center-styling-fix/_plan.md:103-104`.
 
+**Mobile scoring UX (DF-0004, 2026-11-15).** The phone viewport 390×844 is the
+binding design target for the match view. The rules the implementation follows:
+
+- **One input surface at a time.** The manual mode uses the pad and leaves the board
+  as a read-only preview; the board mode uses the board and the pad is not in the
+  document. The two are never both live.
+- **The player overview is above the input.** The active player, the remaining score
+  and the other players must be visible without scrolling.
+- **The undo lives in the input area**, named exactly "Undo", and there is exactly one
+  of it on screen.
+- **The rules are not redesigned.** `GameEngine` keeps ownership of the rules; the UI
+  only reads it. `recordThrow`, `undoLastThrow` and `correctThrow` remain the only
+  write paths, and the five game modes stay separate — there is deliberately no
+  generic "score field for every mode".
+- **The fold is the scarce resource.** Every height above the pad costs the reach of
+  the miss key, so the layout is measured after every change, not assumed.
+
 ## Technology and key links
 
 Stack from `package.json`: Next.js 16.4.5, React 19.3.1, TypeScript 6.0.3 (strict),

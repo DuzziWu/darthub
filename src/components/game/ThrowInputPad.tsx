@@ -31,11 +31,16 @@ export function ThrowInputPad({
   onArmedSegmentChange,
   onThrow,
   disabled = false,
+  showSegmentControl = true,
 }: ThrowInputPadProps) {
   return (
     <section
       aria-label="Dart pad"
-      className="rounded-md border border-rule bg-surface p-md space-y-md md:p-lg md:space-y-lg"
+      /* The pad is the input surface and it has to fit above the tab bar
+         with four players on the score sheet, so its internal rhythm is
+         tighter on a phone than on the wide layout. The design says so
+         too: on this page density beats whitespace. */
+      className="rounded-md border border-rule bg-surface p-md space-y-sm md:p-lg md:space-y-lg"
     >
       <div className="flex items-center justify-between">
         <h2 className="font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
@@ -44,12 +49,16 @@ export function ThrowInputPad({
         <p className="font-mono text-caption text-ink-muted">{throwsInCurrentTurn} / 3 darts</p>
       </div>
 
-      {/* The armed band. The only segment control in the product. */}
-      <SegmentControl
-        armedSegment={armedSegment}
-        onArmedSegmentChange={onArmedSegmentChange}
-        disabled={disabled}
-      />
+      {/* The armed band. The only segment control in the product — except
+          when the view has moved it, e.g. above the board in the board mode,
+          where the band has to be chosen before the board is tapped. */}
+      {showSegmentControl && (
+        <SegmentControl
+          armedSegment={armedSegment}
+          onArmedSegmentChange={onArmedSegmentChange}
+          disabled={disabled}
+        />
+      )}
 
       {/* The twenty sectors. */}
       <div>

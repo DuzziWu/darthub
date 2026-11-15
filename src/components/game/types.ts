@@ -26,6 +26,88 @@ export interface ThrowInputPadProps {
    */
   onThrow: (throwInput: { points: number; segment?: ThrowSegment }) => void;
   disabled?: boolean;
+  /**
+   * Whether the pad carries the band switch itself.
+   *
+   * The switch is rendered **once** in the whole screen: in the board mode
+   * it stands above the board, because a treble band on a phone board is
+   * about eleven pixels tall and the band has to be chosen before the board
+   * is tapped. Two switches with the same radio name would break the
+   * end-to-end suite's strict role queries, so the view moves the switch
+   * instead of duplicating it.
+   */
+  showSegmentControl?: boolean;
+}
+
+/**
+ * What the big number of the player overview means.
+ *
+ * The engine owns the rules; the view reads them. Each mode therefore has
+ * its own variant of the overview data, and the shared component switches
+ * on `kind`. A new mode without a variant breaks the typecheck — which is
+ * the point: the union cannot be quietly flattened into one generic field
+ * that every mode then has to interpret on its own.
+ */
+export type ScoreboardKind = "x01" | "cricket" | "aroundTheClock" | "shanghai";
+
+/** One player in the overview. */
+export interface ScoreboardPlayer {
+  readonly id: string;
+  readonly name: string;
+  /**
+   * The number of the row — its meaning depends on the mode: points left
+   * in x01, targets hit in around the clock, marks in shanghai.
+   */
+  readonly value: number;
+  /** True for the player whose turn it is. */
+  readonly isCurrent: boolean;
+}
+
+/** The x01 variant: the points left and the checkout rule in force. */
+export interface X01ScoreboardData {
+  readonly kind: "x01";
+  readonly checkoutLabel: string;
+  readonly leg?: { readonly current: number; readonly total: number };
+  readonly set?: { readonly current: number; readonly total: number };
+}
+
+/** The cricket variant: the marks of every player on every target. */
+export interface CricketScoreboardData {
+  readonly kind: "cricket";
+  readonly marks: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  readonly targets: readonly number[];
+  readonly marksToClose: number;
+}
+
+/** The around the clock variant: the target in play and the progress. */
+export interface AroundTheClockScoreboardData {
+  readonly kind: "aroundTheClock";
+  readonly currentTarget: number;
+  readonly targetIndex: number;
+  readonly targetCount: number;
+  readonly playerProgress: Readonly<Record<string, number>>;
+}
+
+/** The shanghai variant: the round in play and the segments it has seen. */
+export interface ShanghaiScoreboardData {
+  readonly kind: "shanghai";
+  readonly currentRound: number;
+  readonly totalRounds: number;
+  readonly target: number;
+  readonly roundRecords: Readonly<
+    Record<string, { marks: number; hitSingle: boolean; hitDouble: boolean; hitTriple: boolean }>
+  >;
+}
+
+/** The mode data of the overview — one shape per mode, never a merged one. */
+export type ScoreboardData =
+  X01ScoreboardData | CricketScoreboardData | AroundTheClockScoreboardData | ShanghaiScoreboardData;
+
+export interface PlayerScoreboardProps {
+  /** The players, in their stable seating order. */
+  readonly players: readonly ScoreboardPlayer[];
+  /** The mode's own data. The switch on `kind` is exhaustive. */
+  readonly data: ScoreboardData;
 }
 
 /** One dart of a visit. */
@@ -133,6 +215,14 @@ export interface MatchLayoutProps {
   badge?: string;
   /** The board the darts come from, e.g. "Virtual Board". */
   sourceLabel?: string;
+  /**
+   * The player overview: who is on throw and what is left.
+   *
+   * It stands between the strip and the input, because that is where the
+   * player looks first: the remaining score is the number that decides
+   * whether the next dart is safe.
+   */
+  scoreboard?: ReactNode;
   /** The visit in progress: the chips naming each dart of the current turn. */
   visit?: ReactNode;
   /** The strip's own actions, beside the one that returns to the Game Center. */

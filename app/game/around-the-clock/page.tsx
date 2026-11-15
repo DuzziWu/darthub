@@ -19,9 +19,11 @@ import { GameResultBanner } from "@/components/game/GameResultBanner";
 import { MatchLayout } from "@/components/game/MatchLayout";
 import { MatchStatus } from "@/components/game/MatchStatus";
 import { PlayerSetup } from "@/components/game/PlayerSetup";
+import { PlayerScoreboard } from "@/components/game/PlayerScoreboard";
 import { ScoreDisplay } from "@/components/game/ScoreDisplay";
 import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
+import { VisitTracker } from "@/components/game/VisitTracker";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
@@ -146,7 +148,7 @@ export default function AroundTheClockPage() {
 
   const currentIndex =
     (matchState?.modeData as AroundTheClockModeData | undefined)?.currentTargetIndex ?? 0;
-  const currentTarget = AROUND_THE_CLOCK_TARGETS[currentIndex] ?? AROUND_THE_CLOCK_TARGETS[0];
+  const currentTarget = AROUND_THE_CLOCK_TARGETS[currentIndex] ?? AROUND_THE_CLOCK_TARGETS[0] ?? 1;
 
   return (
     <MatchLayout
@@ -156,6 +158,7 @@ export default function AroundTheClockPage() {
           armedSegment={armedSegment}
           onArmedSegmentChange={setArmedSegment}
           onThrow={recordThrow}
+          showSegmentControl={inputMode.mode !== "board"}
         />
       }
       inputMode={inputMode.mode}
@@ -163,19 +166,41 @@ export default function AroundTheClockPage() {
       modeName="Around the Clock"
       badge={`Target ${currentTarget}`}
       sourceLabel={boardSourceLabel(options.boardSource)}
+      scoreboard={
+        matchState && (
+          <PlayerScoreboard
+            players={matchState.players.map((player) => ({
+              id: player.id,
+              name: playerNames[player.id] ?? player.id,
+              // The number of the row is the number of targets this player
+              // has hit: the caption says so.
+              value: player.totalPoints,
+              isCurrent: player.id === (matchState.currentPlayerId ?? PLAYER_ID),
+            }))}
+            data={{
+              kind: "aroundTheClock",
+              currentTarget,
+              targetIndex: currentIndex,
+              targetCount: AROUND_THE_CLOCK_TARGETS.length,
+              playerProgress:
+                (matchState.modeData as AroundTheClockModeData | undefined)?.playerProgress ?? {},
+            }}
+          />
+        )
+      }
       visit={
-        <ThrowHistoryControls
-          throws={history.currentVisit}
-          visitOffset={history.currentVisitOffset}
-          correctionTarget={history.correctionTarget}
-          awaitingConfirmation={history.awaitingConfirmation}
-          canUndo={history.canUndo}
-          correctionsDisabled={matchState?.status === "completed"}
-          onSelectThrow={history.selectThrow}
-          onUndo={handleUndo}
-          onConfirm={history.confirmCorrection}
-          onCancel={history.cancelCorrection}
-        />
+        <VisitTracker canUndo={history.canUndo} onUndo={handleUndo}>
+          <ThrowHistoryControls
+            throws={history.currentTurn}
+            turnOffset={history.currentTurnOffset}
+            correctionTarget={history.correctionTarget}
+            awaitingConfirmation={history.awaitingConfirmation}
+            correctionsDisabled={matchState?.status === "completed"}
+            onSelectThrow={history.selectThrow}
+            onConfirm={history.confirmCorrection}
+            onCancel={history.cancelCorrection}
+          />
+        </VisitTracker>
       }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>

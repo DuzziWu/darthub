@@ -13,9 +13,7 @@ const EMPTY_PROPS: ThrowHistoryControlsProps = {
   throws: [],
   correctionTarget: null,
   awaitingConfirmation: false,
-  canUndo: false,
   onSelectThrow: () => {},
-  onUndo: () => {},
   onConfirm: () => {},
   onCancel: () => {},
 };
@@ -23,22 +21,19 @@ const EMPTY_PROPS: ThrowHistoryControlsProps = {
 /** Renders the controls with spies for every event; each test renders once. */
 function setup(props: Partial<ThrowHistoryControlsProps> = {}) {
   const onSelectThrow = vi.fn();
-  const onUndo = vi.fn();
   const onConfirm = vi.fn();
   const onCancel = vi.fn();
   const utils = render(
     <ThrowHistoryControls
       {...EMPTY_PROPS}
       throws={DARTS}
-      canUndo={true}
       onSelectThrow={onSelectThrow}
-      onUndo={onUndo}
       onConfirm={onConfirm}
       onCancel={onCancel}
       {...props}
     />,
   );
-  return { onSelectThrow, onUndo, onConfirm, onCancel, ...utils };
+  return { onSelectThrow, onConfirm, onCancel, ...utils };
 }
 
 afterEach(cleanup);
@@ -62,9 +57,9 @@ describe("ThrowHistoryControls", () => {
     expect(onSelectThrow).toHaveBeenCalledWith(1);
   });
 
-  it("reports the ledger index of a chip, not its position in the strip", () => {
-    // The strip shows one visit; the engine indexes the whole ledger.
-    const { onSelectThrow } = setup({ visitOffset: 6 });
+  it("reports the ledger index of a chip, not its position in the tracker", () => {
+    // The tracker shows one turn; the engine indexes the whole ledger.
+    const { onSelectThrow } = setup({ turnOffset: 6 });
     fireEvent.click(screen.getByRole("button", { name: "Dart 1: T20" }));
     expect(onSelectThrow).toHaveBeenCalledWith(6);
     fireEvent.click(screen.getByRole("button", { name: "Dart 2: BUST" }));
@@ -72,7 +67,7 @@ describe("ThrowHistoryControls", () => {
   });
 
   it("marks the armed dart by its ledger index", () => {
-    setup({ visitOffset: 6, correctionTarget: 7 });
+    setup({ turnOffset: 6, correctionTarget: 7 });
     expect(screen.getByRole("button", { name: "Dart 2: BUST" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
@@ -91,18 +86,6 @@ describe("ThrowHistoryControls", () => {
     );
   });
 
-  it("the undo button reports availability and calls onUndo", () => {
-    const { unmount, onUndo } = setup();
-    const undo = screen.getByRole("button", { name: "Undo" });
-    expect(undo.hasAttribute("disabled")).toBe(false);
-    fireEvent.click(undo);
-    expect(onUndo).toHaveBeenCalledOnce();
-    unmount();
-
-    setup({ throws: [], canUndo: false });
-    expect(screen.getByRole("button", { name: "Undo" }).hasAttribute("disabled")).toBe(true);
-  });
-
   it("a finished visit asks for confirmation before correcting", () => {
     const { onConfirm, onCancel } = setup({ correctionTarget: 0, awaitingConfirmation: true });
     expect(screen.getByText(/finished visit/i)).toBeTruthy();
@@ -119,9 +102,19 @@ describe("ThrowHistoryControls", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it("darts are not tappable once the match is over, but undo stays", () => {
+  it("darts are not tappable once the match is over", () => {
     setup({ correctionsDisabled: true });
     expect(screen.getByRole("button", { name: "Dart 1: T20" }).hasAttribute("disabled")).toBe(true);
-    expect(screen.getByRole("button", { name: "Undo" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("reserves a slot for every dart the turn still holds", () => {
+    setup({ throws: [{ playerId: "a", points: 20, bust: false }] });
+
+    // Two darts of the turn are still to come, and each of them has a slot
+    // that says so — a thrown dart is a chip, an unthrown one is a
+    // placeholder.
+    expect(screen.getByLabelText("Dart 2: not thrown")).toBeTruthy();
+    expect(screen.getByLabelText("Dart 3: not thrown")).toBeTruthy();
+    expect(screen.queryByLabelText("Dart 4: not thrown")).toBeNull();
   });
 });

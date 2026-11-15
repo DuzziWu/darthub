@@ -53,6 +53,7 @@ Last verified: 2026-11-10 (repo `E:\coding\darthub`, branch `feature/darthub-des
 | Design system           | `.claude/plans/darthub-design-system/_plan.md` (+ `001…004*.md`)                                | devflow-orchestrator | Task completion    | 2026-11-10 (read) — status "completed"                              |
 | Design implementation   | `.claude/plans/darthub-design-implementation/_plan.md` (+ `001…010*.md`, `_devils_advocate.md`) | devflow-orchestrator | Task completion    | 2026-11-10 (read) — status "completed"; output is still uncommitted |
 | Game Center styling fix | `.claude/plans/game-center-styling-fix/_plan.md` (+ `001…004*.md`, `_devils_advocate.md`)       | devflow-orchestrator | Task completion    | 2026-11-10 (read) — status "completed"                              |
+| Mobile scoring UX       | `.claude/plans/mobile-scoring-ux/_plan.md`                                                      | devflow-orchestrator | Task completion    | 2026-11-15 (read) — WP-1…WP-6 done, WP-7/WP-8 outstanding           |
 
 ## Design references
 

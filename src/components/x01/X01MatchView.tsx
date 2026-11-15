@@ -9,10 +9,12 @@ import type { ArmedSegment } from "@/components/board";
 import { GameResultBanner } from "@/components/game/GameResultBanner";
 import { MatchLayout } from "@/components/game/MatchLayout";
 import { MatchStatus } from "@/components/game/MatchStatus";
+import { PlayerScoreboard } from "@/components/game/PlayerScoreboard";
 import { PlayerSetup } from "@/components/game/PlayerSetup";
 import { ScoreDisplay } from "@/components/game/ScoreDisplay";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
 import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
+import { VisitTracker } from "@/components/game/VisitTracker";
 import { visitBadge } from "@/components/game/VisitChips";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
 import type { PlayerSetupOptions } from "@/components/game/types";
@@ -22,6 +24,7 @@ import { GameEngine } from "@/game-engine/GameEngine";
 import { StandardMode } from "@/game-engine/modes/StandardMode";
 import { OUT_RULE_CHOICES } from "@/game-engine/modes/registry";
 import { getOutRule, type OutRule } from "@/game-engine/rules";
+import { LEG_SET_MODE_DATA_KEY, type LegSetProgress } from "@/game-engine/rules/LegSetManager";
 import {
   GameEngineStateError,
   type MatchState,
@@ -53,6 +56,27 @@ export interface X01MatchViewProps {
 /** The label of the checkout rule, from the registry's own vocabulary. */
 function checkoutLabel(outRule: OutRuleId): string {
   return OUT_RULE_CHOICES.find((choice) => choice.id === outRule)?.label ?? "Checkout";
+}
+
+/**
+ * The leg and set progress of the match, when it has any.
+ *
+ * `LegSetManager` only runs when the match is configured with legs or sets.
+ * This view plays a single leg — it configures neither — so the overview
+ * shows no leg and no set: the header says nothing rather than "1/1". The
+ * progress itself is the engine's, read from its own mode data.
+ */
+function legSetProgress(matchState: MatchState): {
+  leg?: { current: number; total: number };
+  set?: { current: number; total: number };
+} {
+  const progress = (matchState.modeData as Record<string, unknown> | undefined)?.[
+    LEG_SET_MODE_DATA_KEY
+  ] as LegSetProgress | undefined;
+  if (!progress) return {};
+  // The won-counts are there, but the sizes the match was configured with
+  // are not in the state: without them there is no honest "2/5" to show.
+  return {};
 }
 
 /**
@@ -220,10 +244,10 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
   }
 
   const currentPlayerId = matchState?.currentPlayerId ?? null;
-  // The strip follows the player who just threw, so the darts of the visit in
-  // play stay on screen when the turn passes.
-  // The darts of the visit in progress, straight from the ledger.
-  const strip = history.currentVisit;
+  // The darts of the turn in progress, straight from the ledger. The turn is
+  // not the visit: it belongs to the player who is throwing, so it is empty
+  // right after a player change — the reset the input area needs.
+  const turn = history.currentTurn;
 
   return (
     <MatchLayout
@@ -234,6 +258,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           onArmedSegmentChange={setArmedSegment}
           onThrow={recordThrow}
           disabled={matchState?.status === "completed"}
+          showSegmentControl={inputMode.mode !== "board"}
         />
       }
       inputMode={inputMode.mode}
@@ -241,19 +266,36 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
       modeName={modeName}
       badge={checkoutLabel(outRule)}
       sourceLabel={boardSourceLabel(boardSource)}
+      scoreboard={
+        matchState && (
+          <PlayerScoreboard
+            players={matchState.players.map((player) => ({
+              id: player.id,
+              name: playerNames[player.id] ?? player.id,
+              value: player.totalPoints,
+              isCurrent: player.id === currentPlayerId,
+            }))}
+            data={{
+              kind: "x01",
+              checkoutLabel: checkoutLabel(outRule),
+              ...legSetProgress(matchState),
+            }}
+          />
+        )
+      }
       visit={
-        <ThrowHistoryControls
-          throws={strip}
-          visitOffset={history.currentVisitOffset}
-          correctionTarget={history.correctionTarget}
-          awaitingConfirmation={history.awaitingConfirmation}
-          canUndo={history.canUndo}
-          correctionsDisabled={matchState?.status === "completed"}
-          onSelectThrow={history.selectThrow}
-          onUndo={handleUndo}
-          onConfirm={history.confirmCorrection}
-          onCancel={history.cancelCorrection}
-        />
+        <VisitTracker canUndo={history.canUndo} onUndo={handleUndo}>
+          <ThrowHistoryControls
+            throws={turn}
+            turnOffset={history.currentTurnOffset}
+            correctionTarget={history.correctionTarget}
+            awaitingConfirmation={history.awaitingConfirmation}
+            correctionsDisabled={matchState?.status === "completed"}
+            onSelectThrow={history.selectThrow}
+            onConfirm={history.confirmCorrection}
+            onCancel={history.cancelCorrection}
+          />
+        </VisitTracker>
       }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>

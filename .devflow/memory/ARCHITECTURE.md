@@ -116,6 +116,44 @@ utilities only (`bg-surface`, `text-ink`); board colours are consumed as `var(--
 on SVG nodes, not as utilities. `src/components/game/classes.ts` holds the shared class
 strings.
 
+### 7. The turn is not the visit
+
+The ledger is the single source of truth for every throw, and both groupings are
+_derived_ from it — never stored, so neither can go stale after an undo or a
+correction.
+
+- **The visit** (`deriveVisitIndexes` in `src/game-engine/throwLedger.ts`) groups the
+  ledger into one-ball rounds. It does **not** end after three counted darts, and it
+  ends on a bust.
+- **The turn** (`deriveTurnThrows`, same file) walks the ledger backwards and collects
+  the darts of the player who is throwing. A player change ends the turn; a bust
+  belongs to the turn because it was thrown, it just scored nothing.
+  `GameEngine.getCurrentTurn()` exposes it.
+
+The distinction is load-bearing for the UI. A visit runs over the player change, so
+the last visit holds the _previous_ player's darts while the next player is already on
+throw. `src/components/game/useMatchHistory.ts` therefore derives `currentTurn` from
+`deriveTurnThrows` — that is what makes the throw overview reset when the turn
+changes, and what keeps it correct after a correction.
+
+The UI reads the engine's derivation; it keeps no bookkeeping of its own. The engine
+stays free of UI imports, so `src/game-engine/**` can be used from a browser, a game
+server or the realtime layer unchanged.
+
+### 8. The match view reads in one order
+
+`src/components/game/MatchLayout.tsx` owns the reading order of the phone layout,
+and every mode uses it: the match strip, the player overview
+(`PlayerScoreboard.tsx`), the turn tracker with the undo (`VisitTracker.tsx`), the band
+switch, the active input surface, and then everything else.
+
+The two input surfaces are separated. The manual mode puts the pad in the document and
+leaves the board as a read-only preview; the board mode does the opposite and the pad
+is not in the document at all — a hidden but focusable pad would be a trap for the
+keyboard and a lie for the screen reader. The band switch is rendered **once**, above
+whichever surface is the input, because two switches with the same radio name would
+make the end-to-end suite's strict role queries ambiguous.
+
 ## Key implementation locations
 
 | Concern                                    | Location                                                                                                                                               |
@@ -131,6 +169,8 @@ strings.
 | Board SVG component                        | `src/components/board/DartBoard.tsx:283`                                                                                                               |
 | x01 match view (client-side engine)        | `src/components/x01/X01MatchView.tsx:80`                                                                                                               |
 | Shared game components                     | `src/components/game/*` (MatchLayout, ScoreDisplay, ThrowInputPad, VisitChips, RuleSheet, BoardSourceSelector)                                         |
+| Turn derivation (ledger)                   | `src/game-engine/throwLedger.ts` (`deriveVisitIndexes`, `deriveTurnThrows`), exposed as `GameEngine.getCurrentTurn()`                                  |
+| Player overview + turn tracker             | `src/components/game/PlayerScoreboard.tsx`, `src/components/game/VisitTracker.tsx`                                                                     |
 | App shell                                  | `src/components/shell/*`, `src/components/ui/SkipLink.tsx`, `app/layout.tsx`                                                                           |
 | Design tokens                              | `app/globals.css:14`                                                                                                                                   |
 | Auth (Auth.js config)                      | `src/auth/nextauth.ts:23`; bearer seam `src/auth/requireAuth.ts:56`                                                                                    |

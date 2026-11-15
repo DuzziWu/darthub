@@ -1,6 +1,10 @@
 # Current State
 
-Last verified: 2026-11-10 (repo `E:\coding\darthub`, branch `feature/darthub-design-implementation`).
+Last verified: 2026-11-15 (repo `/projects/darthub`, branch `main`, HEAD `85d4424` = `origin/main`).
+
+The mobile scoring UX (DF-0004) landed on top of this state: the Board and Manual
+input modes are separated, the player overview with the remaining score sits above the
+input surface at 390×844, and the throw overview resets when the turn changes.
 
 ## Working functionality
 
@@ -61,7 +65,28 @@ are active, `login` / `career` / `matchmaking` are fully skipped.
 
 ## Active work
 
-**Nothing from the 2026-11-09/10 design-implementation plan is committed.** The repo has
+**The mobile scoring UX (DF-0004) is implemented in the working tree and verified, but
+not committed.** It consists of the engine half (WP-1) and the frontend half
+(WP-2 to WP-5):
+
+- `src/game-engine/throwLedger.ts` — `deriveTurnThrows(throws, currentPlayerId, dartsPerTurn)`,
+  the pure derivation of the darts belonging to the turn in progress. Exposed as
+  `GameEngine.getCurrentTurn()`.
+- `src/components/game/PlayerScoreboard.tsx` (new) — the player overview: the active
+  player as a promoted row with a 2 px brass rail and the words „AM ZUG", the other
+  players as ruled rows, the mode's own number in a fixed column of tabular figures.
+  The data is a union (`ScoreboardData`), one variant per mode, so no mode loses
+  information to a generic field.
+- `src/components/game/VisitTracker.tsx` (new) — the turn tracker with the darts of
+  the turn and the single **Undo**, placed directly above the input surface.
+- `src/components/game/MatchLayout.tsx` — the reading order (strip, overview, tracker,
+  band switch, input surface, everything else) and the separation of the two input
+  surfaces: the manual mode keeps the pad and leaves the board as a read-only preview,
+  the board mode keeps the board and removes the pad from the document entirely.
+
+**The design-implementation plan work below was committed in the meantime** — the repo
+now has the full history on `main` (HEAD `85d4424`), and only the DF-0004 work is
+uncommitted. The repo has
 5 commits total (`983cc49`, `fdbfe5f`, `82a0e46`, `663f7a0`, `dc946a4`); everything the
 design plan produced is still in the working tree.
 
@@ -89,6 +114,8 @@ are deleted in the working tree.
 Plan state: `darthub-design-implementation` and `game-center-styling-fix` and
 `darthub-design-system` all say "completed"; `darthub-full-product-planning/_plan.md`
 says 48/48 done while its own `_run-status.md` says 27/48 at the 2026-11-07 stop.
+The current plan is `mobile-scoring-ux/_plan.md` (DF-0004), which says WP-1 to WP-6
+done and WP-7/WP-8 outstanding.
 
 ## Known issues
 
@@ -130,26 +157,33 @@ reproduced today; each is either read from code or taken from a recorded run in 
     career progress store do not survive a process restart; only the room store has a
     Redis backend.
 
+**Verified on 2026-11-15** (the tree that carries the DF-0004 mobile UX):
+
+- `npm run typecheck`, `npm run lint`, `npm run format:check` — **green**.
+- `npm run test` — **105 files / 526 tests green** (the baseline before the engine and
+  frontend work was 102 files / 494 tests).
+- `npm run build` and `npm run build:prefixed` — **green**.
+- `npx playwright test` — **70 passed, 7 skipped** (the 7 are `test.skip` placeholders).
+
 **Not verified (unknowns)**
 
-- Current pass/fail status of `npm run lint`, `npm run typecheck`, `npm run format:check`,
-  `npm run test` and `npm run build` on the present working tree — **not run**.
-- Current Playwright results — **not run**.
+- Whether the three deleted snapshot files' tests still pass — **not run**.
 - Whether the three deleted snapshot files' tests still pass — **not run**.
 - CI has never run the E2E suite (`.github/workflows/ci.yml` runs lint/format/typecheck/test
   only) — the E2E status on CI is therefore **unknown**.
 
 ## Next recommended step
 
-1. Get explicit user consent, then commit the design-implementation work as one
-   checkpoint (the plan commit policy forbids committing without it), so the design
-   system, board module and mode registry stop living only in the working tree.
-2. Immediately re-run the full gate on that tree — `npm run lint`, `npm run typecheck`,
-   `npm run format:check`, `npm run test`, `npm run build`, then the Playwright suite —
-   and record the fresh numbers, because the only baselines on record are from 2026-11-09
-   and predate the current uncommitted changes.
-3. Reconcile the documentation with the code: `docs/API.md` paths and event names,
+1. Get explicit user consent, then commit the DF-0004 work (the engine half and the
+   mobile frontend half together) as one checkpoint — the plan commit policy forbids
+   committing without it.
+2. Close the GitHub issues once the commit is in: #6 (integration and regression
+   tests) and the sub-issues #11 (engine), #12 (scoreboard), #13 (throw overview and
+   undo), #14 (match layout), #15 (mode views), #16 (regression tests).
+3. Run an independent review pass over the DF-0004 diff (the plan's WP-8): the union
+   data model, the two input surfaces, and the contracts the end-to-end suite pins.
+4. Reconcile the documentation with the code: `docs/API.md` paths and event names,
    `docs/ARCHITECTURE.md` directory map, `docs/ROADMAP.md` status table, and
    `.claude/architecture.md`.
-4. Close the schema gap: add the `CareerQuestProgress` model + migration and switch
+5. Close the schema gap: add the `CareerQuestProgress` model + migration and switch
    `src/career/questRuntime.ts` to the Prisma repository.

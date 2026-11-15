@@ -57,6 +57,16 @@ function header() {
   return within(screen.getByRole("region", { name: "Match header" }));
 }
 
+/**
+ * The turn tracker: the darts of the turn in progress, with the undo.
+ *
+ * The darts left the strip when the tracker moved into the input area, so
+ * the chip that names the segment is found here now.
+ */
+function tracker() {
+  return within(screen.getByRole("list", { name: "Current visit" }));
+}
+
 /** Starts a match of `startScore` points, optionally choosing a checkout rule. */
 function startMatch(startScore: number, rule?: "double" | "master" | "straight") {
   render(<X01MatchView startScore={startScore} modeName="501" />);
@@ -141,7 +151,7 @@ describe("the x01 match view", () => {
 
     // The visit is named by where the dart landed, not only by its score.
     expect(sheet().getByText("D16")).toBeTruthy();
-    expect(header().getByText("D16")).toBeTruthy();
+    expect(tracker().getByText("D16")).toBeTruthy();
   });
 
   it("shows a bust chip when a throw busts and leaves the score unchanged", () => {

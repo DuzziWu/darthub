@@ -60,10 +60,12 @@ export interface RecordedThrow {
 }
 
 /**
- * One visit (turn) of darts, derived from the ledger.
+ * One visit of darts, derived from the ledger.
  *
  * A visit ends when the turn advances and when a dart busts, which is
- * what the match views show as one chip group.
+ * what the match views show as one chip group. It is not the turn: the
+ * turn is the group of darts of one player and ends when the player
+ * changes (see `deriveTurnThrows`).
  */
 export interface MatchVisit {
   /** Index of the visit, counting from 0. */

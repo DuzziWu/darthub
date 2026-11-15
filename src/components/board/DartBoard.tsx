@@ -483,7 +483,15 @@ export function DartBoard({ armedSegment, onThrow, markers, readOnly = false }: 
         inline-block shrink-wraps to the SVG's intrinsic 300 px and the caps
         never bite.
       */}
-      <div className="mx-auto w-full max-w-[400px] rounded-md border border-rule bg-sunken p-sm md:max-w-[538px] md:p-md lg:max-w-[538px] xl:max-w-[634px] xl:p-xl">
+      <div
+        className={`mx-auto w-full rounded-md border border-rule bg-sunken p-sm md:max-w-[538px] md:p-md lg:max-w-[538px] xl:max-w-[634px] xl:p-xl ${
+          // The read-only preview is the phone's board: board.md §8.3 gives
+          // it 300 px of painted diameter, so its well is 310 px wide (300
+          // + 2x4 padding + 2 borders). The live board keeps the full
+          // column — it is an input there, and it is as large as it may be.
+          readOnly ? "max-w-[310px]" : "max-w-[400px]"
+        }`}
+      >
         <svg
           viewBox={VIEW_BOX}
           aria-hidden="true"

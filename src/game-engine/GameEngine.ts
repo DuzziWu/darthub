@@ -1,6 +1,6 @@
 import { NeutralScoreMode } from "@/game-engine/NeutralScoreMode";
 import { isValidSegmentScore } from "@/game-engine/rules/OutRules";
-import { deriveVisitIndexes, groupVisits } from "@/game-engine/throwLedger";
+import { deriveTurnThrows, deriveVisitIndexes, groupVisits } from "@/game-engine/throwLedger";
 import {
   GameEngineBustError,
   GameEngineStateError,
@@ -212,6 +212,24 @@ export class GameEngine {
    */
   getVisits(): readonly MatchVisit[] {
     return groupVisits(this.requireState().throws, DARTS_PER_TURN);
+  }
+
+  /**
+   * Returns the darts of the turn in progress: the darts the player
+   * whose turn it is has thrown since that turn started.
+   *
+   * The turn is not the visit. A visit is the group the match views show
+   * as one chip row, and it ends when a dart busts. The turn is the
+   * group of darts of one player, and it ends when the player changes.
+   *
+   * The boundary is derived from the ledger, never stored, so it cannot
+   * go stale after a correction. A bust is a dart of the turn — the
+   * player threw it — but it consumes no dart slot, so the turn goes on
+   * and the bust fills none of the three places.
+   */
+  getCurrentTurn(): readonly RecordedThrow[] {
+    const state = this.requireState();
+    return deriveTurnThrows(state.throws, state.currentPlayerId, DARTS_PER_TURN);
   }
 
   /**

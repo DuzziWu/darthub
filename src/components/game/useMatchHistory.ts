@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { DARTS_PER_TURN, deriveVisitIndexes } from "@/game-engine";
+import { DARTS_PER_TURN, deriveTurnThrows, deriveVisitIndexes } from "@/game-engine";
 import type { GameEngine } from "@/game-engine/GameEngine";
 import type { MatchState, RecordedThrow, ThrowSegment } from "@/game-engine/types";
 
@@ -29,6 +29,24 @@ export function useMatchHistory(options: {
   const visits = engine !== null && throws.length > 0 ? engine.getVisits() : [];
   const currentVisit: readonly RecordedThrow[] = visits.at(-1)?.throws ?? [];
   /**
+   * The darts of the turn in progress.
+   *
+   * The turn is not the visit. A visit is the group the ledger shows as one
+   * chip row and it runs over the player change, so after three darts the
+   * last visit holds the *previous* player's darts while the next player is
+   * already on throw. The input area shows the turn instead: the darts of
+   * the player who is throwing, which is empty right after a player change
+   * — the reset the overview needs.
+   *
+   * The boundary is derived from the ledger, never kept in the view, so it
+   * cannot go stale after a correction or an undo.
+   */
+  const currentTurn: readonly RecordedThrow[] = deriveTurnThrows(
+    throws,
+    matchState?.currentPlayerId ?? null,
+    DARTS_PER_TURN,
+  );
+  /**
    * Where the visit in progress starts in the ledger.
    *
    * The strip shows one visit, but the engine indexes the whole ledger. A
@@ -36,6 +54,13 @@ export function useMatchHistory(options: {
    * and the two differ from the second visit on.
    */
   const currentVisitOffset = Math.max(0, throws.length - currentVisit.length);
+  /**
+   * Where the turn in progress starts in the ledger.
+   *
+   * The same mapping as {@link currentVisitOffset}, but for the turn: a
+   * chip's position in the tracker is not its index in the ledger.
+   */
+  const currentTurnOffset = Math.max(0, throws.length - currentTurn.length);
   const canUndo = throws.length > 0;
 
   const selectThrow = useCallback(
@@ -86,6 +111,8 @@ export function useMatchHistory(options: {
   return {
     currentVisit,
     currentVisitOffset,
+    currentTurn,
+    currentTurnOffset,
     canUndo,
     correctionTarget,
     awaitingConfirmation,

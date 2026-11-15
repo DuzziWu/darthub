@@ -16,8 +16,10 @@ import { GameResultBanner } from "@/components/game/GameResultBanner";
 import { MatchLayout } from "@/components/game/MatchLayout";
 import { MatchStatus } from "@/components/game/MatchStatus";
 import { PlayerSetup } from "@/components/game/PlayerSetup";
+import { PlayerScoreboard } from "@/components/game/PlayerScoreboard";
 import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { ThrowInputPad } from "@/components/game/ThrowInputPad";
+import { VisitTracker } from "@/components/game/VisitTracker";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
@@ -169,6 +171,7 @@ export default function CricketPage() {
           armedSegment={armedSegment}
           onArmedSegmentChange={setArmedSegment}
           onThrow={recordThrow}
+          showSegmentControl={inputMode.mode !== "board"}
         />
       }
       inputMode={inputMode.mode}
@@ -176,19 +179,38 @@ export default function CricketPage() {
       modeName="Cricket"
       badge={`${closed} / ${CRICKET_TARGETS.length} closed`}
       sourceLabel={boardSourceLabel(options.boardSource)}
+      scoreboard={
+        matchState && (
+          <PlayerScoreboard
+            players={matchState.players.map((player) => ({
+              id: player.id,
+              name: playerNames[player.id] ?? player.id,
+              // Cricket has no score column: the targets are the score.
+              value: player.totalPoints,
+              isCurrent: player.id === (matchState.currentPlayerId ?? PLAYER_ID),
+            }))}
+            data={{
+              kind: "cricket",
+              marks: (matchState.modeData as CricketModeData | undefined)?.marks ?? {},
+              targets: CRICKET_TARGETS,
+              marksToClose: MARKS_TO_CLOSE,
+            }}
+          />
+        )
+      }
       visit={
-        <ThrowHistoryControls
-          throws={history.currentVisit}
-          visitOffset={history.currentVisitOffset}
-          correctionTarget={history.correctionTarget}
-          awaitingConfirmation={history.awaitingConfirmation}
-          canUndo={history.canUndo}
-          correctionsDisabled={matchState?.status === "completed"}
-          onSelectThrow={history.selectThrow}
-          onUndo={handleUndo}
-          onConfirm={history.confirmCorrection}
-          onCancel={history.cancelCorrection}
-        />
+        <VisitTracker canUndo={history.canUndo} onUndo={handleUndo}>
+          <ThrowHistoryControls
+            throws={history.currentTurn}
+            turnOffset={history.currentTurnOffset}
+            correctionTarget={history.correctionTarget}
+            awaitingConfirmation={history.awaitingConfirmation}
+            correctionsDisabled={matchState?.status === "completed"}
+            onSelectThrow={history.selectThrow}
+            onConfirm={history.confirmCorrection}
+            onCancel={history.cancelCorrection}
+          />
+        </VisitTracker>
       }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>

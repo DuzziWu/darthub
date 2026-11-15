@@ -138,6 +138,33 @@ That is not hypothetical: Shanghai's `recordThrow` listed `[engine, matchState, 
 
 Undo removes the last dart of the ledger, busting or not, and the score stays where the bust left it. Both were verified in the browser on 2026-11-13: 4× T20 left 61 remaining, the fifth T20 busted (61 − 60 = 1, and a single 1 is no double checkout), the strip showed the bust, and the undo removed it while the score stayed at 61.
 
+## The fixed tab bar swallows taps on the board preview
+
+The mobile tab bar is `fixed bottom-0 z-40` and 64 px tall, so it owns the
+viewport rows 780–844. Anything whose **centre** lands in those rows is not
+reachable with a viewport-coordinate click — the click hits the navigation
+instead.
+
+The board preview is the case in point. In the manual mode it is the last
+block of the phone layout (`board.md` §8.3 puts it at the end of the reading
+order), so it sits below the fold and a click on it lands on nothing. The
+`e2e/visual-qc.spec.ts` test that clicks the board's centre therefore
+depends on the preview being **below** the fold: when the preview was moved
+up into the viewport, the test's click landed on the "Lobby" tab and the
+page navigated away mid-assertion.
+
+**When a block ends up in the bottom 64 px of the phone viewport, check
+whether the tab bar covers it.** `ShellNav` is `z-40` and it wins against
+everything in `<main>`.
+
+## The board preview is 300 px, the live board is not
+
+`board.md` §8.3 gives the read-only phone preview a 300 px painted
+diameter, so its well is `max-w-[310px]` (300 + 2x4 padding + 2 borders).
+The live board keeps `max-w-[400px]`, because there it is an input and it
+is as large as it may be. The two are different caps on the same well, and
+the `readOnly` prop is what selects between them.
+
 ## Testing conventions
 
 - Component tests need a per-file `// @vitest-environment jsdom` docblock; the global environment stays `"node"`.

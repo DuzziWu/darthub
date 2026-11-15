@@ -34,11 +34,54 @@ export const SECONDARY_BUTTON = `${TARGET_SIZE} rounded-sm border border-edge bg
  *
  * The five modes share one strip, so its type and its chrome are declared
  * once here rather than in each match view. It is sticky directly below the
- * app header at every width, so the mode, the visit and the undo stay on
- * screen while the sheet is read.
+ * app header at every width, so the mode and the input mode stay on screen
+ * while the score sheet is read.
  */
 export const MATCH_STRIP =
-  "sticky top-14 z-30 flex min-h-14 flex-wrap items-center gap-md border-b border-rule bg-surface px-md py-sm";
+  "sticky top-14 z-30 flex min-h-14 items-center gap-md border-b border-rule bg-surface px-md py-sm";
+
+/**
+ * The player overview: the ruled rows above the input.
+ *
+ * A raised surface like the pad beside it, so the overview and the input
+ * read as one family. It carries no card per player — a row is a row.
+ */
+export const SCOREBOARD_SURFACE = "rounded-md border border-rule bg-surface";
+
+/**
+ * The active player's row: a 2 px brass rail on the left.
+ *
+ * The rail is one of two markers, never the only one: the row also names
+ * the player as the one on turn, so the state survives without colour.
+ */
+export const SCOREBOARD_ACTIVE_RAIL = "border-l-2 border-l-brass";
+
+/**
+ * The header row of the overview: the mode's own facts and the caption.
+ *
+ * The caption sits over the score column, so its right edge is the score's
+ * right edge. It is the one place a mode may differ in wording.
+ */
+export const SCOREBOARD_HEADER =
+  "flex items-center gap-md border-b border-rule px-md py-xs font-caption text-caption uppercase tracking-[0.04em] text-ink-faint";
+
+/**
+ * The throw tracker: the slots of the turn in progress, beside the undo.
+ *
+ * It sits in the input area rather than in the strip: the mistake happens
+ * at the pad or at the board, and the undo has to be within reach of it.
+ */
+export const VISIT_TRACKER =
+  "flex flex-wrap items-center gap-md rounded-md border border-rule bg-surface px-md py-sm";
+
+/**
+ * The slot of a dart that has not been thrown yet.
+ *
+ * An outlined placeholder, never a disabled button: there is nothing to
+ * press, and a dead control on a phone is a dead target.
+ */
+export const VISIT_SLOT_EMPTY =
+  "flex h-11 min-w-11 items-center justify-center rounded-sm border border-dashed border-edge px-sm font-mono text-caption text-ink-faint";
 
 /** The mode's name in the strip. */
 export const MATCH_TITLE = "font-display text-heading text-ink";

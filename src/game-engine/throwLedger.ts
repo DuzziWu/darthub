@@ -3,10 +3,10 @@ import type { MatchVisit, RecordedThrow } from "@/game-engine/types";
 /**
  * The ledger of the game engine: the darts the players entered.
  *
- * The helpers here derive the visit structure from that ledger. The
- * boundaries are never stored on a dart: a correction changes them, so a
- * stored boundary would go stale. They are re-derived whenever the match
- * state is derived.
+ * The helpers here derive the visit structure and the turn in progress
+ * from that ledger. The boundaries are never stored on a dart: a
+ * correction changes them, so a stored boundary would go stale. They are
+ * re-derived whenever the match state is derived.
  */
 
 /**
@@ -45,6 +45,65 @@ export function deriveVisitIndexes(
   });
 
   return indexes;
+}
+
+/**
+ * Derives the darts of the turn in progress: the darts the player whose
+ * turn it is has thrown since that turn started.
+ *
+ * The turn is not the visit. The visit is the group of darts the match
+ * views show as one chip row, and it ends when a dart busts. The turn is
+ * the group of darts of one player, and it ends when the player changes.
+ *
+ * Like the visit boundaries, the turn boundary is never stored: a
+ * correction changes it, so a stored boundary would go stale. It is
+ * derived from the ledger and the current player instead.
+ *
+ * A bust belongs to the turn — the player threw it — but it consumes no
+ * dart slot: the turn goes on, and the bust fills none of the
+ * `dartsPerTurn` places. The result is therefore the longest run of darts
+ * at the end of the ledger that belongs to the current player and holds
+ * at most `dartsPerTurn` counted darts; a bust inside that run is part
+ * of it.
+ *
+ * @param throws the ledger, oldest first
+ * @param currentPlayerId the player whose turn it is, or null when the
+ *   match is over
+ * @param dartsPerTurn the darts a turn holds
+ * @returns the darts of the turn, oldest first
+ */
+export function deriveTurnThrows(
+  throws: readonly RecordedThrow[],
+  currentPlayerId: string | null,
+  dartsPerTurn: number,
+): RecordedThrow[] {
+  if (currentPlayerId === null) {
+    return [];
+  }
+
+  const turn: RecordedThrow[] = [];
+  let countedDarts = 0;
+
+  for (let position = throws.length - 1; position >= 0; position -= 1) {
+    const dart = throws[position]!;
+    if (dart.playerId !== currentPlayerId) {
+      // The player changed: the turn ended there.
+      break;
+    }
+    if (!dart.bust) {
+      if (countedDarts >= dartsPerTurn) {
+        // The turn already holds its darts; everything older belongs to
+        // an earlier turn of the same player.
+        break;
+      }
+      countedDarts += 1;
+    }
+    // A bust is a dart of the turn, but it spends no dart slot, so the
+    // walk continues past it.
+    turn.push(dart);
+  }
+
+  return turn.reverse();
 }
 
 /**

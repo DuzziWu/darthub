@@ -171,9 +171,48 @@ describe("useMatchHistory", () => {
     const { result } = renderHook(() => useMatchHistory({ engine: null, matchState: null }));
     expect(result.current.canUndo).toBe(false);
     expect(result.current.currentVisit).toHaveLength(0);
+    expect(result.current.currentTurn).toHaveLength(0);
     expect(result.current.submitThrow({ points: 20 })).toBeNull();
     expect(result.current.undo()).toBeNull();
     act(() => result.current.selectThrow(0));
     expect(result.current.correctionTarget).toBe(null);
+  });
+
+  it("empties the turn when the player changes, while the visit runs on", () => {
+    // The visit groups the ledger into one-ball rounds and does not end at
+    // three darts, so the last visit still holds the previous player's
+    // darts. The turn belongs to the player who is throwing.
+    const engine = new GameEngine(new NeutralScoreMode());
+    const { harness, run } = drive(engine, engine.startMatch({ playerIds: ["a", "b"] }));
+    run(() => harness.result.current.submitThrow({ points: 20 }));
+    run(() => harness.result.current.submitThrow({ points: 20 }));
+    run(() => harness.result.current.submitThrow({ points: 20 })); // a's turn is done
+
+    expect(harness.result.current.currentVisit).toHaveLength(3);
+    expect(harness.result.current.currentTurn).toHaveLength(0);
+    expect(harness.result.current.currentTurnOffset).toBe(3);
+
+    // The next player throws: the turn holds their dart, and the offset
+    // still maps the chip onto its index in the ledger.
+    run(() => harness.result.current.submitThrow({ points: 40 }));
+    expect(harness.result.current.currentTurn).toHaveLength(1);
+    expect(harness.result.current.currentTurn[0]?.points).toBe(40);
+    expect(harness.result.current.currentTurnOffset).toBe(3);
+  });
+
+  it("keeps the bust in the turn of the player who threw it", () => {
+    const engine = new GameEngine(new StandardMode({ startScore: 50 }));
+    const { harness, run } = drive(
+      engine,
+      engine.startMatch({ playerIds: ["a"], outRule: "straight" }),
+    );
+    run(() => harness.result.current.submitThrow({ points: 40 })); // 10 left
+    const { error } = run(() => harness.result.current.submitThrow({ points: 20 })); // bust
+    expect(error).toBeInstanceOf(GameEngineStateError);
+
+    // The bust was thrown by this player, so it belongs to their turn — but
+    // it consumed no dart slot.
+    expect(harness.result.current.currentTurn).toHaveLength(2);
+    expect(harness.result.current.currentTurn[1]?.bust).toBe(true);
   });
 });

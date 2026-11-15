@@ -94,6 +94,8 @@ class GameEngine {
   startMatch(config: MatchConfig): MatchState;
   recordThrow(input: ThrowInput): MatchState;
   getState(): MatchState;
+  getVisits(): readonly MatchVisit[];
+  getCurrentTurn(): readonly RecordedThrow[];
 }
 
 /** Darts available to each player per turn (always 3). */
@@ -120,6 +122,48 @@ export const DARTS_PER_TURN = 3;
 - **`getState(): MatchState`** — returns a fresh `structuredClone` of the
   current snapshot. Mutating the returned object never affects engine
   internals. Throws `GameEngineStateError` if called before `startMatch`.
+- **`getVisits(): readonly MatchVisit[]`** — groups the ledger into visits:
+  the dart groups the match views show as one chip row. A visit ends when
+  the turn advances and when a dart busts.
+- **`getCurrentTurn(): readonly RecordedThrow[]`** — returns the darts of the
+  turn in progress: the darts the player whose turn it is has thrown since
+  that turn started. A bust belongs to the turn — the player threw it — but
+  it consumes no dart slot, so the turn goes on and the bust fills none of
+  the three places. The boundary is derived from the ledger, never stored,
+  so a correction cannot leave it stale.
+
+### Ledger helpers
+
+```ts
+import { deriveTurnThrows, deriveVisitIndexes, groupVisits } from "@/game-engine";
+import type { RecordedThrow } from "@/game-engine";
+
+function deriveTurnThrows(
+  throws: readonly RecordedThrow[],
+  currentPlayerId: string | null,
+  dartsPerTurn: number,
+): RecordedThrow[];
+
+function deriveVisitIndexes(throws: readonly RecordedThrow[], dartsPerTurn: number): number[];
+
+function groupVisits(throws: readonly RecordedThrow[], dartsPerTurn: number): MatchVisit[];
+```
+
+- **`deriveTurnThrows(throws: readonly RecordedThrow[], currentPlayerId: string | null, dartsPerTurn: number): RecordedThrow[]`**
+  — derives the darts of the turn in progress from the ledger. The walk runs
+  backwards from the end of the ledger and collects the darts of
+  `currentPlayerId`; a dart of another player ends the turn. A bust is a dart
+  of the turn but spends no dart slot, so the walk continues past it and the
+  result holds at most `dartsPerTurn` counted darts. `currentPlayerId: null`
+  — the match is over — yields an empty array.
+- **`deriveVisitIndexes(throws: readonly RecordedThrow[], dartsPerTurn: number): number[]`**
+  — returns the visit index of every dart of the ledger, oldest first.
+- **`groupVisits(throws: readonly RecordedThrow[], dartsPerTurn: number): MatchVisit[]`**
+  — groups the ledger into visits, oldest first.
+
+Neither the visit boundaries nor the turn boundary are stored on a dart: a
+correction changes them, so a stored boundary would go stale. They are
+re-derived from the ledger whenever they are asked for.
 
 ### Mode and shared types
 
@@ -139,8 +183,8 @@ rule set out of the box; all real modes plug in via the `DartGameMode` seam.
 Additional exported value: `DARTS_PER_TURN = 3`.
 
 Exported types: `DartGameMode`, `MatchConfig`, `MatchState`, `MatchStatus`,
-`MutableMatchState`, `MutablePlayerState`, `PlayerState`, `ThrowInput`,
-`ThrowRecord`.
+`MatchVisit`, `MutableMatchState`, `MutablePlayerState`, `PlayerState`,
+`RecordedThrow`, `ThrowInput`, `ThrowRecord`.
 
 ## State snapshot shape
 

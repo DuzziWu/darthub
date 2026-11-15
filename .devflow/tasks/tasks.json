@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "nextId": 4,
+  "nextId": 5,
   "tasks": [
     {
       "id": "DF-0001",
@@ -820,6 +820,53 @@
       "resolution": "Root cause: two compounding faults. (1) The server on port 3000 bound to 127.0.0.1 only; the host-side Tailscale Serve proxy connects to the container at 172.18.0.2:3000, so the connection was refused and the proxy answered 502 while the app kept answering 200 on loopback. (2) playwright.config.ts ran its root-build E2E server on port 3000 too, and with reuseExistingServer the suite displaced the live preview and took the port, bound to loopback. Fix: live preview serves the prefix build on port 3000 with HOSTNAME=0.0.0.0 (setsid -f, PPID 1); playwright.config.ts moved its root server to port 3100; the 3111 prefixed server stays on loopback. Verified: 172.18.0.2:3000 -> 200, prefix-stripping proxy -> 200 for /darthub, /darthub/game and prefixed _next assets, banner 'Network: http://0.0.0.0:3000', Playwright 70 passed/7 skipped, Vitest 491 passed, eslint+prettier+tsc clean. The public URL itself cannot be checked from inside the container (no route to the tailnet address) and must be confirmed from the host.",
       "documentationFiles": ["AGENTS.md", "docs/DEPLOYMENT.md"],
       "orchestratorHandoff": ".devflow/memory/handoffs/DF-0003-2026-11-14T08-00-00-000Z-devflow-orchestrator-k1l2.md"
+    },
+    {
+      "id": "DF-0004",
+      "title": "Mobile Scoring-UX: Board/Manual trennen, Spieleruebersicht und Turn-Tracker fuer 390x844",
+      "size": "L",
+      "priority": "normal",
+      "status": "done",
+      "createdAt": "2026-11-15T06:14:55.974Z",
+      "updatedAt": "2026-11-15T06:14:55.974Z",
+      "dependencies": ["DF-0003"],
+      "acceptanceCriteria": [
+        "Bei 390x844 existiert genau eine Eingabeflaeche: im manuellen Modus das Pad, im Board-Modus das Board; das jeweils andere ist nicht im DOM",
+        "Die Spieleruebersicht steht oberhalb der Eingabeflaeche und ist ohne Scrollen sichtbar",
+        "Der aktive Spieler ist durch Form und Text erkennbar (2px Messing-Rail und 'AM ZUG'), nicht durch Farbe allein",
+        "Der Restpunktestand steht als feste Ziffernspalte (min-w-[3ch], tabular-nums) in der Uebersicht",
+        "Die Uebersicht ist modusspezifisch: x01 Restpunkte, Cricket Marks, ATC Ziel und Fortschritt, Shanghai Runde und Treffer",
+        "Bei 3 und 4 Spielern entsteht bei 390 px kein horizontaler Ueberlauf",
+        "Es gibt genau einen Undo im Screen, er heisst exakt 'Undo' und sitzt im Eingabebereich",
+        "Die Wurfuebersicht zeigt drei Slots und setzt nach dem Spielerwechsel auf die leere Aufnahme des neuen Spielers zurueck",
+        "Undo und Wurfkorrektur funktionieren unveraendert ueber die GameEngine in allen fuenf Modi",
+        "Der Miss-Key endet bei <= 779 px; das Board beginnt im Board-Modus im ersten Falz",
+        "Kein bestehender Test wird entfernt, deaktiviert oder geschwaecht",
+        "typecheck, lint, format:check, test und test:e2e sind gruen; keine neuen Design-Tokens",
+        "Der Wurfübersicht-Reset nach dem Spielerwechsel ist auch im Browser geprüft: nach drei Würfen wechselt der Spieler, die Übersicht ist leer, Undo stellt den vorherigen Zug samt Punktezahl wieder her"
+      ],
+      "handoffs": [],
+      "documentationStatus": "updated",
+      "notes": [
+        "Plan: .claude/plans/mobile-scoring-ux/_plan.md mit den Workpackages WP-1 bis WP-8, der Testvertragstabelle und den Risiken R1-R12.",
+        "GitHub: Issue #6 (Integration und Regressionstests) mit den Sub-Issues #11 (WP-1 Engine), #12 (WP-2 Scoreboard), #13 (WP-3 Wurfuebersicht/Undo), #14 (WP-4 MatchLayout), #15 (WP-5 Views), #16 (WP-6 Regressionstests).",
+        "WP-1 Engine: deriveTurnThrows in src/game-engine/throwLedger.ts, ueber GameEngine.getCurrentTurn() exportiert; die UI liest die Ableitung, sie fuehrt keine eigene Buchhaltung.",
+        "Der Turn ist nicht der Visit: deriveVisitIndexes beendet einen Visit nach drei Wuerfen nicht, er laeuft ueber den Spielerwechsel hinweg. Die Wurfuebersicht zeigte deshalb die Wuerfe des vorherigen Spielers, waehrend der naechste bereits am Zug war.",
+        "Messung bei 390x844 vorher -> nachher: MATCH_STRIP h=111 -> 59, Spieleruebersicht y=987 -> 123, Wurfuebersicht y=353, Pad-Oberkante 199 -> 406, Miss-Unterkante 575 -> 761, Board-Oberkante 591 -> 476 (im Board-Modus).",
+        "Band-Schalter wird genau einmal gerendert (idPrefix wechselt mit dem Modus), damit der Strict Mode von e2e/score-entry.spec.ts nicht auf zwei gleichnamige Radios trifft.",
+        "Kein magic Sticky-Offset: die Spieleruebersicht ist bewusst nicht sticky, weil ein zweites sticky Band den Falz zu einem Drittel fressen wuerde.",
+        "WP-8 Review: keine Critical- oder Major-Feststellung. Die Verträge halten bei 390×844 mit einem und mit vier Spielern (genau eine 'Current visit'-Liste, genau ein 'Undo', genau ein '3x Treble'-Radio, kein horizontaler Überlauf, Miss-Unterkante 629 px, Board-Oberkante 344 px, Übersicht ab y=123, data-score exklusiv im ScoreDisplay, Band-Schalter genau einmal). Drei Punkte wurden geprüft und sind korrekt: (a) im Board-Modus entfällt mit dem Pad auch der Miss-Key — das Board ist selbst die Miss-Fläche (Tastatur: resolveBoardHit ohne Treffer => 'MISS', gemessen); (b) die Korrektur im Board-Modus braucht kein Werte-Pad — das Board ersetzt den markierten Wurf (gemessen S3 => S1, Restpunkte 298 => 300); (c) Cricket hat absichtlich keinen data-remaining-Marker, weil es keine Punktespalte gibt, sondern geschlossene Targets ('0 / 7 closed')."
+      ],
+      "resources": {},
+      "resolution": "Umsetzung ueber WP-1 bis WP-5. Der Board-Modus hat das Pad aus dem DOM entfernt, der manuelle Modus laesst das Board als read-only Vorschau stehen (aria-hidden, 0 Buttons) - so bleibt der bestehende E2E-Vertrag 'Miss <= 779 px' und 'Board < 844 px' intakt. Die Wurfuebersicht ist eine Ableitung aus dem Ledger ueber deriveTurnThrows, damit sie nach einem Spielerwechsel korrekt zuruecksetzt und nach einer Korrektur nicht stale wird. Verifiziert: npm run typecheck, npm run lint, npm run format:check, npm run test (105 Dateien / 526 Tests), npm run build, npm run build:prefixed und npx playwright test (70 passed, 7 skipped) gruen. Zusaetzlich unabhaengig gemessen: alle fuenf Modi x 2 Eingabemodi bei 390x844 - genau eine 'Current visit'-Liste, genau ein 'Undo', genau ein '3x Treble'-Radio, kein horizontaler Ueberlauf, Miss-Unterkante 629 px, Board-Oberkante 344 px, Uebersicht ab y=123 sichtbar, Spielerwechsel setzt die Wurfuebersicht zurueck und Undo stellt den vorherigen Zug wieder her.",
+      "documentationFiles": [
+        "AGENTS.md",
+        "src/game-engine/README.md",
+        ".devflow/memory/CURRENT_STATE.md",
+        ".devflow/memory/ARCHITECTURE.md",
+        ".devflow/memory/PROJECT.md"
+      ],
+      "orchestratorHandoff": ".devflow/memory/handoffs/DF-0004-2026-11-15T09-40-00-000Z-devflow-orchestrator-openhands.md"
     }
   ]
 }
