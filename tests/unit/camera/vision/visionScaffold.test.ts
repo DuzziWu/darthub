@@ -77,15 +77,10 @@ describe("Camera CV module outline (task 045)", () => {
     await expect(detected).rejects.toBeInstanceOf(NotImplementedInCvPhaseError);
   });
 
-  it("includes type tests that the interfaces compile", { timeout: 180_000 }, () => {
+  it("includes type tests that the interfaces compile", () => {
     // Scoped tsc run over src/camera (incl. the vision outline) plus this
     // directory's `*.check.ts` contract probes — the same pattern as the
     // camera abstraction's compile test (task 044).
-    //
-    // The budget is the one the repository gives every other compiler run
-    // (tests/unit/typescript.test.ts): the scoped tsc needs ~18 s on an idle
-    // machine, so the default budget left almost no room for a machine that
-    // runs more than one suite at a time.
     const { exitCode, output } = runCommand(
       "npx tsc --noEmit --project tests/unit/camera/vision/tsconfig.json",
     );
