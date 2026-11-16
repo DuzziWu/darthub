@@ -186,7 +186,11 @@ describe("dockerignore", () => {
 
   it(
     "docker build respects the ignore file and image size stays below 200 MB",
-    { timeout: 600_000 },
+    // The live build needs ~9 minutes on a cold Docker layer cache (the
+    // `npm ci` inside the container downloads the whole dependency tree) and
+    // ~3 minutes once the cache is warm. The budget leaves room for the cold
+    // path plus a concurrent build on the same daemon.
+    { timeout: 900_000 },
     () => {
       // Structural level of verification (always executed): the simulated build
       // context, i.e. the repository tree filtered through `.dockerignore`, must
@@ -228,19 +232,28 @@ describe("dockerignore", () => {
         return;
       }
 
-      const build = runCommand("docker build -t darthub:dockerignore-test .");
-      expect(build.exitCode, `docker build exited with ${build.exitCode}:\n${build.output}`).toBe(
-        0,
-      );
+      // The tag is unique per test process: two checkouts of this repository
+      // (a worktree beside the main one, a CI job beside a local run) build
+      // with the same daemon at the same time, and a shared tag makes them
+      // delete each other's image — the second `docker image inspect` then
+      // fails on an image the other run has already removed.
+      const tag = `darthub:dockerignore-test-${process.pid}`;
+      try {
+        const build = runCommand(`docker build -t ${tag} .`);
+        expect(build.exitCode, `docker build exited with ${build.exitCode}:\n${build.output}`).toBe(
+          0,
+        );
 
-      const size = runCommand("docker image inspect -f {{.Size}} darthub:dockerignore-test");
-      expect(size.exitCode, `image inspection failed:\n${size.output}`).toBe(0);
-      const sizeBytes = Number.parseInt(size.output.trim(), 10);
-      expect(Number.isNaN(sizeBytes), `unexpected image size '${size.output}'`).toBe(false);
-      expect(sizeBytes, `image size ${sizeBytes} bytes must stay below 200 MB`).toBeLessThan(
-        200 * 1024 * 1024,
-      );
-      runCommand("docker rmi darthub:dockerignore-test");
+        const size = runCommand(`docker image inspect -f {{.Size}} ${tag}`);
+        expect(size.exitCode, `image inspection failed:\n${size.output}`).toBe(0);
+        const sizeBytes = Number.parseInt(size.output.trim(), 10);
+        expect(Number.isNaN(sizeBytes), `unexpected image size '${size.output}'`).toBe(false);
+        expect(sizeBytes, `image size ${sizeBytes} bytes must stay below 200 MB`).toBeLessThan(
+          200 * 1024 * 1024,
+        );
+      } finally {
+        runCommand(`docker rmi ${tag}`);
+      }
     },
   );
 });
