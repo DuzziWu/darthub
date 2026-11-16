@@ -107,18 +107,19 @@ export function playerErrorText(error: unknown): string;
 
 ## Task table
 
-| #   | Work package                                  | Owner                                          | Files                                                                                                                                                                                                                                                        | Status | Verification                                                                                                                                                                                                                                                                                                                                                                                |
-| --- | --------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A   | Stable error codes in the engine              | `game-engine`                                  | `src/game-engine/types.ts`, `src/game-engine/GameEngine.ts`, `src/game-engine/index.ts`, `src/game-engine/README.md`, `tests/unit/game-engine/errorCodes.test.ts`                                                                                            | done   | `npx vitest run tests/unit/game-engine` → **16 files / 131 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                                           |
-| B   | Code → player text, wired into the four views | `frontend`                                     | `src/components/game/playerErrors.ts`, `src/components/x01/X01MatchView.tsx`, `app/game/cricket/page.tsx`, `app/game/around-the-clock/page.tsx`, `app/game/shanghai/page.tsx`, `tests/unit/game/playerErrors.test.ts`                                        | done   | `npx vitest run tests/unit/game-engine tests/unit/game` → **34 files / 274 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                           |
-| C   | Independent review                            | `code-reviewer` + cezar review task `b0d5f727` | read-only                                                                                                                                                                                                                                                    | done   | verdict **REQUEST_CHANGES** — 1 HIGH, 2 MEDIUM, 3 LOW, 3 NIT; findings and dispositions in `003-review.md`                                                                                                                                                                                                                                                                                  |
-| A2  | Engine follow-up: README guard + test quality | `game-engine`                                  | `src/game-engine/README.md`, `tests/unit/game-engine/docs/publicApi.test.ts`, `tests/unit/game-engine/errorCodes.test.ts`                                                                                                                                    | done   | `npx vitest run tests/unit/game-engine` → **16 files / 132 tests passed**                                                                                                                                                                                                                                                                                                                   |
-| B2  | Frontend follow-up: truthful text + wiring    | `frontend`                                     | `src/components/game/playerErrors.ts`, `src/components/game/useMatchHistory.ts`, `src/components/x01/X01MatchView.tsx`, `tests/unit/game/playerErrors.test.ts`, `tests/unit/game/x01CorrectionRefusal.test.tsx`, `tests/unit/game/playerErrorWiring.test.ts` | done   | `npx vitest run tests/unit/game-engine tests/unit/game` → **36 files / 281 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                           |
-| C2  | Design-system documentation                   | `architect`                                    | `design-system/darthub/pages/match.md`, `design-system/darthub/MASTER.md`                                                                                                                                                                                    | done   | `npm run format:check` exit 0                                                                                                                                                                                                                                                                                                                                                               |
-| A3  | Engine: the JSDoc list inside the guard       | `game-engine`                                  | `tests/unit/game-engine/docs/publicApi.test.ts`                                                                                                                                                                                                              | done   | `npx vitest run tests/unit/game-engine` → **16 files / 133 tests passed**; the guard fails on a stale JSDoc (failing-then-passing proven)                                                                                                                                                                                                                                                   |
-| B3  | Frontend: the bust announcement guarded       | `frontend`                                     | `src/components/game/playerErrors.ts`, `tests/unit/game/playerErrors.test.ts`, `tests/unit/game/x01MatchView.test.tsx`                                                                                                                                       | done   | `npx vitest run tests/unit/game-engine tests/unit/game` → **36 files / 284 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                           |
-| C3  | Design system: rule 6 + `board.md` realigned  | `architect`                                    | `design-system/darthub/pages/match.md`, `design-system/darthub/MASTER.md`, `design-system/darthub/board.md`                                                                                                                                                  | done   | `npm run format:check` exit 0; the probe figures re-run against the engine (61 values, 0 accepted)                                                                                                                                                                                                                                                                                          |
-| D   | Full verification                             | `orchestrator`                                 | —                                                                                                                                                                                                                                                            | done   | `npm run typecheck` exit 0 · `npm run lint` exit 0 · `npm run format:check` exit 0 · `npx vitest run tests/unit/game-engine tests/unit/game` **36 files / 284 tests passed** · full `npx vitest run` on `81e2573`: 112 files passed / 1 failed (`tests/unit/typescript.test.ts` — the nested `npm run typecheck` hit its 180 s budget under CPU contention; the file passes alone in 153 s) |
+| #   | Work package                                     | Owner                                          | Files                                                                                                                                                                                                                                                        | Status | Verification                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | ------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A   | Stable error codes in the engine                 | `game-engine`                                  | `src/game-engine/types.ts`, `src/game-engine/GameEngine.ts`, `src/game-engine/index.ts`, `src/game-engine/README.md`, `tests/unit/game-engine/errorCodes.test.ts`                                                                                            | done   | `npx vitest run tests/unit/game-engine` → **16 files / 131 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                                           |
+| B   | Code → player text, wired into the four views    | `frontend`                                     | `src/components/game/playerErrors.ts`, `src/components/x01/X01MatchView.tsx`, `app/game/cricket/page.tsx`, `app/game/around-the-clock/page.tsx`, `app/game/shanghai/page.tsx`, `tests/unit/game/playerErrors.test.ts`                                        | done   | `npx vitest run tests/unit/game-engine tests/unit/game` → **34 files / 274 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                           |
+| C   | Independent review                               | `code-reviewer` + cezar review task `b0d5f727` | read-only                                                                                                                                                                                                                                                    | done   | verdict **REQUEST_CHANGES** — 1 HIGH, 2 MEDIUM, 3 LOW, 3 NIT; findings and dispositions in `003-review.md`                                                                                                                                                                                                                                                                                  |
+| A2  | Engine follow-up: README guard + test quality    | `game-engine`                                  | `src/game-engine/README.md`, `tests/unit/game-engine/docs/publicApi.test.ts`, `tests/unit/game-engine/errorCodes.test.ts`                                                                                                                                    | done   | `npx vitest run tests/unit/game-engine` → **16 files / 132 tests passed**                                                                                                                                                                                                                                                                                                                   |
+| B2  | Frontend follow-up: truthful text + wiring       | `frontend`                                     | `src/components/game/playerErrors.ts`, `src/components/game/useMatchHistory.ts`, `src/components/x01/X01MatchView.tsx`, `tests/unit/game/playerErrors.test.ts`, `tests/unit/game/x01CorrectionRefusal.test.tsx`, `tests/unit/game/playerErrorWiring.test.ts` | done   | `npx vitest run tests/unit/game-engine tests/unit/game` → **36 files / 281 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                           |
+| C2  | Design-system documentation                      | `architect`                                    | `design-system/darthub/pages/match.md`, `design-system/darthub/MASTER.md`                                                                                                                                                                                    | done   | `npm run format:check` exit 0                                                                                                                                                                                                                                                                                                                                                               |
+| A3  | Engine: the JSDoc list inside the guard          | `game-engine`                                  | `tests/unit/game-engine/docs/publicApi.test.ts`                                                                                                                                                                                                              | done   | `npx vitest run tests/unit/game-engine` → **16 files / 133 tests passed**; the guard fails on a stale JSDoc (failing-then-passing proven)                                                                                                                                                                                                                                                   |
+| B3  | Frontend: the bust announcement guarded          | `frontend`                                     | `src/components/game/playerErrors.ts`, `tests/unit/game/playerErrors.test.ts`, `tests/unit/game/x01MatchView.test.tsx`                                                                                                                                       | done   | `npx vitest run tests/unit/game-engine tests/unit/game` → **36 files / 284 tests passed** (orchestrator-verified)                                                                                                                                                                                                                                                                           |
+| C3  | Design system: rule 6 + `board.md` realigned     | `architect`                                    | `design-system/darthub/pages/match.md`, `design-system/darthub/MASTER.md`, `design-system/darthub/board.md`                                                                                                                                                  | done   | `npm run format:check` exit 0; the probe figures re-run against the engine (61 values, 0 accepted)                                                                                                                                                                                                                                                                                          |
+| D   | Full verification                                | `orchestrator`                                 | —                                                                                                                                                                                                                                                            | done   | `npm run typecheck` exit 0 · `npm run lint` exit 0 · `npm run format:check` exit 0 · `npx vitest run tests/unit/game-engine tests/unit/game` **36 files / 284 tests passed** · full `npx vitest run` on `81e2573`: 112 files passed / 1 failed (`tests/unit/typescript.test.ts` — the nested `npm run typecheck` hit its 180 s budget under CPU contention; the file passes alone in 153 s) |
+| E   | Handover of the open points to the `qa-engineer` | `orchestrator`                                 | `.opencode/plans/correction-refusal-player-text/_plan.md` (section "Handover to the `qa-engineer`")                                                                                                                                                          | done   | five open points (H-1 full suite on the end commit · H-2 Playwright e2e · H-3 German texts in an English UI · H-4 status line at 390 px · H-5 missing e2e spec), each with the command, the preconditions and the acceptance criterion                                                                                                                                                      |
 
 A and B touch disjoint file sets, but B imports the code type of A — so they run in
 sequence: A first, then B. The follow-up round A2/B2/C2 answers the review findings and
@@ -170,3 +171,109 @@ tests/unit/game-engine tests/unit/game` → **36 files / 284 tests passed**. The
   (`173432b4`); the cezar review child of this task (`b0d5f727`) was cancelled by the cockpit
   without a report. The independent review coverage of this branch is the two `code-reviewer`
   rounds (REQUEST_CHANGES → APPROVE).
+
+---
+
+## Handover to the `qa-engineer` — the open points of the closing report
+
+The scope of this task was the **player text only**. The five points below are the
+verification and documentation work that was deliberately **not** executed here; they are the
+handover to the `qa-engineer`, who owns `tests/`, `e2e/`, `vitest.config.ts`,
+`playwright.config.ts` and `docs/TESTING.md`.
+
+The branch under handover is `cez/566b4df8`. The code state is the end commit `0fd93d0`
+("docs(plan): Abschlussstand der Korrektur-Verweigerung"); the commit that carries this
+section sits on top of it and changes documentation only.
+
+### H-1 — The full suite on the end commit
+
+**Open.** The last complete full-suite run is the one on `81e2573`: **112 files passed, 1
+failed** — `tests/unit/typescript.test.ts`, whose **nested** `npm run typecheck` hit its
+180 s budget under CPU contention (the file passes alone in 153 s). The runs on `60ebdb3`
+and on the end commit were stopped on instruction.
+
+**Command**
+
+```bash
+npx vitest run
+```
+
+**Preconditions.** Run it in a **quiet tree**: the nested typecheck of
+`tests/unit/typescript.test.ts` has a 180 s budget, and two concurrent runs on a two-core
+host are enough to push it over. `tests/unit/tailwind/tailwindToolchain.test.ts` needs a
+production build (`npm run build`) in `.next/`; it skips without one.
+
+**Acceptance.** A full-suite run on the end commit with a green result, or a documented
+explanation for every red file. Record the numbers in `docs/TESTING.md`.
+
+### H-2 — The Playwright end-to-end suite
+
+**Open.** `npm run test:e2e` was never run in this task.
+
+**Command**
+
+```bash
+npx playwright install chromium   # once, before the first run
+npm run test:e2e
+```
+
+**Notes.** The suite builds the production bundle itself and serves the standalone server on
+`127.0.0.1` (ports 3100 / 3111) — never on port 3000, that one belongs to the live
+preview. Seven specs are `test.skip` placeholders (career, login, matchmaking) by design.
+Watch the fixed tab bar (64 px, `z-40`): a block whose **centre** lands in the bottom 64 px
+of the phone viewport is not reachable with a viewport-coordinate click.
+
+**Acceptance.** A green Playwright run on the end commit, or a documented list of the
+failures with their cause.
+
+### H-3 — The German refusal texts in an English player UI
+
+**Open.** `app/layout.tsx:49` declares `<html lang="en">`, and the whole player UI is
+English ("Start match", "Dart pad"). The refusal texts are German only — they are the only
+German in the running application. The order of this task demanded the German player text,
+so the inconsistency is deliberate and recorded (`003-review.md`, MEDIUM, "Accepted as a
+deliberate decision"), but it is unresolved.
+
+**What the qa-engineer can do.** Document the mismatch in `docs/TESTING.md`, name the
+affected screens (501, 301, cricket, around the clock, shanghai — five screens built from
+four view components) and record the decision that is still open: keep German only and set
+`lang="de"` on the status line, add an English text table, or introduce a locale layer.
+There is **no i18n layer** in the repository today — `grep -rn "i18n\|locale" src app` finds
+only the `lang="en"` attribute.
+
+**Acceptance.** A written decision (owner: product/architect), documented in
+`docs/TESTING.md`. The German texts themselves are not to be translated in this task.
+
+### H-4 — The status line at 390 px
+
+**Open.** The refusal appears in the match status line
+(`src/components/game/MatchStatus.tsx`: `role="status" aria-live="polite"`,
+`font-caption text-caption text-ink-muted`). The longest text is „Diese Änderung würde einen
+späteren Wurf ungültig machen. Bitte einen anderen Wert eingeben." (95 characters) — at
+390 px that is a multi-line caption under the score. The change was checked by hand in the
+browser (no clipping, no scrollbar, no console errors) at 1440 px, 1024 px and 390 px, but
+there is **no automated check** for it.
+
+**What the qa-engineer can do.** A viewport check at 390 px that drives a refused
+correction and asserts that the status line is fully visible, does not overlap the fixed
+tab bar (64 px, `z-40`) and does not push the scoreboard out of the viewport. The longest of
+the ten texts is the worst case.
+
+**Acceptance.** A check that fails when the status line is clipped or covered.
+
+### H-5 — The missing e2e spec for the refusal
+
+**Open.** The refusal is covered by unit tests only:
+`tests/unit/game/x01CorrectionRefusal.test.tsx` (the behaviour of the x01 view),
+`tests/unit/game/playerErrors.test.ts` (the code → text table) and
+`tests/unit/game/playerErrorWiring.test.ts` (a static guard over the four view files).
+**There is no Playwright spec**, and the three mode pages — cricket, around the clock,
+shanghai — have **no behavioural test at all** of the refusal: only the static wiring guard
+covers them.
+
+**What the qa-engineer can do.** A spec that starts a match, busts, arms the bust as the
+correction target, corrects it and asserts that the German text appears, that the English
+engine message does **not** appear and that no bust is announced. One run over the four view
+components is enough — the mapping is shared.
+
+**Acceptance.** A red-first spec that fails when a view goes back to `error.message`.
