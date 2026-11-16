@@ -202,10 +202,14 @@ the integration head `9343787`).
 ```
 $ npm test
  Test Files  109 passed (109)
-      Tests  601 passed | 1 skipped (602)
-   Duration  351.03s (transform 6.16s, setup 8.26s, import 14.51s, tests 253.27s, environment 36.15s)
-FINAL2_EXIT=0
+      Tests  606 passed | 1 skipped (607)
+   Duration  386.48s (transform 6.89s, setup 9.64s, import 17.06s, tests 270.13s, environment 36.93s)
+FINAL4_EXIT=0
 ```
+
+This is the run on the **final** tree (the leak fix and every review fix included). An earlier run
+of the same tree measured 351.03 s / 601 passed — the difference is the added test cases, not a
+different behaviour.
 
 The single skipped test is the opt-in live build. Its reason is printed to stdout and carried in the
 test title — a skip nobody sees is a check nobody runs:
