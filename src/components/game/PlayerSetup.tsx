@@ -5,7 +5,7 @@ import { Target, TriangleAlert } from "lucide-react";
 import type { BoardSourceId } from "@/board";
 import type { OutRuleId } from "@/game-engine/types";
 import { BoardSourceSelector } from "./BoardSourceSelector";
-import type { PlayerSetupProps } from "./types";
+import type { MatchFormatChoice, PlayerSetupProps } from "./types";
 import { DISABLED, FOCUS_RING, RADIO_CELL, RADIO_INPUT, RADIO_MARK, TARGET_SIZE } from "./classes";
 
 /**
@@ -32,12 +32,16 @@ export function PlayerSetup({
   showCheckoutRule = true,
   boardSource,
   onBoardSourceChange,
+  matchFormat,
   onStart,
 }: PlayerSetupProps) {
   const [names, setNames] = useState<string[]>(Array(maxPlayers).fill(""));
   const [error, setError] = useState("");
   const [localRule, setLocalRule] = useState<OutRuleId>("double");
   const [localSource, setLocalSource] = useState<BoardSourceId>("virtual");
+  // The format is a choice, so it starts on the first one: the form never
+  // starts with nothing selected.
+  const [format, setFormat] = useState<MatchFormatChoice | null>(matchFormat?.[0] ?? null);
 
   const rule = outRule ?? localRule;
   const source = boardSource ?? localSource;
@@ -59,7 +63,14 @@ export function PlayerSetup({
       return;
     }
     setError("");
-    onStart(filled, { outRule: rule, boardSource: source });
+    onStart(filled, {
+      outRule: rule,
+      boardSource: source,
+      // The sizes are reported only when the format has them: a single-leg
+      // match reports neither legs nor sets.
+      ...(format?.legs === undefined ? {} : { legs: format.legs }),
+      ...(format?.sets === undefined ? {} : { sets: format.sets }),
+    });
   }
 
   function handleKeyDown(event: React.KeyboardEvent, index: number) {
@@ -121,6 +132,37 @@ export function PlayerSetup({
           </div>
         ))}
       </div>
+
+      {/* The match format. Only the modes with a leg/set structure offer a
+          choice; the others have no such choice to make. */}
+      {matchFormat && matchFormat.length > 1 && (
+        <div role="radiogroup" aria-labelledby="match-format-label">
+          <p
+            id="match-format-label"
+            className="mb-sm font-caption text-caption uppercase tracking-[0.04em] text-ink-faint"
+          >
+            Match format
+          </p>
+          <div className="space-y-sm">
+            {matchFormat.map((choice) => (
+              <label key={choice.id} className="flex items-center gap-md">
+                <span className={RADIO_CELL}>
+                  <input
+                    type="radio"
+                    name="match-format"
+                    value={choice.id}
+                    checked={format?.id === choice.id}
+                    onChange={() => setFormat(choice)}
+                    className={`${RADIO_INPUT} ${DISABLED}`}
+                  />
+                  <span aria-hidden="true" className={RADIO_MARK} />
+                </span>
+                <span className="block font-label text-label text-ink">{choice.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* The checkout rule. The modes without a checkout are not offered one. */}
       {showCheckoutRule && (
