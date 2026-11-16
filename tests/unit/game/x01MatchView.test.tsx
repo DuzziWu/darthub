@@ -172,6 +172,54 @@ describe("the x01 match view", () => {
     expect(header().getByText("Virtual Board")).toBeTruthy();
   });
 
+  it("passes the chosen match format to the engine configuration", () => {
+    const startMatchSpy = vi.spyOn(GameEngine.prototype, "startMatch");
+
+    render(<X01MatchView startScore={501} modeName="501" />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    expect(startMatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ playerIds: ["player1"], legs: 3 }),
+    );
+  });
+
+  it("names the leg in play in the score sheet's header", () => {
+    render(<X01MatchView startScore={501} modeName="501" />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    // The readout stands in the sheet's header, and it stands there once.
+    expect(sheet().getByText("Leg 1/3")).toBeTruthy();
+    expect(screen.getAllByText("Leg 1/3")).toHaveLength(1);
+  });
+
+  it("says nothing about legs in a single-leg match", () => {
+    startMatch(501);
+
+    // A single leg has no leg structure: the header says nothing rather
+    // than "1/1".
+    expect(sheet().queryByText(/^Leg /)).toBeNull();
+  });
+
+  it("advances the leg readout when a leg is won", () => {
+    render(<X01MatchView startScore={40} modeName="501" />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    expect(sheet().getByText("Leg 1/3")).toBeTruthy();
+
+    // A double 20 finishes the first leg; the match goes on with the next.
+    armBand("Double");
+    fireEvent.click(pad().getByRole("button", { name: "Double 20, 40 points" }));
+
+    // The leg in play is now the second of three.
+    expect(sheet().getByText("Leg 2/3")).toBeTruthy();
+  });
+
   it("renders inside the shell's main landmark", async () => {
     const { default: RootLayout } = await import("../../../app/layout");
 

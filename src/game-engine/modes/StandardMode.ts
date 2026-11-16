@@ -90,6 +90,17 @@ export class StandardMode implements DartGameMode {
     for (const player of draft.players) {
       player.totalPoints = this.startScore;
     }
+    // The leg/set structure is seeded with the match: the slice is what
+    // tells the view that the match has legs at all, and the won-counts
+    // only appear once the first leg is finished. Without the seed the
+    // header cannot say "Leg 1/3" until the first leg is over.
+    const manager = this.activeLegSetManager;
+    if (manager !== null) {
+      draft.modeData = {
+        ...draft.modeData,
+        [LEG_SET_MODE_DATA_KEY]: manager.initialProgress(),
+      };
+    }
   }
 
   applyThrow(draft: MutableMatchState, throwRecord: ThrowRecord): void {
