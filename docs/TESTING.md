@@ -69,6 +69,27 @@ npm run format          prettier write
 
 E2E tests run with their own Playwright command against a locally started app instance.
 
+### The whole-repository gate commands
+
+`npm run lint`, `npm run format:check` and `npm run typecheck` are the slowest
+commands of the suite, and they are needed twice: once in their own gate test
+and once more in the CI workflow replay. Each of them runs **once per suite
+run** — the gate tests and the CI replay share the execution, not only the
+verdict. Every consumer still asserts the real exit code and the real output
+of the command, so a red gate stays red in both places.
+
+The sharing works across the Vitest workers, because every test file runs in
+its own process: the result lives in a temporary directory that the suite's
+global setup creates for that invocation, and an exclusive lock file decides
+which worker executes the command. The directory is removed when the run ends
+and never touches the repository.
+
+The gate commands are the reason the compiler-runner tests declare a **900 s**
+budget: the machine is shared, the commands need minutes under contention, and
+a consumer may wait for another worker's execution before it falls back to
+running the command itself. Their execution is bounded as well, so a stuck
+command is reported as a failure instead of hanging the suite.
+
 ### The Docker image build
 
 `tests/unit/dockerignore.test.ts` has two levels. The **structural** checks —

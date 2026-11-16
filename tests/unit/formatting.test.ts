@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { runCommand } from "../support/run-command";
+import { runGateCommand } from "../support/gate-commands";
 
 describe("formatting", () => {
-  it("formats code without differences using prettier", { timeout: 180_000 }, () => {
-    const { exitCode, output } = runCommand("npm run format:check");
+  it("formats code without differences using prettier", { timeout: 900_000 }, async () => {
+    const { exitCode, output } = await runGateCommand("npm run format:check");
 
     expect(exitCode, `prettier --check exited with ${exitCode}:\n${output}`).toBe(0);
     expect(output).not.toMatch(/\[warn\]/);
