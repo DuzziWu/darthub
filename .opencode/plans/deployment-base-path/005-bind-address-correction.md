@@ -219,9 +219,10 @@ kontendiert).
 
 ### Offene Punkte
 
-- **`playwright.config.ts:40-45`** widerspricht der korrigierten Regel noch. Die Datei
-  steht in R5 auf der Verbotsliste und war nicht Teil des Owner-Auftrags, deshalb
-  wurde sie **nicht** angefasst. Vorschlag (nur Kommentar, kein Verhaltenswechsel):
+- **`playwright.config.ts:40-45`** widersprach der korrigierten Regel. Die Datei stand
+  in R5 auf der Verbotsliste und war nicht Teil des Owner-Auftrags, deshalb wurde sie
+  im ursprünglichen Task **nicht** angefasst. Vorschlag (nur Kommentar, kein
+  Verhaltenswechsel):
 
   ```diff
   -  // The root server listens on 3100, not on 3000. Port 3000 belongs to the
@@ -238,6 +239,19 @@ kontendiert).
   +  // silently displace the live preview and the published site would serve a
   +  // build without the path prefix.
   ```
+
+  **Erledigt am 2026-11-16** (Folgetask `ce0c2228`, Branch `cez/ce0c2228`): Der
+  Kommentarblock ist korrigiert und dabei gegenüber dem Vorschlag oben erweitert —
+  er nennt jetzt die **Containervariante** (`0.0.0.0`, Bridge `172.18.0.2:3000`)
+  ausdrücklich und belegt die Host-Aussage wörtlich mit der Bind-Adressen-Tabelle
+  aus `AGENTS.md` („Live preview (port 3000) | `127.0.0.1`"). Der Diff betrifft
+  ausschließlich Kommentarzeilen — `playwright.config.ts | 16 ++++++++++++----`
+  (12 insertions, 4 deletions); `webServer`, `command`, `url`,
+  `reuseExistingServer`, `timeout`, `project`, `use` und die Ports 3100/3111 sind
+  unverändert (code-only-Vergleich byte-identisch). Gates: `npm run lint` → exit 0,
+  `npx prettier --check playwright.config.ts` → „All matched files use Prettier code
+  style!", `npm run typecheck` → exit 0. Kein Playwright-Lauf (kein
+  Verhaltenswechsel).
 
 - Die **Container-Variante** bleibt im Runbook als dokumentierte Alternative — sie ist
   nicht verifiziert worden, weil das die einzige Topologie ist, die der Owner nicht
