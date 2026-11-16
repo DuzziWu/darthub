@@ -69,9 +69,27 @@ npm run format          prettier write
 
 E2E tests run with their own Playwright command against a locally started app instance.
 
+### The Docker image build
+
+`tests/unit/dockerignore.test.ts` has two levels. The **structural** checks —
+the `.dockerignore` file list and the filtered build context — run in every
+suite run and need neither the `docker` CLI nor a daemon. The **live** build,
+which builds the real image and enforces the 200 MB size limit, is opt-in:
+
+```text
+DART_DOCKER_BUILD=1 npm test -- tests/unit/dockerignore.test.ts
+```
+
+Without the flag the live block is skipped, the reason is printed to stdout
+(`[dockerignore] DART_DOCKER_BUILD is not set: …`) and the test title names
+the flag; the default suite run never touches the Docker daemon — it does not
+even run `docker info`. With the flag set the build needs a reachable daemon,
+and a **missing daemon is a hard failure**, not a skip.
+
 ## Continuous Integration
 
 - CI installs dependencies, lints, typechecks, then runs the Vitest suite in parallel.
+- The live Docker image build runs in its own step (`Test (Docker image)`) with `DART_DOCKER_BUILD=1`, so the 200 MB image-size limit stays verified on every push. `tests/unit/ci-workflow.test.ts` guards that step: the plain unit-suite step must not set the flag, and the meta test must not replay the docker step locally.
 - Playwright runs on demand and before release cuts; a failed E2E journey blocks the release milestone it guards.
 - Tasks must be verifiable: a task may not be marked complete without validated test results.
 

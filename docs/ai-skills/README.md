@@ -121,17 +121,17 @@ generically.
 
 #### Tier 2 — install selectively
 
-| Skill                        | Benefit for DartHub                                                                                                                                             | Risk / caveat                                                                                                                                                                                                                                                            |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`skill-creator`**          | Required to author the six `darthub-*` skills correctly.                                                                                                        | None. Reference material only.                                                                                                                                                                                                                                           |
-| **`add-skill`**              | Imports an upstream skill into `.agents/skills/`. The mechanism to vendor the Tier-1 set into the repo.                                                         | Low, but **it fetches and writes code from a remote URL** — review the source repo before pointing it at anything.                                                                                                                                                       |
-| **`agent-memory`**           | Maintains `AGENTS.md`. The repo's `AGENTS.md` is currently hand-maintained and contains non-obvious environment facts (npm 12, Prisma generate, Docker daemon). | Low. Must not clobber the auto-generated `nextjs-agent-rules` block.                                                                                                                                                                                                     |
-| **`code-simplifier`**        | The codebase is clean already; useful as a periodic simplification pass.                                                                                        | Low. Risk of churn on working code.                                                                                                                                                                                                                                      |
-| **`learn-from-code-review`** | Closes the loop between review comments and fixes.                                                                                                              | Low.                                                                                                                                                                                                                                                                     |
-| **`show-me`**                | Renders diagrams for the plan/PR documents the repo already uses heavily (`.claude/plans/*`, `docs/DECISIONS.md`).                                              | Low.                                                                                                                                                                                                                                                                     |
-| **`technical-writing`**      | `docs/` is extensive (12 documents) and the project treats docs as a first-class deliverable.                                                                   | Low.                                                                                                                                                                                                                                                                     |
-| **`prd`**                    | DartHub already has `docs/PRD.md`; a skill to structure new requirements consistently.                                                                          | Low.                                                                                                                                                                                                                                                                     |
-| **`software-factory`**       | The repo's stated goal — "professionally developed software project with specialised AI development workflows". Offers issue-to-PR and PR-review pipelines.     | **Medium.** Pulls in many other skills (GitHub issue triage, stale-CI closers, delivery watchdogs). Adopting it wholesale conflicts with the "minimise external services / avoid unnecessary automation" constraint. Adopt the pipeline _pattern_, not the whole bundle. |
+| Skill                        | Benefit for DartHub                                                                                                                                                       | Risk / caveat                                                                                                                                                                                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`skill-creator`**          | Required to author the six `darthub-*` skills correctly.                                                                                                                  | None. Reference material only.                                                                                                                                                                                                                                           |
+| **`add-skill`**              | Imports an upstream skill into `.agents/skills/`. The mechanism to vendor the Tier-1 set into the repo.                                                                   | Low, but **it fetches and writes code from a remote URL** — review the source repo before pointing it at anything.                                                                                                                                                       |
+| **`agent-memory`**           | Maintains `AGENTS.md`. The repo's `AGENTS.md` is currently hand-maintained and contains non-obvious environment facts (npm 12, Prisma generate, the Docker build opt-in). | Low. Must not clobber the auto-generated `nextjs-agent-rules` block.                                                                                                                                                                                                     |
+| **`code-simplifier`**        | The codebase is clean already; useful as a periodic simplification pass.                                                                                                  | Low. Risk of churn on working code.                                                                                                                                                                                                                                      |
+| **`learn-from-code-review`** | Closes the loop between review comments and fixes.                                                                                                                        | Low.                                                                                                                                                                                                                                                                     |
+| **`show-me`**                | Renders diagrams for the plan/PR documents the repo already uses heavily (`.claude/plans/*`, `docs/DECISIONS.md`).                                                        | Low.                                                                                                                                                                                                                                                                     |
+| **`technical-writing`**      | `docs/` is extensive (12 documents) and the project treats docs as a first-class deliverable.                                                                             | Low.                                                                                                                                                                                                                                                                     |
+| **`prd`**                    | DartHub already has `docs/PRD.md`; a skill to structure new requirements consistently.                                                                                    | Low.                                                                                                                                                                                                                                                                     |
+| **`software-factory`**       | The repo's stated goal — "professionally developed software project with specialised AI development workflows". Offers issue-to-PR and PR-review pipelines.               | **Medium.** Pulls in many other skills (GitHub issue triage, stale-CI closers, delivery watchdogs). Adopting it wholesale conflicts with the "minimise external services / avoid unnecessary automation" constraint. Adopt the pipeline _pattern_, not the whole bundle. |
 
 #### Tier 3 — do not install for this stack
 
@@ -305,7 +305,7 @@ that build `MutableMatchState` fixtures now include the `throws` and
 | `tests/unit/typescript.test.ts` (1)              | asserted `tsc` exits 0 — inherited the typecheck errors                             | Followed the typecheck fix                         |
 | `tests/unit/ci-workflow.test.ts` (1)             | replays the CI steps locally — failed on the formatting check                       | `docs/ARCHITECTURE.md` formatted                   |
 | `tests/unit/formatting.test.ts` (1)              | the vendored `.agents/` skill tree was not Prettier-clean                           | `.agents` added to `.prettierignore`               |
-| `tests/unit/dockerignore.test.ts` (1)            | shelled out to `docker build`; the CLI was present but no daemon was running        | Guard now probes the daemon with `docker info`     |
+| `tests/unit/dockerignore.test.ts` (1)            | shelled out to `docker build`; the CLI was present but no daemon was running        | Live build is opt-in now: `DART_DOCKER_BUILD=1`    |
 | `tests/integration/linkGuest.test.ts` (1)        | `PrismaClientInitializationError: Environment variable not found: DATABASE_URL`     | Route refactored to an injectable handler factory  |
 | `tests/unit/docs/docs.test.ts` (1)               | asserted a hard-coded list of `src/` modules that the repository does not have      | Module list now read from disk                     |
 | `tests/unit/ui/career.test.tsx` (unhandled)      | `ReferenceError: window is not defined` — React scheduled work after jsdom teardown | Global Testing Library cleanup in `tests/setup.ts` |
@@ -335,12 +335,18 @@ defined` exceptions. Each React test file already opts into jsdom with a
   directory on disk instead of a hard-coded array, so the documentation check
   can no longer drift away from the repository layout.
 
-**Docker — the live build check is still environment-dependent.** The Docker
-_client_ is installed, but the daemon needs root privileges that the sandbox
-does not grant, so `docker build` cannot run here. The test now probes the
-daemon with `docker info` and skips the live size check when it is
-unreachable, instead of failing on a missing daemon. The structural
-build-context assertions always run.
+**Docker — the live build check is opt-in.** The Docker _client_ is installed,
+but the daemon needs root privileges that the sandbox does not grant, so
+`docker build` cannot run here. The live size check therefore runs only when
+`DART_DOCKER_BUILD=1` is set. Without the flag the block is skipped, the
+reason is printed to stdout (`[dockerignore] DART_DOCKER_BUILD is not set: …`)
+and the test title names the flag; the default suite run never touches the
+daemon — it does not even run `docker info`. With the flag set the build
+needs a reachable daemon, and a missing daemon is a **hard failure**, not a
+skip. The structural build-context assertions always run. CI verifies the
+image in its own `Test (Docker image)` step
+(`DART_DOCKER_BUILD=1 npm run test -- tests/unit/dockerignore.test.ts`), so
+the 200 MB limit stays checked on every push.
 
 **Playwright — not executed.** `playwright.config.ts` expects a server at
 `http://localhost:3000` and only defines `webServer` when `CI` is set. The
@@ -360,7 +366,9 @@ build-context assertions always run.
 - **Pre-commit hook** (`.husky/pre-commit`) runs `eslint . --max-warnings=0`
   and `prettier . --check`, and aborts the commit on failure.
 - **CI** (`.github/workflows/ci.yml`) runs exactly: install → lint → format
-  check → typecheck → test. No Playwright step, no Docker step.
+  check → typecheck → test. The live Docker image build is a separate step
+  (`Test (Docker image)`) that sets `DART_DOCKER_BUILD=1`; Playwright runs in
+  its own job.
 
 ---
 
@@ -520,7 +528,8 @@ pre-existing breakage from regressions.
   registered globally in `tests/setup.ts`, so a new component test does not
   need its own `afterEach` cleanup.
 - Environment prerequisites per test category: `npx prisma generate` (npm 12
-  blocks the postinstall), a running Docker daemon for `dockerignore.test.ts`,
+  blocks the postinstall), `DART_DOCKER_BUILD=1` plus a reachable Docker
+  daemon for the opt-in live build in `dockerignore.test.ts`,
   `DATABASE_URL` for integration tests, a successful build for
   `tailwindToolchain.test.ts`.
 - The `tests/support/run-command.ts` helper and the in-memory repository

@@ -81,8 +81,9 @@ The baseline is **green** — 0 typecheck errors, 96/96 Vitest files and 447/447
 tests passing, lint and format clean (full table in
 `references/test-matrix.md`):
 
-- `dockerignore.test.ts` skips its live build when no Docker **daemon** is
-  reachable.
+- `dockerignore.test.ts` skips its live build unless `DART_DOCKER_BUILD=1` is
+  set — the live build is opt-in, not environment-dependent, and the default
+  suite run never touches the Docker daemon.
 - `tailwindToolchain.test.ts` skips when no successful `npm run build` output
   is present.
 

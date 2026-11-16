@@ -131,12 +131,16 @@ Do not report these as regressions. Report only the **delta**.
 | ESLint    | passes                                           |
 | Prettier  | passes                                           |
 
-Two checks skip rather than fail when the environment lacks the tooling:
+Two checks skip rather than fail:
 
-| Test                                            | Skipped when                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------ |
-| `tests/unit/dockerignore.test.ts`               | no Docker **daemon** reachable (the CLI alone is not enough) |
-| `tests/unit/tailwind/tailwindToolchain.test.ts` | no successful `npm run build` output present                 |
+| Test                                            | Skipped when                                 |
+| ----------------------------------------------- | -------------------------------------------- |
+| `tests/unit/dockerignore.test.ts` (live build)  | `DART_DOCKER_BUILD` is not set               |
+| `tests/unit/tailwind/tailwindToolchain.test.ts` | no successful `npm run build` output present |
+
+The live `docker build` is opt-in: it runs only with `DART_DOCKER_BUILD=1` and
+needs a reachable daemon, and a missing daemon is a **hard failure**, not a
+skip. The default suite run never touches the Docker daemon.
 
 Any failure beyond these is a regression the change under review introduced.
 
