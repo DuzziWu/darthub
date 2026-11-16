@@ -177,10 +177,11 @@ describe("per-mode undo & correct", () => {
     engine.recordThrow({ playerId: "a", points: 1 });
     engine.recordThrow({ playerId: "a", points: 2 });
     const afterTwo = engine.getState();
-    expect((afterTwo.modeData as AroundTheClockModeData).currentTargetIndex).toBe(2);
+    expect((afterTwo.modeData as AroundTheClockModeData).currentTargetIndex["a"]).toBe(2);
 
     const restored = engine.undoLastThrow();
-    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex).toBe(1);
+    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex["a"]).toBe(1);
+    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex).toEqual({ a: 1 });
     expect((restored.modeData as AroundTheClockModeData).playerProgress).toEqual({ a: 1 });
   });
 
@@ -191,10 +192,34 @@ describe("per-mode undo & correct", () => {
     engine.recordThrow({ playerId: "a", points: 2 });
 
     const corrected = engine.correctThrow(1, { points: 0 });
-    expect((corrected.modeData as AroundTheClockModeData).currentTargetIndex).toBe(1);
+    expect((corrected.modeData as AroundTheClockModeData).currentTargetIndex["a"]).toBe(1);
+    expect((corrected.modeData as AroundTheClockModeData).currentTargetIndex).toEqual({ a: 1 });
     // And forward again: re-entering the hit restores the index.
     const restored = engine.correctThrow(1, { points: 2 });
-    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex).toBe(2);
+    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex["a"]).toBe(2);
+  });
+
+  it("keeps the players' target chains apart when a dart is undone", () => {
+    const engine = new GameEngine(new AroundTheClockMode());
+    engine.startMatch({ playerIds: ["a", "b"] });
+    // a hits 1 and 2 (her own run), then misses with 5; the turn goes to b.
+    // 5 is a genuine miss on a's target 3 — 9 would be T3 and a hit.
+    engine.recordThrow({ playerId: "a", points: 1 });
+    engine.recordThrow({ playerId: "a", points: 2 });
+    engine.recordThrow({ playerId: "a", points: 5 });
+    // b hits his own target 1.
+    engine.recordThrow({ playerId: "b", points: 1 });
+
+    const before = engine.getState().modeData as AroundTheClockModeData;
+    expect(before.currentTargetIndex).toEqual({ a: 2, b: 1 });
+
+    // Undoing b's dart gives b his target back — and leaves a's run alone.
+    const restored = engine.undoLastThrow();
+    const data = restored.modeData as AroundTheClockModeData;
+    expect(data.currentTargetIndex).toEqual({ a: 2, b: 0 });
+    expect(data.playerProgress).toEqual({ a: 2 });
+    expect(restored.players.find((p) => p.id === "a")?.totalPoints).toBe(2);
+    expect(restored.players.find((p) => p.id === "b")?.totalPoints).toBe(0);
   });
 
   it("undoes the last dart in a shanghai match and restores the round", () => {

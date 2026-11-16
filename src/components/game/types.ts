@@ -286,8 +286,24 @@ export interface CricketScoreSheetProps {
 export interface AroundTheClockScoreSheetProps {
   /** The targets in order: 1 to 20 and the bull (25). */
   targets: readonly number[];
-  /** The index of the target in play. The length of the list when it is over. */
-  currentIndex: number;
+  /**
+   * Every seated player and the target they are aiming at.
+   *
+   * Around the clock has no shared score: every player walks their own
+   * run of the 21 targets, so a component that could show one player's
+   * target could never show a match. The sheet is therefore a sheet
+   * **per player** — the same convention the cricket sheet follows.
+   */
+  players: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** The index of the target this player is aiming at. */
+    currentIndex: number;
+    /** How many of the targets this player has hit. */
+    hits: number;
+  }>;
+  /** The player whose turn it is. */
+  currentPlayerId?: string | null;
 }
 
 export interface ShanghaiScoreSheetProps {
