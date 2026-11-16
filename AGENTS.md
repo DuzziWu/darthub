@@ -80,7 +80,9 @@ Seven tests are `test.skip(...)` placeholders for features that are not built ye
 
 ### Serving the live preview
 
-The preview is served by the standalone server of the prefixed build, not by `next dev`:
+The published preview is **not** a container: it is a **host process** — the standalone
+server of the prefixed build, started in the main checkout, reached by the Tailscale
+Serve proxy that runs on the same host.
 
 ```bash
 cd /projects/darthub
@@ -90,7 +92,21 @@ cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
 setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
 ```
 
+`npm run build:prefixed` is the prerequisite, because it bakes `BASE_PATH=/darthub` into
+the build. A build without the prefix hands out `/_next/...` asset URLs; the proxy
+strips the mount prefix from the path it forwards, those requests find no mount and
+answer 404 — the page arrives unstyled and never hydrates.
+
 `next dev` compiles on demand, so a cold route drops requests while it compiles and the preview flickers. The standalone server is the same server the Docker runner stage uses, and it is stable under a proxy.
+
+The mount points at the loopback address of the same host:
+
+```bash
+tailscale serve --set-path=/darthub http://127.0.0.1:3000
+```
+
+`tailscale serve status` shows the mount. The proxy strips the prefix from the path it
+forwards, so the server receives `/game` for a browser that asked for `/darthub/game`.
 
 The server must be started with `setsid -f`. Without the `-f` the process stays a child of the shell that started it, and it dies with the session. With it, the process is adopted by PID 1 and outlives the agent session:
 
@@ -98,20 +114,45 @@ The server must be started with `setsid -f`. Without the `-f` the process stays 
 ps -o pid,ppid,sid,cmd -p <pid>   # PPID 1 and a SID of its own means it is detached
 ```
 
-`HOSTNAME=0.0.0.0` binds every interface. The container reaches itself at `172.18.0.2`, which is the address Tailscale Serve forwards to, so `curl http://172.18.0.2:3000/` is the check that the host side can reach the server.
+`HOSTNAME=0.0.0.0` binds every interface, so every address the proxy or a client may
+use reaches the server — the loopback address of the mount, the tailnet address, the
+address of a container. The bind address is not a detail — it is the difference between
+a published site and a 502:
 
-The bind address is not a detail — it is the difference between a published site and a 502:
-
-| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                                |
-| ------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Live preview (port 3000)        | `0.0.0.0`   | The Tailscale Serve proxy runs on the **host** and reaches the container on `172.18.0.2`. A loopback-only listener refuses that connection, and the proxy answers **502 Bad Gateway**. The application itself keeps answering 200, which is why the fault looks like a broken site and is not one. |
-| Playwright servers (3100, 3111) | `127.0.0.1` | They must **not** be reachable from the host, and they are only ever driven from inside the container.                                                                                                                                                                                             |
+| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live preview (port 3000)        | `0.0.0.0`   | A listener that refuses the connection the proxy makes is answered by the proxy with **502 Bad Gateway**, while the application itself keeps answering 200 on its own address. The fault looks like a broken site and is not one: it is a site that is broken for every user while every local health check passes. |
+| Playwright servers (3100, 3111) | `127.0.0.1` | They must **not** be reachable from the host, and they are only ever driven from inside the container.                                                                                                                                                                                                              |
 
 The port 3000 conflict that caused the outage of 2026-11-14: `playwright.config.ts` used to start its root-build server on port 3000 as well. With `reuseExistingServer` the suite reuses whatever already listens on the port, so the root build silently **displaced** the live preview and took over port 3000 — bound to loopback, so the host could no longer reach it. The suite now uses port **3100** for the root build and 3111 for the prefixed build; port 3000 belongs to the live preview alone.
 
 A rebuild invalidates a running standalone server: replacing the build directory leaves the old process serving a deleted working directory (`/proc/<pid>/cwd` shows `(deleted)`) and still holding its port. Always terminate the old process by **exact PID** before starting a new one — never with a `pkill` pattern, because several Next.js servers run side by side here.
 
 The server answers the routes at the root, not at `/darthub`: Tailscale Serve strips the mount prefix before it forwards. `/darthub` on the backend answers 404, and that is correct — it is the proxy that turns `/darthub` into `/`. The assets are served under both paths, so either direction resolves them.
+
+### The container variant
+
+The image can serve the same mount instead of a host process. The prefix has to be
+baked into the **build**, so it is a build argument:
+
+```bash
+export BASE_PATH=/darthub
+docker compose build app
+docker compose up -d
+```
+
+Without `BASE_PATH` the image is built for the root — the default, and the behaviour of
+the existing deployments. In the container topology the proxy runs on the host and
+reaches the container on its published address `172.18.0.2:3000`, so the container's
+server has to accept a connection from there; `HOSTNAME=0.0.0.0` in the runner stage
+does that. `curl http://172.18.0.2:3000/` is the check that the host side can reach the
+server.
+
+The asset-prefix gate runs inside the image build and reads the same
+`process.env.BASE_PATH` the build used (`scripts/check-asset-prefix.mjs`), so a
+prefixed build that loses its prefix fails the **image build** instead of the live site.
+The Dockerfile exports the build argument for both the build and the gate — without
+that, the gate would check against `/_next/` and pass unconditionally.
 
 ## Continuous integration
 

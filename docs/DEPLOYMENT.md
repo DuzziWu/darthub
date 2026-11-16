@@ -74,6 +74,9 @@ real values; provide them via an env file or an export before running Compose.
 | `POSTGRES_USER`     | No               | `darthub` | Superuser name for the PostgreSQL container.        |
 | `POSTGRES_PASSWORD` | Yes (no default) | none      | PostgreSQL password. Compose fails fast without it; |
 | `POSTGRES_DB`       | No               | `darthub` | Database name created on first start.               |
+| `BASE_PATH`         | No               | empty     | Path prefix the app is published under, e.g.        |
+|                     |                  |           | `/darthub`. Baked into the image build; empty means |
+|                     |                  |           | the app is served from the root.                    |
 
 `DATABASE_URL` is not set manually under Docker: `docker-compose.yml` derives it from
 the three variables above as
@@ -156,46 +159,88 @@ loaded, so it must be set for the build, not only for the server.
 `npm run build:prefixed` is the ready-made command for the `/darthub` prefix.
 It writes to `.next-prefixed/` so it does not overwrite a root build.
 
+For the **image**, the prefix is a build argument. `docker-compose.yml` passes
+`BASE_PATH` through as one, so the same switch works for the container:
+
+```bash
+export BASE_PATH=/darthub
+docker compose build app
+docker compose up -d
+```
+
+Without the variable the image is built for the root — the default, and the
+behaviour of existing deployments. The prefix in the build and the mount point
+of the proxy have to be the same; if they differ, the asset URLs point at a path
+the proxy does not serve and the page arrives unstyled and unhydrated.
+
 ### Serving it with Tailscale
 
-Serve the container's port under the mount point:
+Serve the app's port under the mount point:
 
 ```bash
 tailscale serve --set-path=/darthub http://127.0.0.1:3000
 ```
 
-The prefix in the build and the prefix in `--set-path` must be the same. If they
-differ, the asset URLs point at a path the proxy does not serve and the page
-arrives unstyled and unhydrated.
+`tailscale serve status` shows the mount. The prefix in the build and the
+prefix in `--set-path` must be the same. If they differ, the asset URLs point at
+a path the proxy does not serve and the page arrives unstyled and unhydrated.
 
-### The server must listen on every interface
+### The live preview runs as a host process
 
-The proxy above runs on the VPS host, not in the container. It reaches the
-container over the published address, so the server has to accept that
-connection:
+The published preview is not a container: it is the standalone server of the
+prefixed build, started in the main checkout and reached by the proxy that runs
+on the same host.
 
 ```bash
+cd /projects/darthub
+npm run build:prefixed
+cp -r public .next-prefixed/standalone/public
+cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
 setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
 ```
 
-`HOSTNAME=0.0.0.0` binds every interface; the container answers on
-`172.18.0.2:3000`, which is the address the host forwards to. With the default
-`HOSTNAME=127.0.0.1` the server listens on loopback only, the host's connection
-is **refused**, and Tailscale Serve answers **502 Bad Gateway** — even though
-the application itself answers `200` on `http://127.0.0.1:3000/` the whole time.
+`next dev` compiles on demand, so a cold route drops requests while it compiles
+and the preview flickers. The standalone server is the same server the Docker
+runner stage uses, and it is stable under a proxy.
+
+The server has to be started with `setsid -f`. Without the `-f` the process
+stays a child of the shell that started it and dies with the session; with it,
+the process is adopted by PID 1 and outlives it. `ps -o pid,ppid,sid,cmd -p <pid>`
+shows a PPID of 1 and a session id of its own when the server is detached.
+
+### The server must listen on every interface
+
+`HOSTNAME=0.0.0.0` binds every interface, so every address the proxy or a client
+may use reaches the server — the loopback address of the mount, the tailnet
+address, the address of a container. With the default `HOSTNAME=127.0.0.1` the
+server listens on loopback only, the proxy's connection can be **refused**, and
+Tailscale Serve answers **502 Bad Gateway** — even though the application
+itself answers `200` on `http://127.0.0.1:3000/` the whole time.
 
 That is the failure mode of the outage on 2026-11-14, and it is worth
 recognising it by its shape: a site that is broken for every user while every
-local health check passes. The check that distinguishes it:
-
-```bash
-curl http://172.18.0.2:3000/    # 200 -> the host can reach the server
-```
+local health check passes.
 
 Note that `playwright.config.ts` starts its own servers with
 `HOSTNAME=127.0.0.1` on ports **3100** and **3111**. Those are deliberately not
 reachable from the host, and port 3000 is reserved for the published app: a
 server on port 3000 that binds loopback only makes the published site answer 502.
+
+### The container variant
+
+The image can serve the same mount instead of a host process — with the prefix
+as a build argument, as described above. In that topology the proxy runs on the
+host and reaches the container on its published address, so the container's
+server has to accept a connection from there; `HOSTNAME=0.0.0.0` in the runner
+stage does that. The check that distinguishes it:
+
+```bash
+curl http://172.18.0.2:3000/    # 200 -> the host can reach the server
+```
+
+The image build runs the asset-prefix gate (`scripts/check-asset-prefix.mjs`) with
+the same `BASE_PATH` the build used, so a prefixed build that loses its prefix
+fails the **image build** instead of the live site.
 
 ### Replacing a running server
 
@@ -223,6 +268,9 @@ prefix the app is published under. A build without `BASE_PATH` hands out asset
 URLs without the prefix; the proxy strips the prefix from the path, so those
 requests find no mount and answer 404. The check fails on that and on the
 opposite mistake — a prefixed build published at the root.
+
+The Docker image build runs the same gate, with the same `BASE_PATH` the build
+used, so a prefixed image that lost its prefix never gets published.
 
 ### Recognising the broken state
 
