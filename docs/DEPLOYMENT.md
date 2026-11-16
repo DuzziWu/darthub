@@ -257,9 +257,83 @@ stage does that. The check that distinguishes it:
 curl http://172.18.0.2:3000/    # 200 -> the host can reach the server
 ```
 
+The address is an example, not a constant — it is assigned when the network is
+created. Read it instead of assuming it, see
+[below](#the-bridge-address-is-assigned-not-fixed).
+
 The image build runs the asset-prefix gate (`scripts/check-asset-prefix.mjs`) with
 the same `BASE_PATH` the build used, so a prefixed build that loses its prefix
 fails the **image build** instead of the live site.
+
+#### The bridge address is assigned, not fixed
+
+`172.18.0.2` is an **example**, not a constant. The Compose network
+`darthub_default` hands the addresses out in the order the services start: in the
+verified run of 2026-11-16 `redis` got `172.18.0.2`, `postgres` `172.18.0.3` and
+the app `172.18.0.4`. Read the address instead of assuming it:
+
+```bash
+APP_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' darthub-app-1)
+curl "http://$APP_IP:3000/"    # 200 -> the host can reach the server over the bridge
+```
+
+A check that hardcodes `172.18.0.2` starts failing as soon as another service
+takes that address — and a failing check is indistinguishable from the 502 it is
+meant to detect.
+
+#### What the container listens on
+
+The server inside the container has to listen on **every** interface; that is the
+whole point of the container topology. The listening socket is visible in
+`/proc/net/tcp` as `00000000:0BB8` — `0.0.0.0:3000`:
+
+```bash
+docker exec darthub-app-1 cat /proc/net/tcp | awk '$2 ~ /:0BB8$/ {print}'
+# 0: 00000000:0BB8 00000000:0000 0A ...        0A = LISTEN
+```
+
+A loopback-bound listener would read `0100007F:0BB8` — and that is the form that
+produces the 502: the host proxy reaches the container across the bridge, the
+loopback listener refuses the connection, and the proxy answers 502 while the
+application itself keeps answering 200 on its own address.
+
+#### Verified on 2026-11-16
+
+The container variant was verified locally, without touching the published
+preview (which owns port 3000 on this host):
+
+| Check                                           | Result                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| `BASE_PATH=/darthub docker compose build app`   | image built; the gate ran with the same prefix                |
+| the gate in that build                          | `✓ 17 asset URLs carry the expected prefix "/darthub/_next/"` |
+| `docker compose up -d`                          | app, postgres and redis up; postgres and redis healthy        |
+| host → published port of the app                | HTTP 200                                                      |
+| host → bridge address of the app                | HTTP 200                                                      |
+| app inside the container on loopback            | HTTP 200                                                      |
+| listening socket inside the container           | `00000000:0BB8` (`0.0.0.0:3000`, `LISTEN`)                    |
+| asset URLs of the delivered page                | 15 of 15 carry `/darthub/_next/`, none unprefixed             |
+| the same asset, requested through the container | HTTP 200, `text/css`                                          |
+| the routes under the prefix, without a proxy    | HTTP 404 — the proxy has to strip the prefix                  |
+
+The published port was moved to `3200` for the check, because port 3000 belongs
+to the live preview on this host. The container's own port and its bridge
+address are the same as in the unmodified Compose file.
+
+The gate compares the **build** with the **gate**, not the prefix with a list of
+known prefixes. What that means, measured:
+
+| Build prefix | Gate prefix  | Image build                                                               |
+| ------------ | ------------ | ------------------------------------------------------------------------- |
+| `/darthub`   | `/darthub`   | passes                                                                    |
+| `/darthub`   | `/falsch`    | **fails** — 17 of 17 asset URLs carry no prefix                           |
+| `/darthub`   | unset        | **fails** — the build carries a `/darthub` prefix, `BASE_PATH` is not set |
+| `/falsch`    | `/falsch`    | passes — a prefix that is wrong but consistent is not caught              |
+| unset (root) | unset (root) | passes — the default is unchanged                                         |
+
+So the gate catches the mistake that breaks the site — a build and a gate that
+disagree. It does not catch a prefix that is consistently wrong; only the mount
+point of the proxy can know that, and the two have to be set from the same
+value.
 
 ### Replacing a running server
 
@@ -448,12 +522,25 @@ named volume declared in `docker-compose.yml`, and run
 
 ## Verification Status
 
-The multi-stage `Dockerfile` and `docker-compose.yml` described here have been
-reviewed against the repository sources; a full live end-to-end build-and-serve
-verification has been deferred in this environment. Before relying on this guide
-for a production host, do one clean-room run: start from a fresh VPS (or a clean
-clone) and follow [Docker Compose Commands](#docker-compose-commands) through
-[Data Migration](#data-migration), confirming a healthy `docker compose ps`.
+| What                                                     | Status                                               | When       |
+| -------------------------------------------------------- | ---------------------------------------------------- | ---------- |
+| Multi-stage `Dockerfile` and `docker-compose.yml`        | reviewed against the repository sources              | —          |
+| Image build with a prefix (`BASE_PATH=/darthub`)         | **verified** — real build, real gate                 | 2026-11-16 |
+| Root image build (no prefix)                             | **verified** — the default still passes the gate     | 2026-11-16 |
+| The gate fails a build that lost its prefix              | **verified** — two counter-checks, image build fails | 2026-11-16 |
+| Container reachable from the host over the bridge        | **verified** — HTTP 200                              | 2026-11-16 |
+| Container listens on `0.0.0.0:3000` inside the container | **verified** — `00000000:0BB8` in `/proc/net/tcp`    | 2026-11-16 |
+| Delivered page carries `/darthub/_next/…`                | **verified** — 15 of 15 asset URLs                   | 2026-11-16 |
+| Full VPS clean-room run (install → migrate → serve)      | deferred                                             | —          |
+
+The container variant was verified locally against a running stack — the image
+was built with the prefix, the stack was started, and the app was reached over
+the bridge and over its published port. The published preview on this host was
+not touched.
+
+The full clean-room run on a production host is still open: start from a fresh
+VPS (or a clean clone) and follow [Docker Compose Commands](#docker-compose-commands)
+through [Data Migration](#data-migration), confirming a healthy `docker compose ps`.
 
 ## Related Documents
 
