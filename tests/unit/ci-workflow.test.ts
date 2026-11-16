@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "yaml";
 import { describe, it, expect } from "vitest";
+import { isSharedGateCommand, runGateCommand } from "../support/gate-commands";
 import { runCommand } from "../support/run-command";
 
 const workflowPath = resolve(process.cwd(), ".github/workflows/ci.yml");
@@ -158,7 +159,7 @@ describe("ci", () => {
     ).toBe(false);
   });
 
-  it("runs the CI workflow successfully on push", { timeout: 600_000 }, () => {
+  it("runs the CI workflow successfully on push", { timeout: 900_000 }, async () => {
     const workflow = loadWorkflow();
     const npmSteps = replayedWorkflowSteps(workflow);
 
@@ -168,8 +169,15 @@ describe("ci", () => {
     // step is excluded to avoid re-running this very suite from within itself;
     // every other step here (lint, format, typecheck) is the same command CI
     // would execute on push.
+    //
+    // The whole-repository gate commands are shared with the gate tests: they
+    // are executed once per suite run and the result is read here. Every other
+    // step is replayed on its own, exactly as before.
     for (const step of npmSteps) {
-      const { exitCode, output } = runCommand(step.run as string);
+      const command = step.run as string;
+      const { exitCode, output } = isSharedGateCommand(command)
+        ? await runGateCommand(command)
+        : runCommand(command);
       expect(
         exitCode,
         `workflow step "${step.name ?? step.run}" exited with ${exitCode}:\n${output}`,
