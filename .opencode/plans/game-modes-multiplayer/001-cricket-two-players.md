@@ -97,4 +97,37 @@ npx vitest run tests/unit/game/modeViews.test.tsx tests/unit/game/cricketCorrect
 
 ## Result
 
-<!-- Filled in when the package is executed. -->
+**M1 is merged.** The merge commit is `0f11ae4` — "merge: M1 – Cricket mit zwei Spielern und
+eigenem Score-Sheet" (2026-11-16), on branch `integration/opencode-team`.
+
+The merge touches exactly the files the task table names:
+
+```text
+ app/game/cricket/page.tsx                          | 106 +++++++++++----
+ src/components/game/CricketScoreSheet.tsx          | 149 +++++++++++++--------
+ src/components/game/types.ts                       |  20 ++-
+ .../game-engine/modes/CricketMultiplayer.test.ts   |  70 ++++++++++
+ tests/unit/game/cricketCorrection.test.tsx         |  21 +++
+ tests/unit/game/modeViews.test.tsx                 |  30 +++++
+ 6 files changed, 307 insertions(+), 89 deletions(-)
+```
+
+The package's own gate, re-run on 2026-11-16 against the merged tree
+(`4cba24f`, which carries the merge):
+
+```text
+$ npx vitest run tests/unit/game-engine/modes/CricketMultiplayer.test.ts \
+    tests/unit/game/modeViews.test.tsx \
+    tests/unit/game/cricketCorrection.test.tsx --reporter=dot
+
+ Test Files  3 passed (3)
+      Tests  20 passed (20)
+   Duration  199.39s
+```
+
+The full suite on the same tree measured **108 test files / 553 tests, all green**
+(1472.51 s). Earlier runs of the same tree failed on `tests/unit/dockerignore.test.ts`
+alone — its live `docker build` hit the 900 s cap, or failed with `failed to export
+image: No such image`, while another build shared the Docker daemon (contention, not a
+regression; see the plan's risk #13). Run alone on an idle daemon the same file passes:
+**3 tests passed, 546.42 s**, exit 0.
