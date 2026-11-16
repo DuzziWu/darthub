@@ -193,4 +193,102 @@ the same daemon). Run it **alone**, not together with the full suite.
 
 ## Result
 
-<!-- pending: filled in by the orchestrator after verification -->
+Executed by the orchestrator on 2026-11-16 in the worktree
+`.ai/cezar/worktrees/6cbf47cd-356a-4a5d-903c-05f870eef7d5` (branch `cez/6cbf47cd`, rebased onto
+the integration head `9343787`).
+
+### 1. The default suite — green, and no `docker build`
+
+```
+$ npm test
+ Test Files  109 passed (109)
+      Tests  601 passed | 1 skipped (602)
+   Duration  351.03s (transform 6.16s, setup 8.26s, import 14.51s, tests 253.27s, environment 36.15s)
+FINAL2_EXIT=0
+```
+
+The single skipped test is the opt-in live build. Its reason is printed to stdout and carried in the
+test title — a skip nobody sees is a check nobody runs:
+
+```
+$ npx vitest run tests/unit/dockerignore.test.ts --reporter=verbose
+stdout | tests/unit/dockerignore.test.ts
+[dockerignore] DART_DOCKER_BUILD is not set: the live docker build is opt-in. It needs a reachable
+docker daemon, several minutes of build time and about 4 GB of disk on the daemon, so it only runs
+when DART_DOCKER_BUILD=1 is set in the environment.
+ ✓ tests/unit/dockerignore.test.ts > dockerignore > contains entries for node_modules, tests/, .git, .env, and other large folders 14ms
+ ✓ tests/unit/dockerignore.test.ts > dockerignore > does not ignore files the builder stage needs 43ms
+ ✓ tests/unit/dockerignore.test.ts > dockerignore > keeps the heavyweight artifacts out of the build context 1ms
+ ↓ tests/unit/dockerignore.test.ts > dockerignore > docker build respects the ignore file and image size stays below 200 MB (skipped: set DART_DOCKER_BUILD=1 to run the live build)
+```
+
+The file itself went from **474.65 s** (M2's measurement of the same file with the live build) to
+**4.85 s** in the default mode. During the whole suite run no `docker build` process existed —
+checked with `ps -eo pid,etime,cmd | grep "docker build"` while the suite was running.
+
+### 2. The gate tests on their own
+
+```
+$ npx vitest run tests/unit/dockerignore.test.ts tests/unit/dockerignoreBuild.test.ts
+ Test Files  2 passed (2)
+      Tests  24 passed | 1 skipped (25)
+   Duration  8.83s
+```
+
+### 3. The opt-in run — the real build, the real 200 MB limit
+
+```
+$ DART_DOCKER_BUILD=1 npm test -- tests/unit/dockerignore.test.ts
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Duration  673.18s
+OPTIN4_EXIT=0
+```
+
+The build really ran (a `docker build` process existed for the whole run), the image was built, the
+200 MB limit was enforced, and afterwards:
+
+```
+=== orphan processes? ===        NONE — no orphan docker build
+=== leftover containers? ===     (empty — none)
+=== the test image removed? ===  only the three shared tagged images remain
+```
+
+### 4. The static gates
+
+```
+$ npx prettier --check <all changed files>   →  All matched files use Prettier code style!
+$ npx eslint --max-warnings=0 <all changed files>   →  (no output)
+$ npx tsc --noEmit --incremental false       →  (no output)
+$ npm run format:check                       →  All matched files use Prettier code style!
+```
+
+### 5. The disk leak — found and closed by the orchestrator
+
+The first live run against a real daemon exposed a hole in the adopted M2 rework that no unit test
+could see: **removing a child image makes the daemon re-commit its parent under a new id**, and that
+new id is not in the build output. A single removal pass therefore left the parent chain behind —
+five images of ~1.3 GB each, holding the layer of the `npm ci` stage. The cleanup now runs in
+passes: the first pass removes the ids the builder reported, every pass after that removes the ids
+that appeared on the daemon since the previous snapshot — those are the parents the daemon
+re-committed. The window is one removal pass (seconds), not the whole build.
+
+The daemon state before and after the final live run is the proof:
+
+```
+BEFORE: dangling=0 images_total=3     Images 3  281.2MB
+AFTER:  dangling=0 images_total=3     Images 3  281.2MB
+```
+
+Without the loop the same build leaves five dangling images of ~1.3 GB — the leak that filled the
+host to 99 % in the first place (M2: 19 builds → 70.36 GB). The build is the only thing that
+touched the daemon in that run; it left it exactly as it found it.
+
+### 6. The independent review
+
+`code-reviewer`, read-only: **approve with comments** — no CRITICAL, no HIGH, 6 MEDIUM, 8 LOW. All
+MEDIUM findings (1–5) and LOW findings (4–8) were fixed; LOW 1 (stale documentation) was fixed by
+the `architect`. MEDIUM 6 (the global `testTimeout` of 120 s) was **accepted with a reason**: a
+false red blocks a runner slot exactly like a slow suite does, and the measured suite duration of
+351 s is far below the 30-minute runner limit. The review's own findings and their disposition are
+in `003-independent-review.md`.

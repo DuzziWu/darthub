@@ -9,14 +9,17 @@ import {
   isBuildKitBuildOutput,
   isLiveBuildRequested,
   isSharedImage,
+  listAllImageIds,
   listTaggedImageIds,
   parseBuildContainerIds,
   parseBuildSteps,
   parseCachedImageIds,
   parseCreatedImageIds,
+  removeBuildImages,
   removeImageIds,
   runDockerBuild,
   LIVE_BUILD_ENV_FLAG,
+  type DockerCliRunner,
 } from "../support/docker-build";
 import { runCommand } from "../support/run-command";
 
@@ -232,6 +235,78 @@ const processGone = (pid: number): boolean => {
     return (error as NodeJS.ErrnoException).code === "ESRCH";
   }
 };
+
+// --- A fake daemon ----------------------------------------------------------
+//
+// The daemon re-commits the parent of a removed image under a new id. The
+// fake models that behaviour: `rmi` removes the id and re-commits its
+// parent, and `image ls -a -q` reports the images that are on the daemon.
+
+type FakeDaemon = {
+  runner: DockerCliRunner;
+  /** The dangling images on the daemon, in the order they appeared. */
+  images: Map<string, string | undefined>;
+  /** The tagged images on the daemon — the shared ones. */
+  tagged: Set<string>;
+  calls: string[][];
+};
+
+type FakeDaemonOptions = {
+  /** The dangling images, each with the id of its parent (the base has none). */
+  chain?: Array<{ id: string; parent?: string }>;
+  /** The tagged images of the daemon. */
+  tagged?: string[];
+  /** An image that appears while the first removal runs. */
+  addedDuringRemoval?: string;
+};
+
+const createFakeDaemon = (options: FakeDaemonOptions = {}): FakeDaemon => {
+  const images = new Map<string, string | undefined>();
+  for (const entry of options.chain ?? []) {
+    images.set(entry.id, entry.parent);
+  }
+  const tagged = new Set(options.tagged ?? []);
+  const calls: string[][] = [];
+  let recommits = 0;
+  let removalRuns = 0;
+
+  const runner: DockerCliRunner = (args) => {
+    calls.push(args);
+    if (args[0] === "image" && args[1] === "ls") {
+      // The tagged set is the shared one; `-a` adds the dangling images.
+      const ids = args.includes("-a") ? [...tagged, ...images.keys()] : [...tagged];
+      return { exitCode: 0, output: ids.join("\n") };
+    }
+    if (args[0] === "rmi") {
+      removalRuns += 1;
+      if (removalRuns === 1 && options.addedDuringRemoval !== undefined) {
+        images.set(options.addedDuringRemoval, undefined);
+      }
+      const id = args[1] ?? "";
+      if (!images.has(id)) {
+        return { exitCode: 1, output: `Error response from daemon: No such image: ${id}` };
+      }
+      const parent = images.get(id);
+      images.delete(id);
+      // The daemon materialises the parent of the removed image again — under
+      // a new id, which is not in the build output.
+      if (parent !== undefined && images.has(parent)) {
+        const grandParent = images.get(parent);
+        images.delete(parent);
+        recommits += 1;
+        images.set(`deadbeef00${String(recommits).padStart(2, "0")}`, grandParent);
+      }
+      return { exitCode: 0, output: "" };
+    }
+    return { exitCode: 0, output: "" };
+  };
+
+  return { runner, images, tagged, calls };
+};
+
+/** The calls that listed the images of the daemon, tagged and dangling. */
+const snapshotCalls = (calls: string[][]): string[][] =>
+  calls.filter((call) => call[0] === "image" && call[1] === "ls" && call.includes("-a"));
 
 describe("dockerignore build gate", () => {
   it("starts no docker build in the default suite run", { timeout: 180_000 }, () => {
@@ -472,5 +547,100 @@ describe("docker build output parsers", () => {
     expect(isSharedImage([fullId], fullId)).toBe(true);
     expect(isSharedImage([fullId], "bd5d5038d1c1")).toBe(false);
     expect(isSharedImage(["bd5d5038d1c1"], "bd5d5038d1c1")).toBe(true);
+  });
+});
+
+describe("docker image cleanup", () => {
+  it("removes the images the daemon re-commits while it removes them", () => {
+    // A chain of four images: the oldest is the base, the newest the top.
+    // Removing the top makes the daemon re-commit its parent under a new id,
+    // and that id is not in the build output — a single pass would leave the
+    // chain behind.
+    const daemon = createFakeDaemon({
+      chain: [
+        { id: "aaaaaaaaaaaa" },
+        { id: "bbbbbbbbbbbb", parent: "aaaaaaaaaaaa" },
+        { id: "cccccccccccc", parent: "bbbbbbbbbbbb" },
+        { id: "dddddddddddd", parent: "cccccccccccc" },
+      ],
+      tagged: ["111111111111"],
+    });
+
+    removeBuildImages(
+      ["111111111111"],
+      ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc", "dddddddddddd"],
+      daemon.runner,
+    );
+
+    expect([...daemon.images.keys()], "the chain of the build must be gone").toEqual([]);
+    expect(
+      snapshotCalls(daemon.calls).length,
+      "the loop must run in more than one pass",
+    ).toBeGreaterThan(2);
+  });
+
+  it("stops after the first pass when the daemon re-commits nothing", () => {
+    const daemon = createFakeDaemon({
+      // Two images without a parent relation: removing them re-commits
+      // nothing.
+      chain: [{ id: "aaaaaaaaaaaa" }, { id: "bbbbbbbbbbbb" }],
+      tagged: ["111111111111"],
+    });
+
+    removeBuildImages(["111111111111"], ["aaaaaaaaaaaa", "bbbbbbbbbbbb"], daemon.runner);
+
+    expect([...daemon.images.keys()]).toEqual([]);
+    // One snapshot before the first removal and one after it — a single
+    // removal pass.
+    expect(snapshotCalls(daemon.calls)).toHaveLength(2);
+    // The shared images are never removed.
+    expect(
+      daemon.calls.filter((call) => call[0] === "rmi"),
+      "a tagged image must never be removed",
+    ).toEqual([
+      ["rmi", "bbbbbbbbbbbb"],
+      ["rmi", "aaaaaaaaaaaa"],
+    ]);
+  });
+
+  it("never removes an image that is not part of the build", () => {
+    const daemon = createFakeDaemon({
+      chain: [{ id: "aaaaaaaaaaaa" }, { id: "ffffffffffff" }],
+      tagged: ["111111111111"],
+    });
+
+    removeBuildImages(["111111111111"], ["aaaaaaaaaaaa"], daemon.runner);
+
+    expect([...daemon.images.keys()], "the foreign image must survive").toEqual(["ffffffffffff"]);
+  });
+
+  it("removes an image that appears during a removal pass", () => {
+    // The honest rule of the loop: it removes what appeared since the
+    // previous snapshot, and the snapshot is taken once per pass. An image
+    // that a concurrent build commits during a pass is therefore removed as
+    // well. The window is one pass (seconds), not the whole build (minutes) —
+    // the wider window is what breaks the builds of other tasks.
+    const daemon = createFakeDaemon({
+      chain: [{ id: "aaaaaaaaaaaa" }],
+      tagged: ["111111111111"],
+      addedDuringRemoval: "eeeeeeeeeeee",
+    });
+
+    removeBuildImages(["111111111111"], ["aaaaaaaaaaaa"], daemon.runner);
+
+    expect(
+      [...daemon.images.keys()],
+      "the id of the concurrent build is swept with the pass",
+    ).toEqual([]);
+  });
+
+  it("keeps the tagged set apart from the dangling one", () => {
+    const daemon = createFakeDaemon({
+      chain: [{ id: "aaaaaaaaaaaa" }],
+      tagged: ["111111111111"],
+    });
+
+    expect(listTaggedImageIds(daemon.runner)).toEqual(["111111111111"]);
+    expect(listAllImageIds(daemon.runner)).toEqual(["111111111111", "aaaaaaaaaaaa"]);
   });
 });

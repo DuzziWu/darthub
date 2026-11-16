@@ -446,10 +446,28 @@ export const runDockerCli: DockerCliRunner = (args) =>
  *
  * `docker image ls -q` lists exactly those; `docker image ls -a -q` would
  * additionally list the dangling intermediate images, and those are the leak
- * the cleanup has to remove.
+ * the cleanup has to remove. The two sets stay apart: the tagged ones belong
+ * to the daemon and to the builds that run at the same time, the dangling
+ * ones are what a build leaves behind.
  */
 export const listTaggedImageIds = (runner: DockerCliRunner = runDockerCli): string[] => {
   const ids = runner(["image", "ls", "-q"])
+    .output.split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  return [...new Set(ids)];
+};
+
+/**
+ * All image ids on the daemon, tagged and dangling.
+ *
+ * The counterpart of `listTaggedImageIds`: it adds the untagged
+ * intermediates with `-a`. The re-commit loop needs them — it compares the
+ * state of the daemon before and after a removal pass, and the parents the
+ * daemon re-commits are dangling images.
+ */
+export const listAllImageIds = (runner: DockerCliRunner = runDockerCli): string[] => {
+  const ids = runner(["image", "ls", "-a", "-q"])
     .output.split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
@@ -471,6 +489,51 @@ export const removeImageIds = (
       continue;
     }
     runner(["rmi", id]);
+  }
+};
+
+/** The number of removal passes — the chain is a few levels deep at most. */
+const MAX_REMOVAL_PASSES = 5;
+
+/**
+ * Removes the images of a build — and the images the daemon re-commits while
+ * they are removed.
+ *
+ * Removing a child image makes the daemon re-commit its parent under a NEW
+ * id: the parent is materialised again as a side effect of the removal. That
+ * new id is not in the build output, so a single removal pass never sees it
+ * and the parent chain survives — each of them holds the layer of the
+ * `npm ci` stage, so a build still leaves about 1.3 GB behind.
+ *
+ * The cleanup therefore runs in passes. The first pass removes the ids the
+ * builder reported; every pass after that removes the ids that appeared on
+ * the daemon since the previous snapshot — those are the parents the daemon
+ * re-committed when their child was removed. The pass count is bounded, and
+ * the loop ends as soon as a pass brings nothing new.
+ *
+ * The window of the loop is ONE removal pass (seconds), not the whole build
+ * (minutes): an image that a concurrent build commits during a pass is
+ * removed as well. That is the trade-off this loop accepts — the alternative,
+ * a window as wide as the build, is what breaks the builds of other tasks.
+ */
+export const removeBuildImages = (
+  taggedImageIds: string[],
+  imageIds: string[],
+  runner: DockerCliRunner = runDockerCli,
+): void => {
+  let known = new Set(listAllImageIds(runner));
+  let targets = imageIds;
+
+  for (let pass = 0; pass < MAX_REMOVAL_PASSES && targets.length > 0; pass += 1) {
+    // The shared set is read again in every pass: a concurrent build can pull
+    // a base image, and a tagged image is never ours to remove — not even
+    // when it appeared after the test took its own snapshot.
+    const shared = [...new Set([...taggedImageIds, ...listTaggedImageIds(runner)])];
+    removeImageIds(shared, targets, runner);
+
+    const now = listAllImageIds(runner);
+    targets = now.filter((id) => !known.has(id));
+    known = new Set(now);
   }
 };
 

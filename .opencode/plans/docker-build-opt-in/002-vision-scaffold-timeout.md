@@ -66,4 +66,25 @@ npx vitest run tests/unit/camera/vision/visionScaffold.test.ts && npm run typech
 
 ## Result
 
-<!-- pending: filled in by the orchestrator after verification -->
+```
+$ npx prettier --check tests/unit/camera/vision/visionScaffold.test.ts
+Checking formatting...
+All matched files use Prettier code style!
+
+$ npx eslint --max-warnings=0 tests/unit/camera/vision/visionScaffold.test.ts
+(no output)
+
+$ npx vitest run tests/unit/camera/vision/visionScaffold.test.ts
+ Test Files  1 passed (1)
+      Tests  6 passed (6)
+   Duration  34.54s (transform 1.04s, setup 638ms, import 787ms, tests 30.22s, environment 0ms)
+```
+
+The scoped `tsc` run alone took 30.22 s of that 34.54 s — it was passing by a hair against the
+30 s global budget, and would have failed under any further contention. With the explicit 180 s
+budget (the one `tests/unit/typescript.test.ts` already uses) it has the headroom the repository
+gives every other compiler run. The file is in the final default-suite run above: 109 files / 601
+tests, all green.
+
+The change is one budget and one comment. The assertions, the test name and everything else in the
+file are untouched.

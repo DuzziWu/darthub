@@ -11,7 +11,7 @@ import {
   parseBuildContainerIds,
   parseCreatedImageIds,
   removeBuildContainers,
-  removeImageIds,
+  removeBuildImages,
   runDockerBuild,
   runDockerCli,
   LIVE_BUILD_ENV_FLAG,
@@ -323,8 +323,12 @@ describe("dockerignore", () => {
       // This is the one path on which a CACHED image is removed: the chain
       // it belongs to is already broken, so it is useless to every build that
       // would use it. Everywhere else the cached images stay.
+      //
+      // The removal runs in passes, like the cleanup below: the daemon
+      // re-commits the parents while it removes the images, and the retry
+      // has to leave its own chain behind as well.
       if (build.exitCode !== 0 && isBrokenCacheChain(build.output)) {
-        removeImageIds(taggedImageIds, brokenChainImageIds(build.output));
+        removeBuildImages(taggedImageIds, brokenChainImageIds(build.output));
         removeBuildContainers(parseBuildContainerIds(build.output));
 
         build = await runDockerBuild({
@@ -365,7 +369,12 @@ describe("dockerignore", () => {
       // device". The images the build took from the cache stay: they are
       // the shared cache of the daemon and the builds that run at the same
       // time use them.
-      removeImageIds(taggedImageIds, parseCreatedImageIds(build.output));
+      //
+      // The removal runs in passes: removing a child image makes the daemon
+      // re-commit its parent under a new id, and the parent chain has to go
+      // with the build — every level of it holds the layer of the `npm ci`
+      // stage.
+      removeBuildImages(taggedImageIds, parseCreatedImageIds(build.output));
       removeBuildContainers(parseBuildContainerIds(build.output));
     }
   });
