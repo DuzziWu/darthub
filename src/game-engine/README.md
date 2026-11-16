@@ -182,9 +182,10 @@ rule set out of the box; all real modes plug in via the `DartGameMode` seam.
 
 Additional exported value: `DARTS_PER_TURN = 3`.
 
-Exported types: `DartGameMode`, `MatchConfig`, `MatchState`, `MatchStatus`,
-`MatchVisit`, `MutableMatchState`, `MutablePlayerState`, `PlayerState`,
-`RecordedThrow`, `ThrowInput`, `ThrowRecord`.
+Exported types: `DartGameMode`, `GameEngineErrorCode`, `MatchConfig`,
+`MatchState`, `MatchStatus`, `MatchVisit`, `MutableMatchState`,
+`MutablePlayerState`, `PlayerState`, `RecordedThrow`, `ThrowInput`,
+`ThrowRecord`.
 
 ## State snapshot shape
 
@@ -222,8 +223,56 @@ import { GameEngineValidationError, GameEngineStateError } from "@/game-engine";
 - **`GameEngineStateError`** — bad lifecycle usage: `recordThrow`/`getState`
   before `startMatch`, throwing out of turn, or throwing after the match
   completed.
+- **`GameEngineBustError`** — the dart busted: it was entered, but it counts
+  for nothing. It is a subclass of `GameEngineStateError`, so every caller
+  that only knows the state error keeps working.
 
-Both extend `Error`, set their own `name`, and carry a descriptive `message`.
+All three extend `Error`, set their own `name`, and carry a descriptive
+`message`.
+
+### Error codes
+
+Every `GameEngineStateError` carries a stable `code` next to its message.
+The **message is English developer text and may change**; the **code is the
+contract** — a UI branches on the code and never on the message text.
+
+```ts
+import type { GameEngineErrorCode } from "@/game-engine";
+
+type GameEngineErrorCode =
+  | "INVALID_STATE"
+  | "MATCH_COMPLETED"
+  | "NOT_YOUR_TURN"
+  | "NO_MATCH"
+  | "NOTHING_TO_UNDO"
+  | "NO_DART_AT_INDEX"
+  | "BUST"
+  | "CORRECTION_WOULD_BUST"
+  | "LATER_DART_WOULD_BUST"
+  | "TURN_ROTATION_CHANGED";
+```
+
+- `GameEngineStateError` carries the code of the refusal; the default is
+  `"INVALID_STATE"`.
+- `GameEngineBustError` always carries `"BUST"`.
+- `GameEngineValidationError` carries no code: it is an input error, not a
+  refusal of the engine's own state.
+
+| Code                      | Raised when                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- |
+| `"INVALID_STATE"`         | the generic fallback — a state refusal without a more specific code         |
+| `"MATCH_COMPLETED"`       | a dart is recorded on a finished match, or a correction is attempted on one |
+| `"NOT_YOUR_TURN"`         | `recordThrow` is called for a player whose turn it is not                   |
+| `"NO_MATCH"`              | a method is called before `startMatch`                                      |
+| `"NOTHING_TO_UNDO"`       | `undoLastThrow` is called on an empty ledger                                |
+| `"NO_DART_AT_INDEX"`      | `correctThrow` is called with an index that holds no dart                   |
+| `"BUST"`                  | the dart busted                                                             |
+| `"CORRECTION_WOULD_BUST"` | the corrected dart itself would bust                                        |
+| `"LATER_DART_WOULD_BUST"` | the correction would make a later recorded dart bust                        |
+| `"TURN_ROTATION_CHANGED"` | the correction would change the turn rotation of the ledger                 |
+
+The code adds no new behaviour: the refusal conditions, the thrown class
+hierarchy and the audit trail are exactly the same as without it.
 
 ## Extension: implementing a DartGameMode
 

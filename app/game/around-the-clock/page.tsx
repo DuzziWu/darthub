@@ -28,6 +28,7 @@ import { VisitTracker } from "@/components/game/VisitTracker";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
+import { playerErrorText } from "@/components/game/playerErrors";
 import type { BoardThrow } from "@/components/game/types";
 
 /** The id of the first seat, used when the match has no player on turn. */
@@ -149,8 +150,10 @@ export default function AroundTheClockPage() {
           setMessage(`Corrected — that was not ${target}. Keep aiming for ${target}.`);
         }
       } catch (error) {
-        // These modes never bust: a thrown error is an invalid throw.
-        setMessage((error as Error).message || "Invalid throw");
+        // These modes never bust: a thrown error is an invalid throw or a
+        // refused correction. The refusal is reported by its code, never by
+        // its message.
+        setMessage(playerErrorText(error));
       }
     },
     [engine, matchState, phase, history, correctionTarget],

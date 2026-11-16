@@ -102,10 +102,13 @@ export class GameEngine {
     validateThrowInput(input);
     const state = this.requireState();
     if (state.status === "completed") {
-      throw new GameEngineStateError("Match is already completed");
+      throw new GameEngineStateError("Match is already completed", "MATCH_COMPLETED");
     }
     if (input.playerId !== state.currentPlayerId) {
-      throw new GameEngineStateError(`It is not the turn of player "${input.playerId}"`);
+      throw new GameEngineStateError(
+        `It is not the turn of player "${input.playerId}"`,
+        "NOT_YOUR_TURN",
+      );
     }
 
     const draft = toMutableDraft(state);
@@ -136,7 +139,7 @@ export class GameEngine {
   undoLastThrow(): MatchState {
     const state = this.requireState();
     if (state.throws.length === 0) {
-      throw new GameEngineStateError("There is nothing to undo");
+      throw new GameEngineStateError("There is nothing to undo", "NOTHING_TO_UNDO");
     }
     const remaining = state.throws.slice(0, -1);
     const { state: derived } = this.replay(remaining, state.corrections);
@@ -163,11 +166,11 @@ export class GameEngine {
     validateCorrectionValue(value);
     const state = this.requireState();
     if (state.status === "completed") {
-      throw new GameEngineStateError("Match is already completed");
+      throw new GameEngineStateError("Match is already completed", "MATCH_COMPLETED");
     }
     const target = state.throws[dartIndex];
     if (!target) {
-      throw new GameEngineStateError(`There is no dart at index ${dartIndex}`);
+      throw new GameEngineStateError(`There is no dart at index ${dartIndex}`, "NO_DART_AT_INDEX");
     }
 
     const candidate = state.throws.map((dart, index) =>
@@ -183,12 +186,14 @@ export class GameEngine {
     if (busts[dartIndex]) {
       throw new GameEngineStateError(
         `The corrected dart would bust: ${value.points} points is not a valid result for player "${target.playerId}"`,
+        "CORRECTION_WOULD_BUST",
       );
     }
     for (let index = dartIndex + 1; index < busts.length; index++) {
       if (busts[index] && !state.throws[index]!.bust) {
         throw new GameEngineStateError(
           `The correction would make dart ${index + 1} bust: ${state.throws[index]!.points} points is no longer a valid result for player "${state.throws[index]!.playerId}"`,
+          "LATER_DART_WOULD_BUST",
         );
       }
     }
@@ -379,6 +384,7 @@ export class GameEngine {
     }
     throw new GameEngineStateError(
       `The correction would change the turn order: dart ${dartIndex + 1} would no longer belong to the same turn`,
+      "TURN_ROTATION_CHANGED",
     );
   }
 
@@ -414,7 +420,7 @@ export class GameEngine {
 
   private requireState(): MatchState {
     if (this.state === null) {
-      throw new GameEngineStateError("No match has been started yet");
+      throw new GameEngineStateError("No match has been started yet", "NO_MATCH");
     }
     return this.state;
   }

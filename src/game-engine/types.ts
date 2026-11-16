@@ -228,11 +228,50 @@ export type MutableMatchState = {
   players: MutablePlayerState[];
 };
 
-/** Thrown when a method is called in an invalid lifecycle state. */
+/**
+ * Stable codes of the engine's refusals.
+ *
+ * The `message` of an error is English developer text and may change; the
+ * `code` is the contract. A UI branches on the code, never on the message.
+ *
+ * - `"INVALID_STATE"` — the generic fallback of a state refusal.
+ * - `"MATCH_COMPLETED"` — the match is over.
+ * - `"NOT_YOUR_TURN"` — it is somebody else's turn.
+ * - `"NO_MATCH"` — no match has been started yet.
+ * - `"NOTHING_TO_UNDO"` — the ledger holds no dart to undo.
+ * - `"NO_DART_AT_INDEX"` — the corrected index holds no dart.
+ * - `"BUST"` — the dart busted.
+ * - `"CORRECTION_WOULD_BUST"` — the corrected dart itself would bust.
+ * - `"LATER_DART_WOULD_BUST"` — a later recorded dart would bust.
+ * - `"TURN_ROTATION_CHANGED"` — the correction would change the turn
+ *   rotation of the ledger.
+ */
+export type GameEngineErrorCode =
+  | "INVALID_STATE"
+  | "MATCH_COMPLETED"
+  | "NOT_YOUR_TURN"
+  | "NO_MATCH"
+  | "NOTHING_TO_UNDO"
+  | "NO_DART_AT_INDEX"
+  | "BUST"
+  | "CORRECTION_WOULD_BUST"
+  | "LATER_DART_WOULD_BUST"
+  | "TURN_ROTATION_CHANGED";
+
+/**
+ * Thrown when a method is called in an invalid lifecycle state.
+ *
+ * Carries a stable {@link GameEngineErrorCode} next to the message, so a
+ * caller can branch on the code. The message stays English developer text.
+ */
 export class GameEngineStateError extends Error {
-  constructor(message: string) {
+  /** Stable code of the refusal. Defaults to `"INVALID_STATE"`. */
+  readonly code: GameEngineErrorCode;
+
+  constructor(message: string, code: GameEngineErrorCode = "INVALID_STATE") {
     super(message);
     this.name = "GameEngineStateError";
+    this.code = code;
   }
 }
 
@@ -243,10 +282,11 @@ export class GameEngineStateError extends Error {
  * its own class — the replay needs to tell a bust apart from a genuine
  * failure. It stays a {@link GameEngineStateError} subclass, so every
  * existing caller and the realtime error mapping keep working unchanged.
+ * Its code is always `"BUST"`.
  */
 export class GameEngineBustError extends GameEngineStateError {
   constructor(message: string) {
-    super(message);
+    super(message, "BUST");
     this.name = "GameEngineBustError";
   }
 }

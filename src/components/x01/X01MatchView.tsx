@@ -17,6 +17,7 @@ import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { VisitTracker } from "@/components/game/VisitTracker";
 import { visitBadge } from "@/components/game/VisitChips";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
+import { playerErrorText } from "@/components/game/playerErrors";
 import type { MatchFormatChoice, PlayerSetupOptions } from "@/components/game/types";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
@@ -235,7 +236,9 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           setMatchState(engine.getState());
           setAnnouncement(`Bust. ${remainingBefore} remaining.`);
         } else {
-          setAnnouncement(error instanceof Error ? error.message : "Invalid throw");
+          // The refusal is reported by its code, never by its message: the
+          // message is developer text and may change.
+          setAnnouncement(playerErrorText(error));
           setMatchState(engine.getState());
         }
       }
