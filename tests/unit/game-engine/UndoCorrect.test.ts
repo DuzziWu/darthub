@@ -175,6 +175,76 @@ describe("GameEngine undo & correct", () => {
     expect(later.getState().corrections).toHaveLength(0);
   });
 
+  it("refuses a correction that would change the turn rotation of the ledger", () => {
+    // a busts on his second dart. The bust consumed no dart slot, so the
+    // two darts after it still fill a's turn: the ledger holds four darts
+    // of that turn, three of them counted.
+    const engine = new GameEngine(new StandardMode({ startScore: 100 }));
+    engine.startMatch({ playerIds: ["a", "b"], outRule: "straight" });
+    engine.recordThrow({ playerId: "a", points: 60 }); // a: 40
+    expect(() => engine.recordThrow({ playerId: "a", points: 50 })).toThrow(GameEngineStateError); // bust
+    engine.recordThrow({ playerId: "a", points: 20 }); // a: 20
+    engine.recordThrow({ playerId: "a", points: 10 }); // a: 10 → a's turn is done
+    const before = engine.getState();
+    expect(before.throws.map((dart) => dart.playerId)).toEqual(["a", "a", "a", "a"]);
+    expect(before.throws[1]?.bust).toBe(true);
+    expect(before.currentPlayerId).toBe("b");
+    expect(before.throwsInCurrentTurn).toBe(0);
+
+    // Counting the bust would hand a's turn a fourth dart: the ledger
+    // would no longer be one recordThrow could have produced.
+    expect(() => engine.correctThrow(1, { points: 5 })).toThrow(GameEngineStateError);
+    expect(engine.getState()).toEqual(before);
+    expect(engine.getState().corrections).toHaveLength(0);
+  });
+
+  it("refuses a correction whose later busts would fall into another turn", () => {
+    // a scores twice and busts three times. Every dart of the turn belongs
+    // to a: the busts consume no dart slot, so the turn is still his.
+    const engine = new GameEngine(new StandardMode({ startScore: 100 }));
+    engine.startMatch({ playerIds: ["a", "b"], outRule: "straight" });
+    engine.recordThrow({ playerId: "a", points: 45 }); // a: 55
+    expect(() => engine.recordThrow({ playerId: "a", points: 56 })).toThrow(GameEngineStateError); // bust
+    engine.recordThrow({ playerId: "a", points: 34 }); // a: 21
+    expect(() => engine.recordThrow({ playerId: "a", points: 24 })).toThrow(GameEngineStateError); // bust
+    expect(() => engine.recordThrow({ playerId: "a", points: 55 })).toThrow(GameEngineStateError); // bust
+    expect(() => engine.recordThrow({ playerId: "a", points: 48 })).toThrow(GameEngineStateError); // bust
+    const before = engine.getState();
+    expect(before.throws.map((dart) => dart.bust)).toEqual([false, true, false, true, true, true]);
+    expect(before.currentPlayerId).toBe("a");
+    expect(before.throwsInCurrentTurn).toBe(2);
+
+    // Counting the dart that used to bust takes a slot of the turn, and
+    // the dart after it stops busting: the turn would advance before the
+    // two busts that follow, and they would land in the next player's turn.
+    expect(() => engine.correctThrow(2, { points: 0 })).toThrow(GameEngineStateError);
+    expect(engine.getState()).toEqual(before);
+    expect(engine.getState().corrections).toHaveLength(0);
+  });
+
+  it("keeps the turn counters and the player order in step for an allowed correction", () => {
+    // b busts on the first dart of his turn. That bust is the last dart of
+    // the ledger, so counting it fills b's turn without moving a dart into
+    // another turn — the correction is allowed.
+    const engine = new GameEngine(new StandardMode({ startScore: 50 }));
+    engine.startMatch({ playerIds: ["a", "b"], outRule: "straight" });
+    engine.recordThrow({ playerId: "a", points: 10 }); // a: 40
+    engine.recordThrow({ playerId: "a", points: 10 }); // a: 30
+    engine.recordThrow({ playerId: "a", points: 10 }); // a: 20 → a's turn is done
+    expect(() => engine.recordThrow({ playerId: "b", points: 60 })).toThrow(GameEngineStateError); // bust
+
+    const corrected = engine.correctThrow(3, { points: 10 });
+
+    // The ledger keeps its player order ...
+    expect(corrected.throws.map((dart) => dart.playerId)).toEqual(["a", "a", "a", "b"]);
+    expect(corrected.throws[3]?.bust).toBe(false);
+    // ... and the counters agree with it: b is on throw, and his turn holds
+    // exactly the one dart the ledger records for him.
+    expect(corrected.currentPlayerId).toBe("b");
+    expect(corrected.throwsInCurrentTurn).toBe(1);
+    expect(engine.getCurrentTurn().map((dart) => dart.points)).toEqual([10]);
+  });
+
   it("a correction never moves a dart between players", () => {
     const engine = new GameEngine(new NeutralScoreMode());
     engine.startMatch({ playerIds: ["a", "b"] });

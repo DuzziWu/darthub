@@ -1,6 +1,11 @@
 import { NeutralScoreMode } from "@/game-engine/NeutralScoreMode";
 import { isValidSegmentScore } from "@/game-engine/rules/OutRules";
-import { deriveTurnThrows, deriveVisitIndexes, groupVisits } from "@/game-engine/throwLedger";
+import {
+  deriveTurnIndexes,
+  deriveTurnThrows,
+  deriveVisitIndexes,
+  groupVisits,
+} from "@/game-engine/throwLedger";
 import {
   GameEngineBustError,
   GameEngineStateError,
@@ -150,8 +155,9 @@ export class GameEngine {
    * The correction is refused — changing neither the state nor the
    * ledger — when the index does not exist, when the match is already
    * completed, when the replacement would make the corrected dart itself
-   * bust, or when it would make a later recorded dart bust that did not
-   * bust before.
+   * bust, when it would make a later recorded dart bust that did not
+   * bust before, and when it would change the turn rotation of the
+   * ledger.
    */
   correctThrow(dartIndex: number, value: CorrectionValue): MatchState {
     validateCorrectionValue(value);
@@ -186,6 +192,8 @@ export class GameEngine {
         );
       }
     }
+
+    this.assertTurnRotationUnchanged(state.throws, derived.throws, dartIndex);
 
     const corrections = this.shouldAudit(state, derived, dartIndex)
       ? [...state.corrections, toCorrectionRecord(dartIndex, target, value)]
@@ -331,6 +339,47 @@ export class GameEngine {
     }
     this.mode.initializeMatch?.(draft);
     return draft;
+  }
+
+  /**
+   * Refuses a correction that would change the turn rotation of the ledger.
+   *
+   * The rotation is the shape of the match: which dart belongs to which
+   * turn of which player. A turn holds `DARTS_PER_TURN` counted darts and
+   * a bust consumes no slot, so the turn of a dart is the number of
+   * counted darts before it, rounded down to the turn it fills — the
+   * player of that turn is the player the rotation is on.
+   *
+   * A correction may change the score, the counters and the audit trail —
+   * but it must not move a dart into another turn. A bust consumes no
+   * dart slot, so correcting a bust into a counting dart hands that turn
+   * a fourth dart: the ledger would then hold a player order the engine's
+   * own rotation can never produce, and `recordThrow` would have refused
+   * every one of those darts.
+   *
+   * The player of a dart never changes — the correction keeps it — so the
+   * player order of the ledger is the same before and after. What the
+   * check pins is the turn membership: the turns the darts fall into.
+   *
+   * The refusal changes neither the state nor the ledger, and it writes no
+   * audit entry.
+   */
+  private assertTurnRotationUnchanged(
+    before: readonly RecordedThrow[],
+    after: readonly RecordedThrow[],
+    dartIndex: number,
+  ): void {
+    const beforeTurns = deriveTurnIndexes(before, DARTS_PER_TURN);
+    const afterTurns = deriveTurnIndexes(after, DARTS_PER_TURN);
+    const unchanged =
+      beforeTurns.length === afterTurns.length &&
+      beforeTurns.every((turn, index) => turn === afterTurns[index]);
+    if (unchanged) {
+      return;
+    }
+    throw new GameEngineStateError(
+      `The correction would change the turn order: dart ${dartIndex + 1} would no longer belong to the same turn`,
+    );
   }
 
   /**
