@@ -39,10 +39,18 @@ export default defineConfig({
   //
   // The root server listens on 3100, not on 3000. Port 3000 belongs to the
   // live preview (see AGENTS.md, "Serving the live preview"), which serves the
-  // *prefixed* build bound to 0.0.0.0 so the host-side Tailscale Serve proxy
-  // can reach it. With `reuseExistingServer` the suite reuses whatever already
-  // listens on the port, so a root build on 3000 would silently displace the
-  // live preview and leave the published site answering 502.
+  // *prefixed* build as a host process bound to 127.0.0.1: the proxy that
+  // forwards to it runs on the same host and the mount points at
+  // http://127.0.0.1:3000, so the loopback bind is the correct and the safe
+  // choice (AGENTS.md, bind address table, "Live preview (port 3000)").
+  //
+  // `0.0.0.0` belongs to the container variant: there the proxy runs on the
+  // host and reaches the container across the bridge on its published address
+  // 172.18.0.2:3000.
+  //
+  // With `reuseExistingServer` the suite reuses whatever already listens on
+  // the port, so a root build on 3000 would silently displace the live preview
+  // and the published site would serve a build without the path prefix.
   webServer: [
     {
       command:
