@@ -50,6 +50,92 @@ function engineWithTurnRotationConflict(): GameEngine {
   return engine;
 }
 
+/**
+ * Every code of the union, as a compile-time check.
+ *
+ * A code that is added to or removed from `GameEngineErrorCode` breaks
+ * this record, and `npm run typecheck` fails with it.
+ */
+const UNION_CODES: Readonly<Record<GameEngineErrorCode, true>> = {
+  INVALID_STATE: true,
+  MATCH_COMPLETED: true,
+  NOT_YOUR_TURN: true,
+  NO_MATCH: true,
+  NOTHING_TO_UNDO: true,
+  NO_DART_AT_INDEX: true,
+  BUST: true,
+  CORRECTION_WOULD_BUST: true,
+  LATER_DART_WOULD_BUST: true,
+  TURN_ROTATION_CHANGED: true,
+};
+
+/**
+ * The codes the engine really throws, collected from its refusals: the
+ * turn rotation, a bust, out of turn, a completed match, an undo without
+ * a dart, a call before the match started, an index without a dart, a
+ * correction that would bust and a correction that would make a later
+ * dart bust.
+ */
+function collectThrownCodes(): readonly GameEngineErrorCode[] {
+  const codes: GameEngineErrorCode[] = [];
+  const collect = (call: () => unknown): void => {
+    const error = captureError(call);
+    expect(error).toBeInstanceOf(GameEngineStateError);
+    codes.push((error as GameEngineStateError).code);
+  };
+
+  // The correction would change the turn rotation.
+  const rotation = engineWithTurnRotationConflict();
+  collect(() => rotation.correctThrow(1, { points: 5 }));
+
+  // The dart busted.
+  const busting = new GameEngine(new StandardMode({ startScore: 50 }));
+  busting.startMatch({ playerIds: ["a"], outRule: "straight" });
+  busting.recordThrow({ playerId: "a", points: 40 }); // 10 left
+  collect(() => busting.recordThrow({ playerId: "a", points: 20 }));
+
+  // Out of turn.
+  const outOfTurn = new GameEngine(new StandardMode({ startScore: 50 }));
+  outOfTurn.startMatch({ playerIds: ["a", "b"], outRule: "straight" });
+  collect(() => outOfTurn.recordThrow({ playerId: "b", points: 20 }));
+
+  // The match is already completed.
+  const completed = new GameEngine(new StandardMode({ startScore: 20 }));
+  completed.startMatch({ playerIds: ["a"], outRule: "straight" });
+  completed.recordThrow({ playerId: "a", points: 20 });
+  collect(() => completed.recordThrow({ playerId: "a", points: 20 }));
+
+  // There is nothing to undo.
+  const empty = new GameEngine(new StandardMode({ startScore: 50 }));
+  empty.startMatch({ playerIds: ["a"], outRule: "straight" });
+  collect(() => empty.undoLastThrow());
+
+  // No match has been started yet.
+  const fresh = new GameEngine(new StandardMode({ startScore: 50 }));
+  collect(() => fresh.getState());
+
+  // The corrected index holds no dart.
+  const noDart = new GameEngine(new StandardMode({ startScore: 50 }));
+  noDart.startMatch({ playerIds: ["a"], outRule: "straight" });
+  noDart.recordThrow({ playerId: "a", points: 20 });
+  collect(() => noDart.correctThrow(5, { points: 10 }));
+
+  // The corrected dart itself would bust.
+  const correctionBust = new GameEngine(new StandardMode({ startScore: 50 }));
+  correctionBust.startMatch({ playerIds: ["a"], outRule: "straight" });
+  correctionBust.recordThrow({ playerId: "a", points: 40 }); // 10 left
+  collect(() => correctionBust.correctThrow(0, { points: 60 }));
+
+  // A later recorded dart would bust.
+  const laterBust = new GameEngine(new StandardMode({ startScore: 100 }));
+  laterBust.startMatch({ playerIds: ["a"], outRule: "straight" });
+  laterBust.recordThrow({ playerId: "a", points: 20 }); // 80 left
+  laterBust.recordThrow({ playerId: "a", points: 60 }); // 20 left
+  collect(() => laterBust.correctThrow(0, { points: 60 }));
+
+  return codes;
+}
+
 describe("game engine error codes", () => {
   it("gives the turn-rotation refusal the code TURN_ROTATION_CHANGED", () => {
     const engine = engineWithTurnRotationConflict();
@@ -64,14 +150,21 @@ describe("game engine error codes", () => {
     expect(error.name).toBe("GameEngineStateError");
   });
 
-  it("keeps the message of the turn-rotation refusal unchanged", () => {
+  it("keeps the code of the turn-rotation refusal independent of its message", () => {
     const engine = engineWithTurnRotationConflict();
 
     const error = captureStateError(() => engine.correctThrow(1, { points: 5 }));
 
-    // The message stays English developer text — the code is the contract,
-    // the message is not.
-    expect(error.message).toContain("The correction would change the turn order");
+    // The message is developer text: it says something, but it is not the
+    // contract and it does not carry the code.
+    expect(error.message.length).toBeGreaterThan(0);
+    expect(error.message).not.toContain(error.code);
+
+    // The same code may travel with a different wording: the code names
+    // the refusal, the message only explains it.
+    const reworded = new GameEngineStateError("Another wording of the same refusal", error.code);
+    expect(reworded.code).toBe(error.code);
+    expect(reworded.message).not.toBe(error.message);
   });
 
   it("refuses the turn-rotation change without touching state, ledger or audit trail", () => {
@@ -182,24 +275,17 @@ describe("game engine error codes", () => {
     expect(error.code).not.toContain("b");
   });
 
-  it("exposes the code union as a type of the public barrel", () => {
-    // The type is exported from the barrel — the compile of this file is
-    // the assertion.
+  it("throws only codes that are members of the exported union", () => {
+    // The compile-time assertion: the union is exported from the barrel.
     const code: GameEngineErrorCode = "TURN_ROTATION_CHANGED";
-    const codes: readonly GameEngineErrorCode[] = [
-      "INVALID_STATE",
-      "MATCH_COMPLETED",
-      "NOT_YOUR_TURN",
-      "NO_MATCH",
-      "NOTHING_TO_UNDO",
-      "NO_DART_AT_INDEX",
-      "BUST",
-      "CORRECTION_WOULD_BUST",
-      "LATER_DART_WOULD_BUST",
-      "TURN_ROTATION_CHANGED",
-    ];
+    const members = Object.keys(UNION_CODES);
+    expect(members).toContain(code);
 
-    expect(code).toBe("TURN_ROTATION_CHANGED");
-    expect(codes).toHaveLength(10);
+    // Every code the engine really throws is a member of the union — a
+    // refusal with a code outside it would break every consumer that
+    // branches on the code.
+    for (const thrown of collectThrownCodes()) {
+      expect(members).toContain(thrown);
+    }
   });
 });

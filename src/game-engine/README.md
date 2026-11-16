@@ -271,6 +271,12 @@ type GameEngineErrorCode =
 | `"LATER_DART_WOULD_BUST"` | the correction would make a later recorded dart bust                        |
 | `"TURN_ROTATION_CHANGED"` | the correction would change the turn rotation of the ledger                 |
 
+The mode's own refusal — a throw by a player who is not in the match — uses
+the `"INVALID_STATE"` fallback on purpose. It is unreachable through the
+public API: `recordThrow` refuses an unknown player earlier with
+`"NOT_YOUR_TURN"`, and a replay only ever replays the players of the ledger.
+A dedicated code for it would document a path no caller can reach.
+
 The code adds no new behaviour: the refusal conditions, the thrown class
 hierarchy and the audit trail are exactly the same as without it.
 

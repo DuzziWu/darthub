@@ -137,7 +137,7 @@ The two are different facts and the caption says which one the number is.
 
 ---
 
-## 6. The throw pipeline — four rules that are easy to get wrong
+## 6. The throw pipeline — five rules that are easy to get wrong
 
 These are engine behaviours the UI cannot infer from the returned state. Full detail in
 `MASTER.md` §10.2.1–§10.2.3 and `board.md` §6.8.
@@ -158,6 +158,12 @@ These are engine behaviours the UI cannot infer from the returned state. Full de
    Shanghai derive their result from `points` alone; the segment is a **UI label** on those
    views. In cricket the inner bull (50) is **two** marks and the outer bull (25) is
    **one** — the two bulls are not interchangeable.
+5. **A refusal reaches the player as a player text, translated from the engine's code.**
+   `GameEngineStateError` carries a `readonly code` from the union `GameEngineErrorCode`
+   (`src/game-engine/types.ts`). The English `message` beside it is developer text — it
+   never reaches the player and it is never matched on. **Exactly one module** turns a
+   code into a sentence: `src/components/game/playerErrors.ts`. All five match screens read
+   it, so the same refusal cannot read differently in 501 and in cricket.
 
 **So the visit strip is assembled from two sources:** the engine's returned state for the
 counted darts, and a small UI-local record for the busted dart. Both are needed for the
@@ -165,6 +171,20 @@ green-counted / red-bust chips.
 
 **The turn indicator follows the engine's `currentPlayerId`**, never the UI's own notion of
 whose turn it is.
+
+**The mapping is total, and it degrades.** Every code of the union has a text — the table
+is typed against the union, so a code without a text does not compile. An error that
+carries no code at all (a validation error, a plain `Error`) falls back to a generic
+sentence, so no English developer text can leak into the status line.
+
+**A refusal text must never promise a remedy that does not exist.** The turn-rotation
+refusal (`TURN_ROTATION_CHANGED`) is the cautionary case: for the dart it refuses, **no**
+value is accepted — probing all 61 values the player can enter (0…60) produced 0
+acceptances, every one of them refused under one of three codes
+(`TURN_ROTATION_CHANGED`, `LATER_DART_WOULD_BUST`, `CORRECTION_WOULD_BUST`) — so a text
+that tells the player to enter another value only leads into the next refusal. The remedy
+a refusal names has to be one that exists; for this one it is undoing back past the dart
+and throwing it again.
 
 ---
 
@@ -266,6 +286,8 @@ Visible, AA) and SC 2.4.11 (Focus Appearance, 2.2 AA).
 - ❌ Emoji mode icons (`🎯`)
 - ❌ A score that reflows as it falls — no tabular figures, no fixed column
 - ❌ Inferring a bust from the absence of a state change
+- ❌ Showing the engine's English error message to the player, or matching on it
+- ❌ A refusal text that promises a remedy that does not exist
 - ❌ Sending a segment with a miss
 - ❌ Deriving a non-x01 mode's result from the segment instead of the points
 - ❌ Collapsing cricket's two bulls into one

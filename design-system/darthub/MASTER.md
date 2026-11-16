@@ -709,7 +709,9 @@ Three consequences the score sheet depends on:
    force, the player's remaining score, and the dart's `{ points, segment }` — enough to
    determine that the dart busts. It must **not** infer a bust from the absence of a state
    change, and it must **not** string-match the error message: "not your turn" is also a
-   `GameEngineStateError`, and a string match would report a bust for it.
+   `GameEngineStateError`, and a string match would report a bust for it. The refusals
+   carry a stable `code` instead, and the player text is translated from that code in one
+   module — see `match.md` §6, rule 5.
 2. **A bust does not consume a dart.** The engine leaves `throwsInCurrentTurn` and the
    score untouched, so the busted dart is not in the returned state and the dart counter
    does not advance. **The BUST chip is UI-local state for the current visit.**
@@ -778,7 +780,7 @@ A **realistic steel dartboard**, rendered from millimetre-accurate geometry, and
 - **Never** show `--`, `0`, or a placeholder number for data that does not exist. The current dashboard's four `--` tiles are the anti-pattern.
 - Empty state: a one-line explanation of what will appear here and how to make it appear, plus the action that produces it.
 - Loading: a skeleton matching the final layout's geometry, so nothing shifts on arrival.
-- Error: state the cause and the recovery path.
+- Error: state the cause and the recovery path — and the recovery path must exist. A refusal that promises a remedy it cannot deliver is the anti-pattern; see `match.md` §6, rule 5.
 
 ---
 

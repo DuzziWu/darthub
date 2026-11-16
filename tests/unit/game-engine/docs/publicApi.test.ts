@@ -2,11 +2,68 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
 import * as engine from "@/game-engine";
+import type { GameEngineErrorCode } from "@/game-engine";
 
 const README_PATH = resolve(import.meta.dirname, "../../../../src/game-engine/README.md");
+const TYPES_PATH = resolve(import.meta.dirname, "../../../../src/game-engine/types.ts");
 
 function readReadme(): string {
   return readFileSync(README_PATH, "utf8");
+}
+
+/**
+ * Every code of the `GameEngineErrorCode` union, as a compile-time check.
+ *
+ * A code that is added to or removed from the union breaks this record,
+ * and `npm run typecheck` fails with it.
+ */
+const UNION_CODES: Readonly<Record<GameEngineErrorCode, true>> = {
+  INVALID_STATE: true,
+  MATCH_COMPLETED: true,
+  NOT_YOUR_TURN: true,
+  NO_MATCH: true,
+  NOTHING_TO_UNDO: true,
+  NO_DART_AT_INDEX: true,
+  BUST: true,
+  CORRECTION_WOULD_BUST: true,
+  LATER_DART_WOULD_BUST: true,
+  TURN_ROTATION_CHANGED: true,
+};
+
+/**
+ * The codes the union declares, read from the source of truth.
+ *
+ * The union is a type, so only its declaration can tell which codes
+ * exist — a test that lists them itself would only prove that the list
+ * agrees with itself.
+ */
+function readUnionCodes(): readonly string[] {
+  const source = readFileSync(TYPES_PATH, "utf8");
+  const declaration = source.match(/export type GameEngineErrorCode\s*=\s*([\s\S]*?);/);
+  if (declaration === null || declaration[1] === undefined) {
+    throw new Error("src/game-engine/types.ts declares no GameEngineErrorCode union");
+  }
+  return [...declaration[1].matchAll(/"([A-Z_]+)"/g)].flatMap((match) =>
+    match[1] === undefined ? [] : [match[1]],
+  );
+}
+
+/** The codes the README's error code table lists. */
+function readmeTableCodes(readme: string): readonly string[] {
+  return [...readme.matchAll(/^\|\s*`"([A-Z_]+)"`\s*\|/gm)].flatMap((match) =>
+    match[1] === undefined ? [] : [match[1]],
+  );
+}
+
+/** The codes the README's own copy of the union lists. */
+function readmeUnionCodes(readme: string): readonly string[] {
+  const declaration = readme.match(/type GameEngineErrorCode\s*=\s*([\s\S]*?);/);
+  if (declaration === null || declaration[1] === undefined) {
+    throw new Error("the README documents no GameEngineErrorCode union");
+  }
+  return [...declaration[1].matchAll(/"([A-Z_]+)"/g)].flatMap((match) =>
+    match[1] === undefined ? [] : [match[1]],
+  );
 }
 
 describe("game-engine README documentation", () => {
@@ -63,5 +120,29 @@ describe("game-engine README documentation", () => {
 
     expect(readme).toMatch(/UI-agnostic/i);
     expect(readme).toMatch(/in isolation/i);
+  });
+
+  it("documents every error code of the union in the code table", () => {
+    const readme = readReadme();
+    const unionCodes = readUnionCodes();
+    const tableCodes = readmeTableCodes(readme);
+
+    // The source of truth and the compile-time list agree — the list is
+    // the exhaustiveness check, the source is what the engine ships.
+    expect([...unionCodes].sort()).toEqual(Object.keys(UNION_CODES).sort());
+
+    // Every code of the union is documented in the code table.
+    for (const code of unionCodes) {
+      expect(tableCodes).toContain(code);
+    }
+
+    // The table documents no code the union does not know: a code that was
+    // renamed in the code must not linger in the documentation.
+    for (const code of tableCodes) {
+      expect(unionCodes).toContain(code);
+    }
+
+    // The README's own copy of the union lists the same codes.
+    expect([...readmeUnionCodes(readme)].sort()).toEqual([...unionCodes].sort());
   });
 });

@@ -162,6 +162,9 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
   // The engine's ledger is the only record of the darts; the strip, the
   // score sheet, the undo button and the correction flow all read from it.
   const history = useMatchHistory({ engine, matchState });
+  // The dart a correction replaces. It is read by name so the callback
+  // below does not close over a stale value.
+  const { correctionTarget } = history;
   const inputMode = useInputMode();
 
   const startMatch = useCallback(
@@ -230,7 +233,15 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           setPhase("result");
         }
       } catch (error) {
-        if (bust && error instanceof GameEngineStateError) {
+        // The bust branch belongs to a **new** dart, never to a correction.
+        // While a correction is armed, `bust` was computed from the score
+        // that is left *now* — and the score now is not the score the
+        // corrected dart was thrown at, so the computation says nothing
+        // about the dart. A refused correction changed nothing at all, and
+        // announcing a bust would tell the player that something happened
+        // that did not happen. The armed target survives a refusal, so the
+        // check is stable inside this catch.
+        if (correctionTarget === null && bust && error instanceof GameEngineStateError) {
           // A bust counts for nothing but is still entered in the ledger,
           // so the strip shows it from there.
           setMatchState(engine.getState());
@@ -243,7 +254,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
         }
       }
     },
-    [engine, matchState, outRule, history],
+    [engine, matchState, outRule, history, correctionTarget],
   );
 
   const handleBoardThrow = useCallback(

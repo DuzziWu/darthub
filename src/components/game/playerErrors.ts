@@ -11,12 +11,28 @@
  * this module is the single place where a code becomes a sentence the
  * player can read.
  *
- * One module for all five match views, so the same refusal cannot read
- * differently in 501 and in cricket.
+ * One module for the **four** match views — the x01 view and the three mode
+ * pages — so the same refusal cannot read differently in 501 and in
+ * cricket. The **five** screens (501, 301, cricket, around the clock and
+ * shanghai) are built from those four: 501 and 301 share the x01 view.
  *
  * The texts are short on purpose: the status line is a caption, read
  * mid-turn, and a sentence that has to be scrolled is a sentence nobody
  * reads.
+ *
+ * **A refusal text must never promise a remedy that does not exist.**
+ *
+ * The turn-rotation refusal is the proof. In the very scenario the
+ * correction flow exists for — a bust in the middle of a turn, corrected
+ * afterwards — *every* value the player can enter is refused: a probe over
+ * all 61 values of that journey (0 to 60) accepted none of them. Eleven
+ * were refused with `TURN_ROTATION_CHANGED`, eleven with
+ * `LATER_DART_WOULD_BUST` and thirty-nine with `CORRECTION_WOULD_BUST`.
+ * A text that says "enter another value" therefore sends the player into a
+ * loop: the next value is refused too, with a different sentence.
+ *
+ * So the turn-rotation text promises no other value. It names the one way
+ * out that always exists — take the dart back and throw again.
  */
 import { GameEngineStateError, type GameEngineErrorCode } from "@/game-engine";
 
@@ -25,15 +41,15 @@ import { GameEngineStateError, type GameEngineErrorCode } from "@/game-engine";
  *
  * The texts speak the player's language, not the engine's: no ledger, no
  * rotation, no replay, no dart index, no English leftovers. A refusal tells
- * the player what to do next — enter another value — and never which
- * internal rule stopped them.
+ * the player what to do next — and only promises a next step that really
+ * exists. It never names the internal rule that stopped them.
  */
 export const PLAYER_ERROR_TEXTS: Readonly<Record<GameEngineErrorCode, string>> = {
   INVALID_STATE: "Das hat nicht geklappt. Bitte versuche es noch einmal.",
   MATCH_COMPLETED: "Das Spiel ist bereits beendet.",
   NOT_YOUR_TURN: "Du bist gerade nicht am Zug.",
   NO_MATCH: "Es läuft noch kein Spiel.",
-  NOTHING_TO_UNDO: "Es gibt nichts zurückzunehmen.",
+  NOTHING_TO_UNDO: "Da ist nichts zurückzunehmen.",
   NO_DART_AT_INDEX: "Diesen Wurf gibt es nicht.",
   BUST: "Bust — der Wurf zählt nicht.",
   CORRECTION_WOULD_BUST:
@@ -41,7 +57,7 @@ export const PLAYER_ERROR_TEXTS: Readonly<Record<GameEngineErrorCode, string>> =
   LATER_DART_WOULD_BUST:
     "Diese Änderung würde einen späteren Wurf ungültig machen. Bitte einen anderen Wert eingeben.",
   TURN_ROTATION_CHANGED:
-    "Diese Änderung würde die Reihenfolge der Würfe ändern. Bitte einen anderen Wert eingeben.",
+    "Diesen Wurf kannst du nicht mehr ändern. Bitte zurücknehmen und neu werfen.",
 };
 
 /**

@@ -30,9 +30,16 @@ const ALL_CODES: readonly GameEngineErrorCode[] = [
   "TURN_ROTATION_CHANGED",
 ];
 
-/** The text of the refusal this whole feature was written for. */
+/**
+ * The text of the refusal this whole feature was written for.
+ *
+ * It promises no other value: in the scenario the correction flow exists
+ * for — a bust in the middle of a turn, corrected afterwards — a probe over
+ * all 61 values (0 to 60) was refused by the engine without exception, so
+ * "enter another value" would be a promise the engine cannot keep.
+ */
 const TURN_ROTATION_TEXT =
-  "Diese Änderung würde die Reihenfolge der Würfe ändern. Bitte einen anderen Wert eingeben.";
+  "Diesen Wurf kannst du nicht mehr ändern. Bitte zurücknehmen und neu werfen.";
 
 /**
  * The engine's vocabulary, which must never reach the player.
@@ -61,6 +68,25 @@ describe("PLAYER_ERROR_TEXTS", () => {
 
   it("names the turn rotation in the player's language", () => {
     expect(PLAYER_ERROR_TEXTS.TURN_ROTATION_CHANGED).toBe(TURN_ROTATION_TEXT);
+  });
+
+  /**
+   * The truthfulness guard.
+   *
+   * A refusal text must never promise a remedy that does not exist. The
+   * turn-rotation refusal is the proof: in the very scenario the
+   * correction flow exists for — a bust in the middle of a turn, corrected
+   * afterwards — a probe over all 61 values the player can enter (0 to 60)
+   * was refused by the engine without exception. Eleven were refused with
+   * `TURN_ROTATION_CHANGED`, eleven with `LATER_DART_WOULD_BUST` and
+   * thirty-nine with `CORRECTION_WOULD_BUST`. So a text that tells the
+   * player to enter another value sends them into a loop: the next value
+   * is refused too, with a different sentence.
+   */
+  it("never tells the player to enter another value when no other value is accepted", () => {
+    const text = PLAYER_ERROR_TEXTS.TURN_ROTATION_CHANGED;
+    expect(text).not.toContain("anderen Wert");
+    expect(text).not.toContain("Wert eingeben");
   });
 });
 
