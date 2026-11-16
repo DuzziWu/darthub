@@ -349,6 +349,33 @@ describe("the non-x01 match views", () => {
     throwOnBoard("Single 2, 2 points");
     expect(within(aliceRow).getByLabelText("Round 2, target 2, 1 marks")).toBeTruthy();
     expect(within(bobRow).getByLabelText("Round 2, target 2, 0 marks")).toBeTruthy();
+
+    // The strip of the three segments follows the player on turn. Alice is
+    // on turn and has hit the single of the target, so the sheet says so —
+    // and the double and the treble of the target are still to come.
+    const sheet = screen.getByRole("region", { name: "Shanghai rounds" });
+    expect(within(sheet).getByLabelText("Single, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, missed")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, missed")).toBeTruthy();
+    // The round is not a Shanghai yet, so the sheet says what is still
+    // possible rather than claiming the win.
+    expect(within(sheet).getByText("Shanghai possible")).toBeTruthy();
+    expect(within(sheet).queryByText("Shanghai")).toBeNull();
+
+    // Alice finishes her visit of three darts and the turn rotates to Bob.
+    throwOnBoard("Single 20, 20 points");
+    throwOnBoard("Single 20, 20 points");
+    expect(within(aliceRow).queryByText(/on turn/i)).toBeNull();
+    expect(within(bobRow).getByText(/on turn/i)).toBeTruthy();
+
+    // The strip belongs to the player on turn, so it now reports Bob's
+    // round — and Bob has thrown nothing in it. Alice's single is gone.
+    expect(within(sheet).getByLabelText("Single, missed")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, missed")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, missed")).toBeTruthy();
+    expect(within(sheet).queryByLabelText("Single, hit")).toBeNull();
+    expect(within(sheet).getByText("Shanghai possible")).toBeTruthy();
+    expect(within(sheet).queryByText("Shanghai")).toBeNull();
   });
 
   it("shows the shanghai segments after the match is won", () => {
