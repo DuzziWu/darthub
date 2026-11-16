@@ -28,6 +28,7 @@ import { VisitTracker } from "@/components/game/VisitTracker";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
+import { playerErrorText } from "@/components/game/playerErrors";
 import type { BoardThrow } from "@/components/game/types";
 
 /**
@@ -149,8 +150,9 @@ export default function CricketPage() {
         }
       } catch (error) {
         // A refused correction or an invalid throw: the engine changed
-        // nothing, but the strip re-reads the ledger either way.
-        setMessage((error as Error).message || "Invalid throw");
+        // nothing, but the strip re-reads the ledger either way. The
+        // refusal is reported by its code, never by its message.
+        setMessage(playerErrorText(error));
         setMatchState(engine.getState());
       }
     },

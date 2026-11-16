@@ -82,6 +82,21 @@ function armBand(band: "Single" | "Double" | "Treble") {
   fireEvent.click(pad().getByRole("radio", { name: new RegExp(band, "i") }));
 }
 
+/**
+ * The match's status line — the `role="status"` region of `MatchStatus`.
+ *
+ * The strip names the armed dart in a status region of its own, so the
+ * announcement is picked out by its element: the status line is the
+ * paragraph.
+ */
+function statusLine(): HTMLElement {
+  const line = screen.getAllByRole("status").find((region) => region.tagName === "P");
+  if (line === undefined) {
+    throw new Error("the match status line is not in the document");
+  }
+  return line;
+}
+
 describe("the x01 match view", () => {
   it("submits the segment with every throw", () => {
     const recordThrow = vi.spyOn(GameEngine.prototype, "recordThrow");
@@ -164,6 +179,34 @@ describe("the x01 match view", () => {
     expect(sheet().getByText("BUST")).toBeTruthy();
     // The bust consumed no dart and took no score.
     expect(sheet().getByText("20")).toBeTruthy();
+  });
+
+  /**
+   * The positive half of the bust announcement.
+   *
+   * A bust that really happened is announced with the score that is left —
+   * the bust takes nothing off the board, so the number is the one before
+   * the dart. This is the counterpart of the correction refusal, which must
+   * **not** be announced as a bust: there the dart changed nothing at all.
+   */
+  it("announces a bust with the score that is left", () => {
+    startMatch(20);
+
+    // A single of 20 would finish the leg, but only a double may.
+    armBand("Single");
+    fireEvent.click(pad().getByRole("button", { name: "Single 20, 20 points" }));
+
+    expect(statusLine().textContent).toBe("Bust. 20 remaining.");
+  });
+
+  it("announces a bust with the score that is left when the dart overshoots", () => {
+    startMatch(30);
+
+    // A treble 20 is 60 points on a score of 30: the dart overshoots.
+    armBand("Treble");
+    fireEvent.click(pad().getByRole("button", { name: "Treble 20, 60 points" }));
+
+    expect(statusLine().textContent).toBe("Bust. 30 remaining.");
   });
 
   it("shows the board source in the match header", () => {

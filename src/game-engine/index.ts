@@ -19,6 +19,7 @@ export type {
   CorrectionRecord,
   CorrectionValue,
   DartGameMode,
+  GameEngineErrorCode,
   MatchConfig,
   MatchState,
   MatchVisit,
