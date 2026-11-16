@@ -29,13 +29,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..", "..", "..");
 const OPENCODE_BIN = process.env.OPENCODE_BIN ?? "/home/administrator/.opencode/bin/opencode";
 
-/** The seven project agents, with the mode each `.md` file declares. */
+/** The eight project agents, with the mode each `.md` file declares. */
 const EXPECTED_AGENTS = {
   orchestrator: "all",
   architect: "subagent",
   backend: "subagent",
   frontend: "subagent",
   "game-engine": "subagent",
+  infra: "subagent",
   "qa-engineer": "subagent",
   "code-reviewer": "subagent",
 };
@@ -233,8 +234,8 @@ const resolvedProjectAgents = agents
     (id) => !["build", "compaction", "explore", "general", "plan", "summary", "title"].includes(id),
   );
 check(
-  "exactly seven project agents are registered",
-  resolvedProjectAgents.length === 7,
+  "exactly eight project agents are registered",
+  resolvedProjectAgents.length === 8,
   `-> ${resolvedProjectAgents.sort().join(", ")}`,
 );
 
@@ -333,6 +334,18 @@ check(
   decide(architect, "edit", ".opencode/plans/x/_plan.md").effect === "allow",
 );
 check(
+  'architect: edit "design-system/*" is allowed',
+  decide(architect, "edit", "design-system/darthub/MASTER.md").effect === "allow",
+);
+check(
+  'architect: edit "AGENTS.md" is allowed',
+  decide(architect, "edit", "AGENTS.md").effect === "allow",
+);
+check(
+  'architect: edit "src/lib/basePath.ts" stays denied',
+  decide(architect, "edit", "src/lib/basePath.ts").effect === "deny",
+);
+check(
   'architect: the project-wide "edit *.env.example" allow is overridden by the later deny',
   decide(architect, "edit", ".env.example").effect === "deny",
 );
@@ -340,6 +353,73 @@ check('architect: shell "*" is denied', decide(architect, "shell", "rm -rf src")
 check(
   "architect: shell redirection is denied",
   decide(architect, "shell", "echo x > src/foo.ts").effect === "deny",
+);
+
+const frontend = byId["frontend"]?.permissions ?? [];
+check('frontend: edit "*" is denied', decide(frontend, "edit", "src/x.ts").effect === "deny");
+check(
+  'frontend: edit "src/components/*" is allowed',
+  decide(frontend, "edit", "src/components/shell/ShellNav.tsx").effect === "allow",
+);
+check(
+  'frontend: edit "src/lib/*" is allowed',
+  decide(frontend, "edit", "src/lib/basePath.ts").effect === "allow",
+);
+check(
+  'frontend: edit "app/api/*" stays denied',
+  decide(frontend, "edit", "app/api/route.ts").effect === "deny",
+);
+
+const infra = byId["infra"]?.permissions ?? [];
+check('infra: edit "*" is denied', decide(infra, "edit", "src/x.ts").effect === "deny");
+for (const owned of [
+  "Dockerfile",
+  "docker-compose.yml",
+  ".dockerignore",
+  "next.config.ts",
+  "eslint.config.mjs",
+  ".prettierrc",
+  ".prettierignore",
+  "package.json",
+  "package-lock.json",
+  ".github/workflows/ci.yml",
+  "scripts/check-asset-prefix.mjs",
+  ".husky/pre-commit",
+]) {
+  check(`infra: edit "${owned}" is allowed`, decide(infra, "edit", owned).effect === "allow");
+}
+for (const foreign of [
+  "app/api/auth/route.ts",
+  "src/game-engine/GameEngine.ts",
+  "src/components/shell/ShellNav.tsx",
+  "e2e/start-match.spec.ts",
+  "tests/unit/game-engine/GameEngine.test.ts",
+]) {
+  check(`infra: edit "${foreign}" stays denied`, decide(infra, "edit", foreign).effect === "deny");
+}
+check('infra: shell "*" is denied', decide(infra, "shell", "rm -rf src").effect === "deny");
+for (const command of ["rm -rf src", "mv a b", "cp a b", "tee a", "sed -i s/a/b/ x", "git stash"]) {
+  check(`infra: shell "${command}" is denied`, decide(infra, "shell", command).effect === "deny");
+}
+check(
+  "infra: shell redirection is denied",
+  decide(infra, "shell", "echo x > Dockerfile").effect === "deny",
+);
+for (const command of [
+  "git status",
+  "git diff HEAD",
+  "npm run build",
+  "npx tsc --noEmit",
+  "npx eslint .",
+  "npx prettier . --check",
+  "npx vitest run",
+  "docker compose config",
+]) {
+  check(`infra: shell "${command}" is allowed`, decide(infra, "shell", command).effect === "allow");
+}
+check(
+  'infra: the project-wide "edit *.env.example" allow is overridden by the later deny',
+  decide(infra, "edit", ".env.example").effect === "deny",
 );
 
 const reviewer = byId["code-reviewer"]?.permissions ?? [];

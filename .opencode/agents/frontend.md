@@ -1,5 +1,5 @@
 ---
-description: Frontend specialist for DartHub. Owns the Next.js 16 App Router pages and the React 19 components on Tailwind CSS v4 — layout, UX, responsive behaviour, interaction states and accessibility. Reads the installed Next.js version's local documentation before using any Next.js API, and treats DESIGN.md plus the design-system as the design source of truth.
+description: Frontend specialist for DartHub. Owns the Next.js 16 App Router pages, the React 19 components on Tailwind CSS v4 and the shared client helpers in src/lib/ — layout, UX, responsive behaviour, interaction states and accessibility. Reads the installed Next.js version's local documentation before using any Next.js API, and treats DESIGN.md plus the design-system as the design source of truth.
 mode: subagent
 color: "#B79CED"
 permissions:
@@ -9,6 +9,11 @@ permissions:
     effect: "deny"
   - action: "edit"
     resource: "src/components/*"
+    effect: "allow"
+  # The shared client helpers (path prefix, formatting) belong to the
+  # frontend owner.
+  - action: "edit"
+    resource: "src/lib/*"
     effect: "allow"
   - action: "edit"
     resource: "app/*"
@@ -150,8 +155,15 @@ src/components/board/       DartBoard.tsx
 src/components/shell/       header, nav, footer, brand
 src/components/ui/          primitives
 src/components/x01/         X01MatchView
+src/lib/                    shared client helpers (base path, formatting)
 tests/unit/game|ui|shell|game-center|tailwind/    your unit tests
 ```
+
+`src/lib/` is your own area. It holds the helpers that the React layer shares
+across pages and components — today the base-path helper (`src/lib/basePath.ts`)
+that every link and asset URL goes through. Keep them framework-light and
+free of business logic: a helper that knows the rules of the game belongs in
+the domain core, a helper that knows the URL belongs here.
 
 E2E specs in `e2e/` belong to the `qa-engineer`. If you need an E2E journey
 for your feature, describe it precisely and hand it over — do not write it

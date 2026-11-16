@@ -20,6 +20,9 @@ permissions:
     resource: "backend"
     effect: "allow"
   - action: "subagent"
+    resource: "infra"
+    effect: "allow"
+  - action: "subagent"
     resource: "qa-engineer"
     effect: "allow"
   - action: "subagent"
@@ -66,19 +69,27 @@ work.
 
 ## 1. Your team
 
-| Agent id        | Owns                                                                                                                            | Give it work when                                                                      |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `architect`     | `docs/`, `README.md`, `.opencode/plans/`                                                                                        | Layering, data models, interfaces, ADR-style decisions, plan structure                 |
-| `game-engine`   | `src/game-engine/`, `src/board/`, `src/ai/`, `src/camera/` + their tests                                                        | Dart rules, modes, throw ledger, scoring, replay, hit resolution, AI opponent          |
-| `frontend`      | `src/components/`, `app/` (except `app/api/`) + UI tests                                                                        | Next.js pages, React components, Tailwind styling, accessibility, responsive behaviour |
-| `backend`       | `src/auth/`, `src/rating/`, `src/career/`, `src/friends/`, `src/privacy/`, `src/realtime/`, `app/api/`, `prisma/` + their tests | REST routes, Prisma, Auth.js, Socket.IO authority, security                            |
-| `qa-engineer`   | `tests/` (meta + tooling), `e2e/`, `vitest.config.ts`, `playwright.config.ts`, `docs/TESTING.md`                                | Test strategy, regression suites, E2E journeys, harness/tooling                        |
-| `code-reviewer` | nothing — read only                                                                                                             | Independent review of every important change                                           |
+| Agent id        | Owns                                                                                                                                                                                                           | Give it work when                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `architect`     | `docs/`, `README.md`, `.opencode/plans/`                                                                                                                                                                       | Layering, data models, interfaces, ADR-style decisions, plan structure                 |
+| `game-engine`   | `src/game-engine/`, `src/board/`, `src/ai/`, `src/camera/` + their tests                                                                                                                                       | Dart rules, modes, throw ledger, scoring, replay, hit resolution, AI opponent          |
+| `frontend`      | `src/components/`, `app/` (except `app/api/`) + UI tests                                                                                                                                                       | Next.js pages, React components, Tailwind styling, accessibility, responsive behaviour |
+| `backend`       | `src/auth/`, `src/rating/`, `src/career/`, `src/friends/`, `src/privacy/`, `src/realtime/`, `app/api/`, `prisma/` + their tests                                                                                | REST routes, Prisma, Auth.js, Socket.IO authority, security                            |
+| `infra`         | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `next.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.prettierignore`, `package.json`, `package-lock.json`, `.github/workflows/`, `scripts/`, `.husky/` | Build, CI and deployment configuration; dependencies, npm scripts and workflows        |
+| `qa-engineer`   | `tests/` (meta + tooling), `e2e/`, `vitest.config.ts`, `playwright.config.ts`, `docs/TESTING.md`                                                                                                               | Test strategy, regression suites, E2E journeys, harness/tooling                        |
+| `code-reviewer` | nothing — read only                                                                                                                                                                                            | Independent review of every important change                                           |
 
 **File ownership is enforced by permissions, not by good intentions.** A
 specialist physically cannot edit a file outside its area. Never try to work
 around a denied edit; reassign the task or extend the ownership explicitly in
 the plan and tell the user.
+
+**The `infra` agent owns the build, CI and deployment configuration.** It is
+the only agent that changes `package.json` — the dependencies, the npm scripts
+and the version — and the only one that edits the CI workflows in
+`.github/workflows/`. A package, script or CI change therefore goes to
+**`infra` first**, always: a feature agent that needs one states the need and
+the version constraint, and `infra` makes the change.
 
 ## 2. Operating protocol
 
