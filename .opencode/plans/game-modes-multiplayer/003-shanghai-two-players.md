@@ -148,6 +148,71 @@ M2 was overwritten.
 disjoint interfaces. Both now carry the same convention M1 established (`players`, then
 `currentPlayerId`), so the sheet of each mode is a sheet **per player**.
 
+### Review disposition — the final review `f1598dce` (2026-11-16, verdict **APPROVE**)
+
+The review was run a second time against the **current** integration state (base
+`integration/opencode-team`, M3 merge `9343787`; the true M3 delta `18b5069..9343787` is exactly the
+eight files of this package). The second run returned **APPROVE**: AC 1–12 confirmed by the code, the
+binding rulings (A5, B1, B3/C1, B6/C2, B7, C1, C2, C3, C4) honoured, and the scope exact. It
+supersedes the earlier "changes" verdict of the same task.
+
+The findings it left are **not M3's to fix**. Their disposition:
+
+- **L-1 (LOW) — the badge shows the marks of the player on turn, not `Round N · target`.** The
+  upstream plan's Task M3 Step 7.5 asks for
+  `badge={`Round ${currentRound + 1} · ${roundTarget(currentRound + 1)}`}`. The base page never
+  implemented it — `git show 4cba24f:app/game/shanghai/page.tsx` carries `badge={`${totalMarks} marks`}` —
+  and M3 kept the marks, now per player (`app/game/shanghai/page.tsx:249`). **Not changed here.** Two
+  reasons: the upstream formula is off by one (`currentRound` in the page is already 1-based,
+  `app/game/shanghai/page.tsx:206`), and a badge naming the round would duplicate the sheet's own
+  header ("Round N / 7" · "Target T"). Reconciling plan and code is the plan owner's job
+  (`docs/superpowers/plans/2026-11-12-game-modes.md`).
+- **L-2 (LOW) — `marksFor` (`app/game/shanghai/page.tsx:51-56`) mirrors the mode's rule.** It feeds the
+  toast after a dart only; the sheet's table is read from the mode's state, so **C3 holds**. Pre-existing,
+  unchanged.
+- **L-3 (LOW) — a correction that creates a Shanghai mid-ledger lets the replay keep applying the
+  following darts, so the round advances and clears `roundRecords`, the only place the flags live.**
+  The reviewer verified the **identical** behaviour on the pre-M3 base (`4cba24f`): inherited, not an M3
+  regression. The fix is M5's `shanghaiWinnerId` flag — a flag **M3 must not create** (A5) and a region
+  **M5 owns**. Forwarded to M5.
+- **I-1 (INFO) — the strip shows the player on turn only.** Correct by design: the round in play is
+  announced for everyone by the sheet's header.
+
+### The INFO finding I-2 — closed (2026-11-16, branch `cez/0091ff2f`)
+
+**The finding.** The S/D/T strip's **on-turn** case was not pinned by a test: only the winner case was
+(`tests/unit/game/modeViews.test.tsx:354`, "shows the shanghai segments after the match is won"). The
+M-1 fix moved the strip's record source to `currentPlayerId ?? winnerId`
+(`app/game/shanghai/page.tsx:212-213`), so the **on-turn** half of that fix was unguarded: a regression
+that made the strip read a stale player would have passed the whole suite.
+
+**The fix.** Assertions **inside the existing** M3 `it(...)` block — no new block, no other file:
+`tests/unit/game/modeViews.test.tsx:352-378` (the block "shows a shanghai row per player and the marks
+of every round"). They pin that the strip follows the player on turn:
+
+- While **Alice** is on turn with the single of the target hit: the strip reports `Single, hit` and
+  `Double, missed` / `Triple, missed`, and the state word is "Shanghai possible" — not "Shanghai".
+- After Alice's visit of three darts is over and the turn has rotated to **Bob**: Bob's row carries the
+  "ON TURN" marker, Alice's no longer, and the strip reports **Bob's** empty record — all three segments
+  `missed`, `Single, hit` is gone, the state word is still "Shanghai possible".
+
+**The guard is real — falsified.** On a scratch copy **outside** the repository, with
+`const recordPlayerId = currentPlayerId ?? winnerId;` reduced to `const recordPlayerId = winnerId;`,
+the new assertion at `tests/unit/game/modeViews.test.tsx:357` **fails** (`getByLabelText("Single, hit")`
+— the element is not found; the strip rendered "Triple, missed" … "Shanghai possible"), while the other
+**12** tests of the file still pass. The guard therefore pins the on-turn case and nothing else.
+
+**Verification** (2026-11-16, on this branch, with the assertions added):
+
+```text
+npx vitest run tests/unit/game/modeViews.test.tsx
+  → Test Files 1 passed (1) · Tests 13 passed (13) · exit 0
+
+npm run typecheck    → exit 0
+npm run lint         → exit 0
+npm run format:check → "All matched files use Prettier code style!" · exit 0
+```
+
 ### Review disposition — M-1 (MEDIUM, blocking) from the review `f1598dce`
 
 **The finding.** The S/D/T strip lost the Shanghai win state. `app/game/shanghai/page.tsx:207-214`
