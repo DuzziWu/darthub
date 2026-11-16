@@ -93,6 +93,8 @@ class GameEngine {
 
   startMatch(config: MatchConfig): MatchState;
   recordThrow(input: ThrowInput): MatchState;
+  undoLastThrow(): MatchState;
+  correctThrow(dartIndex: number, value: CorrectionValue): MatchState;
   getState(): MatchState;
   getVisits(): readonly MatchVisit[];
   getCurrentTurn(): readonly RecordedThrow[];
@@ -119,6 +121,15 @@ export const DARTS_PER_TURN = 3;
   - `GameEngineStateError` — no match started yet, match already completed,
     or `playerId` is not the current player.
   - Every failed call leaves the internal state untouched.
+- **`undoLastThrow(): MatchState`** — removes the last dart of the ledger and
+  re-derives the state. A bust is a dart of the ledger, so it is removed
+  too. Allowed on a completed match: undoing the match-winning dart returns
+  the match to `inProgress`. See [Correction and undo](#correction-and-undo).
+- **`correctThrow(dartIndex: number, value: CorrectionValue): MatchState`** —
+  replaces the value of one recorded dart — the index is the position of the
+  dart in the ledger — and re-derives the state. The player of the dart comes
+  from the ledger, never from the caller. See
+  [Correction and undo](#correction-and-undo).
 - **`getState(): MatchState`** — returns a fresh `structuredClone` of the
   current snapshot. Mutating the returned object never affects engine
   internals. Throws `GameEngineStateError` if called before `startMatch`.
@@ -165,6 +176,98 @@ Neither the visit boundaries nor the turn boundary are stored on a dart: a
 correction changes them, so a stored boundary would go stale. They are
 re-derived from the ledger whenever they are asked for.
 
+### Correction and undo
+
+Both operations change the ledger and re-derive the whole match state from
+it: the engine replays the entire ledger through the mode's `applyThrow`
+(`replay` → `applyToDraft`). There is no score arithmetic on the correction
+path — the score, the counters, the turn order and the mode-owned state are
+consequences of the replayed darts, not of the correction itself.
+
+```ts
+import { GameEngine } from "@/game-engine";
+import type { CorrectionValue } from "@/game-engine";
+
+const engine = new GameEngine();
+engine.startMatch({ playerIds: ["alice", "bob"] });
+
+// Replace the value of the dart at ledger index 0.
+const value: CorrectionValue = { points: 60, segment: "triple" };
+engine.correctThrow(0, value);
+
+// Remove the last dart of the ledger.
+engine.undoLastThrow();
+```
+
+`correctThrow(dartIndex, value)` takes the **index of the dart in the
+ledger** and a `CorrectionValue` (`{ points, segment? }`). The replacement
+carries **no player id**: the player always comes from the recorded dart, so
+a correction can never move a dart between players.
+
+A correction may change:
+
+- the score — `players[].totalPoints`,
+- the counters — `throwsInCurrentTurn`,
+- the mode-owned state — `modeData` (e.g. the leg progress of an x01 match),
+- the audit trail — `state.corrections`, one `CorrectionRecord` per audited
+  correction.
+
+A correction may **not** change the **turn membership** of the darts. A bust
+consumes no dart slot and a turn holds three counted darts, so correcting a
+bust into a counting dart would hand that turn a **fourth** dart — a ledger
+shape `recordThrow` could never produce, because it would have advanced the
+turn after the third counted dart. The engine therefore refuses such a
+correction with `GameEngineStateError`.
+
+The check compares the turn index of **every** dart before and after the
+correction (`deriveTurnIndexes`). The player order of the ledger never
+changes — the player of a dart is preserved — what is pinned is the turn
+membership.
+
+A refused correction changes **nothing**: neither the match state nor the
+ledger, and it writes **no audit entry**.
+
+A correction may still change `throwsInCurrentTurn`: a bust of the **turn in
+progress** that becomes a counting dart adds a dart slot to that turn. That is
+allowed, because it does not move a dart into another turn. A bust of an
+earlier turn cannot be counted the same way — that would push the darts after
+it into another turn, so it is refused.
+
+An audit entry is written only when the engine's own `shouldAudit` decides
+so:
+
+- a correction of a dart from a **finished visit** is always audited,
+- a correction of a dart in the **turn in progress** is audited only when it
+  changed the result of the match — the match ended, or the mode's result
+  signature moved, e.g. a different player won the leg.
+
+Two consecutive corrections of the same dart inside the turn in progress
+therefore leave no audit trail at all — unless one of them changed the
+result of the match.
+
+`undoLastThrow` and `correctThrow` differ in what they do to the ledger:
+`undoLastThrow` **removes** the last dart — a bust too, because the bust is
+in the ledger — and re-derives the state, while `correctThrow` **replaces
+the value** of one dart and keeps it in the ledger.
+
+- `undoLastThrow` is allowed on a **completed** match: undoing the
+  match-winning dart returns the match to `inProgress`.
+- `correctThrow` on a completed match is refused.
+- `undoLastThrow` on an empty ledger throws `GameEngineStateError`.
+- `undoLastThrow` also drops the audit entries that pointed at the removed
+  dart.
+
+`correctThrow` refuses a correction that would
+
+- run on a completed match — the match is already completed,
+- address a dart that does not exist — the index is not in the ledger,
+- make the corrected dart itself bust,
+- make a later recorded dart bust that did not bust before,
+- change the turn rotation of the ledger.
+
+An invalid replacement value — `points` outside `0..60`, or a `segment` that
+is impossible for those points — throws `GameEngineValidationError`.
+
 ### Mode and shared types
 
 ```ts
@@ -182,9 +285,10 @@ rule set out of the box; all real modes plug in via the `DartGameMode` seam.
 
 Additional exported value: `DARTS_PER_TURN = 3`.
 
-Exported types: `DartGameMode`, `MatchConfig`, `MatchState`, `MatchStatus`,
-`MatchVisit`, `MutableMatchState`, `MutablePlayerState`, `PlayerState`,
-`RecordedThrow`, `ThrowInput`, `ThrowRecord`.
+Exported types: `CorrectionRecord`, `CorrectionValue`, `DartGameMode`,
+`MatchConfig`, `MatchModeData`, `MatchState`, `MatchStatus`, `MatchVisit`,
+`MutableMatchState`, `MutablePlayerState`, `PlayerState`, `RecordedThrow`,
+`ThrowInput`, `ThrowRecord`.
 
 ## State snapshot shape
 
@@ -203,6 +307,9 @@ interface MatchState {
   readonly currentPlayerId: string | null; // null once the match is over
   readonly throwsInCurrentTurn: number; // 0..2 for a live turn
   readonly throwCount: number; // total darts recorded in the match
+  readonly modeData?: MatchModeData; // mode-owned slice, e.g. the leg progress
+  readonly throws: readonly RecordedThrow[]; // the ledger, oldest first
+  readonly corrections: readonly CorrectionRecord[]; // the audit trail
 }
 ```
 
