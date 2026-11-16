@@ -2,7 +2,7 @@
 
 **Owner:** implementer (Task-Branch `cez/<runId>`)
 **Auslöser:** Owner-Entscheidung 2026-11-16 (nach dem Start des Runs)
-**Status:** in progress
+**Status:** done
 
 ## Kontext
 
@@ -210,8 +210,12 @@ und ein Auseinanderlaufen von Tabelle und Startbefehl fallen auf.
 npm run typecheck    → exit 0
 npm run lint         → exit 0
 npm run format:check → "All matched files use Prettier code style!"
-npm run test         → siehe „Verifikationsausgaben" unten
+npm run test         → Test Files 108 passed (108) | Tests 550 passed (550) | EXIT=0
 ```
+
+Der Lauf umfasste die **komplette** Suite inklusive `tests/unit/dockerignore.test.ts`
+(dauer 1903 s — der Docker-Daemon war durch die Builds der Nachbar-Tasks
+kontendiert).
 
 ### Offene Punkte
 
