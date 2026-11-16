@@ -17,7 +17,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - npm 12 blocks **dependency** install scripts unless they are allowlisted, so `npm install` and `npm ci` never run `@prisma/client`'s postinstall and the Prisma client is not generated. Run `npx prisma generate` explicitly after every install; esbuild ships its platform binary as an optional dependency and works without the script. The root project's own scripts (like `prepare`) still run — only the dependencies' scripts are blocked.
 - The Prisma client is **not** checked in, and `npm ci` does not generate it either. Any environment that compiles the app from a clean install must run `npx prisma generate` first — including the Dockerfile's builder stage and both CI jobs, which do this explicitly. `prisma generate` needs no database: it reads the schema, not the datasource URL, so it succeeds without `DATABASE_URL` set. Without it, `npm run typecheck` and `npm run build` both fail with `Module '"@prisma/client"' has no exported member 'PrismaClient'`.
-- The build is **green**: typecheck, lint, format check and the full Vitest suite (97 files, 456 tests) all pass.
+- The build is **green**: typecheck, lint, format check and the full Vitest suite (105 files, 526 tests) all pass.
+- A **git worktree** of this repository has no `node_modules` of its own. Node's module lookup walks up to the main checkout, so `import … from "tailwindcss"` still resolves — but everything that goes through `<cwd>/node_modules/...` fails: the Prisma client the schema test looks for, the Tailwind stylesheet the token test loads, and the `npx` calls the pre-commit hook makes (with no local ESLint, `npx --no-install` tries to download it and aborts). Run `npm ci` **and** `npx prisma generate` inside the worktree before running the suite.
 
 Two checks are conditional on the environment and skip rather than fail:
 
