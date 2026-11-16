@@ -26,6 +26,7 @@ export type {
   DartGameMode,
   GameEngineErrorCode,
   MatchConfig,
+  MatchModeData,
   MatchState,
   MatchVisit,
   MutableMatchState,
