@@ -304,4 +304,72 @@ describe("the non-x01 match views", () => {
     expect(screen.getByRole("status").textContent).toContain("Miss");
     expect(within(alice).getByText("Progress 1 / 21")).toBeTruthy();
   });
+
+  it("shows a shanghai row per player and the marks of every round", () => {
+    render(<ShanghaiPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected, so every name owns a row of the table.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // The sheet is one table: a row per player, a column per round.
+    const table = screen.getByRole("table");
+    const aliceRow = within(table).getByText("Alice").closest("tr") as HTMLElement;
+    const bobRow = within(table).getByText("Bob").closest("tr") as HTMLElement;
+    expect(aliceRow).toBeTruthy();
+    expect(bobRow).toBeTruthy();
+
+    // The player on turn is marked on their own row, and on no other.
+    expect(within(aliceRow).getByText(/on turn/i)).toBeTruthy();
+    expect(within(bobRow).queryByText(/on turn/i)).toBeNull();
+
+    // Alice throws the three darts of the first round: a single 1 is one
+    // mark, the two darts off the target score nothing.
+    throwOnBoard("Single 1, 1 points");
+    throwOnBoard("Single 20, 20 points");
+    throwOnBoard("Single 20, 20 points");
+    // Bob throws the three darts of the same round: a treble 1 is three
+    // marks.
+    throwOnBoard("Treble 1, 3 points");
+    throwOnBoard("Single 20, 20 points");
+    throwOnBoard("Single 20, 20 points");
+
+    // The round is over when every player has thrown three darts.
+    expect(screen.getByText("Round 2 / 7")).toBeTruthy();
+
+    // The marks of the finished round are still in the table, and they
+    // belong to the player who threw them: Alice scored one, Bob three.
+    expect(within(aliceRow).getByLabelText("Round 1, target 1, 1 marks")).toBeTruthy();
+    expect(within(bobRow).getByLabelText("Round 1, target 1, 3 marks")).toBeTruthy();
+
+    // The next dart lands in the round in play: the table follows the
+    // mode's rounds, not the index of the dart in the ledger.
+    throwOnBoard("Single 2, 2 points");
+    expect(within(aliceRow).getByLabelText("Round 2, target 2, 1 marks")).toBeTruthy();
+    expect(within(bobRow).getByLabelText("Round 2, target 2, 0 marks")).toBeTruthy();
+  });
+
+  it("shows the shanghai segments after the match is won", () => {
+    render(<ShanghaiPage />);
+    startMatch("Eve");
+
+    // The single, the double and the treble of the target in one round is
+    // a Shanghai, and it ends the match on the spot.
+    throwOnBoard("Single 1, 1 points");
+    throwOnBoard("Double 1, 2 points");
+    throwOnBoard("Treble 1, 3 points");
+
+    // The match is over, so there is no player on turn any more — the
+    // strip still reports the segments the winner hit.
+    const sheet = screen.getByRole("region", { name: "Shanghai rounds" });
+    expect(within(sheet).getByLabelText("Single, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, hit")).toBeTruthy();
+    expect(within(sheet).queryAllByLabelText(/missed/)).toHaveLength(0);
+
+    // And the round in play is announced as the win it is.
+    expect(within(sheet).getByText("Shanghai")).toBeTruthy();
+  });
 });

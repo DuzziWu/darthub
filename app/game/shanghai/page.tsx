@@ -26,20 +26,27 @@ import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
 import type { BoardThrow } from "@/components/game/types";
 
-/** The solo player of a shanghai match. */
-const PLAYER_ID = "player1";
-
 /** The target of every round: round N targets the number N. */
 const ROUND_TARGETS = Array.from({ length: SHANGHAI_ROUNDS }, (_unused, index) =>
   roundTarget(index + 1),
 );
 
 /**
- * The marks a dart scores in a round.
+ * The engine's player ids, in seating order.
  *
- * This mirrors the mode's own rule — a single is one mark, a double two and
- * a treble three — because the mode keeps only the round in play, and the
- * rounds that are done are read back from the throw history.
+ * The ids come from the names the setup collected, so the sheet, the
+ * overview and the ledger all speak about the same players.
+ */
+function playerIdsFor(names: readonly string[]): string[] {
+  return names.map((_, index) => `player${index + 1}`);
+}
+
+/**
+ * The marks a dart scores, mirrored from the mode's own rule.
+ *
+ * A single is one mark, a double two and a treble three. This is the
+ * message the view shows after a dart — the sheet's table is read from the
+ * mode's state, never from this.
  */
 function marksFor(points: number, target: number): number {
   if (points === target) return 1;
@@ -49,30 +56,37 @@ function marksFor(points: number, target: number): number {
 }
 
 /**
- * The marks every round has scored, read back from the ledger.
+ * The marks a player scored in every round, read from the mode's state.
  *
- * The mode keeps only the round in play, so the rounds that are done are
- * derived here: every three darts close a round, and the target of a round
- * is its own number. Deriving the marks keeps them correct after an undo
- * or a correction, which the engine re-derives the whole ledger from.
+ * `finishedRounds` holds the rounds that are done; the round in play is
+ * still in `roundRecords`. The array is padded with zeros to the length of
+ * the match, so the sheet's grid is always the same seven columns and a
+ * mark never moves a column.
  */
-function marksByRound(throws: readonly { points: number }[]): Record<string, number> {
-  const marks: Record<string, number> = {};
-  throws.forEach((dart, index) => {
-    const round = Math.floor(index / 3) + 1;
-    const target = roundTarget(Math.min(round, SHANGHAI_ROUNDS));
-    const scored = marksFor(dart.points, target);
-    if (scored > 0) marks[String(round)] = (marks[String(round)] ?? 0) + scored;
-  });
+function marksByRound(
+  data: ShanghaiModeData | undefined,
+  playerId: string,
+  totalRounds: number,
+): number[] {
+  const finished = data?.finishedRounds[playerId] ?? [];
+  const marks = [...finished];
+  // The round in play counts as long as it is still being played.
+  if ((data?.currentRound ?? 0) < totalRounds) {
+    marks.push(data?.roundRecords[playerId]?.marks ?? 0);
+  }
+  while (marks.length < totalRounds) {
+    marks.push(0);
+  }
   return marks;
 }
+
 export default function ShanghaiPage() {
   const router = useRouter();
   const [phase, setPhase] = useState<"setup" | "playing" | "result">("setup");
   const [engine, setEngine] = useState<GameEngine | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
-  /** The marks of every round, computed from the throws that scored them. */
+  /** The player who took the match. */
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   // The armed band is owned here and shared by the pad and the board.
@@ -89,10 +103,15 @@ export default function ShanghaiPage() {
 
   const startMatch = useCallback((names: string[], options: PlayerSetupOptions) => {
     const eng = new GameEngine(new ShanghaiMode());
-    const state = eng.startMatch({ playerIds: [PLAYER_ID] });
+    const ids = playerIdsFor(names);
+    const state = eng.startMatch({ playerIds: ids });
     setEngine(eng);
     setMatchState(state);
-    setPlayerNames({ [PLAYER_ID]: names[0] ?? "Player 1" });
+    const byId: Record<string, string> = {};
+    ids.forEach((id, index) => {
+      byId[id] = names[index] ?? id;
+    });
+    setPlayerNames(byId);
     setWinnerId(null);
     setMessage("");
     setOptions(options);
@@ -104,7 +123,9 @@ export default function ShanghaiPage() {
       if (!engine || !matchState || phase !== "playing") return;
       if (matchState.status === "completed") return;
 
-      const playerId = matchState.currentPlayerId ?? PLAYER_ID;
+      // The dart belongs to the player on turn; the match is over for
+      // whoever threw the last one.
+      const playerId = matchState.currentPlayerId ?? matchState.players[0]?.id ?? null;
       const { points, segment } = throwInput;
       const round = ((matchState.modeData as ShanghaiModeData | undefined)?.currentRound ?? 0) + 1;
       const target = roundTarget(Math.min(round, SHANGHAI_ROUNDS));
@@ -173,7 +194,7 @@ export default function ShanghaiPage() {
           modeDescription="Seven rounds. Round N targets the number N — a single is one mark, a double two and a treble three. All three in one round is a Shanghai."
           modeIcon={Sparkles}
           minPlayers={1}
-          maxPlayers={1}
+          maxPlayers={2}
           showCheckoutRule={false}
           onStart={startMatch}
         />
@@ -183,14 +204,33 @@ export default function ShanghaiPage() {
 
   const data = matchState?.modeData as ShanghaiModeData | undefined;
   const currentRound = (data?.currentRound ?? 0) + 1;
-  const record = data?.roundRecords?.[PLAYER_ID];
+  const currentPlayerId = matchState?.currentPlayerId ?? null;
+  // The segments of the round in play belong to the player on turn — and to
+  // the winner once the match is over, because the match has no player on
+  // turn any more and the winning round's segments still live in the mode's
+  // state.
+  const recordPlayerId = currentPlayerId ?? winnerId;
+  const record = recordPlayerId ? data?.roundRecords?.[recordPlayerId] : undefined;
   const hit = {
     single: record?.hitSingle ?? false,
     double: record?.hitDouble ?? false,
     triple: record?.hitTriple ?? false,
   };
-  const roundMarks = marksByRound(matchState?.throws ?? []);
-  const totalMarks = Object.values(roundMarks).reduce((sum, marks) => sum + marks, 0);
+  // The round table is the mode's own state: a row per player, the marks of
+  // every round in the player's own column.
+  const sheetPlayers = (matchState?.players ?? []).map((player) => ({
+    id: player.id,
+    name: playerNames[player.id] ?? player.id,
+    marksByRound: marksByRound(data, player.id, SHANGHAI_ROUNDS),
+  }));
+  // The badge counts the marks of the player on turn — and of the winner
+  // once the match is over, because the match has no player on turn any
+  // more.
+  const badgePlayerId = currentPlayerId ?? winnerId;
+  const badgeMarks =
+    badgePlayerId === null
+      ? 0
+      : (matchState?.players.find((player) => player.id === badgePlayerId)?.totalPoints ?? 0);
 
   return (
     <MatchLayout
@@ -206,7 +246,7 @@ export default function ShanghaiPage() {
       inputMode={inputMode.mode}
       onInputModeChange={inputMode.onChange}
       modeName="Shanghai"
-      badge={`${totalMarks} marks`}
+      badge={`${badgeMarks} marks`}
       sourceLabel={boardSourceLabel(options.boardSource)}
       scoreboard={
         matchState && (
@@ -217,7 +257,7 @@ export default function ShanghaiPage() {
               // The number of the row is the marks scored in the match: the
               // caption says so.
               value: player.totalPoints,
-              isCurrent: player.id === (matchState.currentPlayerId ?? PLAYER_ID),
+              isCurrent: player.id === currentPlayerId,
             }))}
             data={{
               kind: "shanghai",
@@ -257,7 +297,8 @@ export default function ShanghaiPage() {
         currentRound={currentRound}
         totalRounds={SHANGHAI_ROUNDS}
         targets={ROUND_TARGETS}
-        marksByRound={roundMarks}
+        players={sheetPlayers}
+        currentPlayerId={currentPlayerId}
         hit={hit}
       />
       <ScoreDisplay

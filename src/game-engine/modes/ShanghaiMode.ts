@@ -3,27 +3,36 @@ import type { DartGameMode, MatchState, MutableMatchState, ThrowRecord } from "@
 /** Number of rounds in a standard Shanghai match. */
 export const SHANGHAI_ROUNDS = 7;
 
+/** Darts each player throws per round. */
+const DARTS_PER_ROUND = 3;
+
 /** Round N targets number N (1-indexed). */
 export function roundTarget(round: number): number {
   return round;
 }
 
+/** What one player scored in the round in play. */
+export type ShanghaiRoundRecord = {
+  /** The marks the player scored in this round so far. */
+  marks: number;
+  /** Whether the player hit the single of the target. */
+  hitSingle: boolean;
+  /** Whether the player hit the double of the target. */
+  hitDouble: boolean;
+  /** Whether the player hit the triple of the target. */
+  hitTriple: boolean;
+};
+
 /** Mode-owned state for Shanghai. */
 export type ShanghaiModeData = {
   /** Index of the current round (0-based, so round 1 = index 0). */
   currentRound: number;
-  /** Total darts thrown in the current round across all players. */
-  totalDartsThisRound: number;
+  /** How many darts every player has thrown in the current round. */
+  dartsThisRound: Record<string, number>;
   /** Per-player round records for the current round. */
-  roundRecords: Record<
-    string,
-    {
-      marks: number;
-      hitSingle: boolean;
-      hitDouble: boolean;
-      hitTriple: boolean;
-    }
-  >;
+  roundRecords: Record<string, ShanghaiRoundRecord>;
+  /** The marks every player scored in every finished round, the first round first. */
+  finishedRounds: Record<string, number[]>;
 };
 
 /**
@@ -34,6 +43,11 @@ export type ShanghaiModeData = {
  * hits all three segments (single, double AND triple) of the target in
  * a single round they win immediately ("Shanghai!"). After 7 rounds the
  * player with the most marks wins (draws possible).
+ *
+ * Every player throws three darts per round, and the round is over when
+ * the last player has thrown their third dart. The mode therefore counts
+ * the darts of the round per player and keeps what every player scored in
+ * every finished round, so a score sheet can show a round table.
  */
 export class ShanghaiMode implements DartGameMode {
   readonly id = "shanghai";
@@ -44,8 +58,9 @@ export class ShanghaiMode implements DartGameMode {
     }
     draft.modeData = {
       currentRound: 0,
-      totalDartsThisRound: 0,
+      dartsThisRound: {},
       roundRecords: {},
+      finishedRounds: {},
     } satisfies ShanghaiModeData;
   }
 
@@ -64,8 +79,9 @@ export class ShanghaiMode implements DartGameMode {
       return;
     }
 
-    // Count every dart toward the round.
-    data.totalDartsThisRound += 1;
+    // Count every dart of this player toward the round.
+    data.dartsThisRound[throwRecord.playerId] =
+      (data.dartsThisRound[throwRecord.playerId] ?? 0) + 1;
 
     if (marks > 0) {
       // Ensure a record exists for this player in the current round.
@@ -79,6 +95,7 @@ export class ShanghaiMode implements DartGameMode {
       }
       const record = data.roundRecords[throwRecord.playerId]!;
 
+      record.marks += marks;
       recordSegmentHit(record, throwRecord.points, target);
       player.totalPoints += marks;
 
@@ -89,10 +106,19 @@ export class ShanghaiMode implements DartGameMode {
       }
     }
 
-    // Advance round when all players have completed their 3-dart turns.
-    if (data.totalDartsThisRound >= draft.players.length * 3) {
+    // The round is over when every player has thrown their three darts.
+    const roundComplete = draft.players.every(
+      (p) => (data.dartsThisRound[p.id] ?? 0) >= DARTS_PER_ROUND,
+    );
+    if (roundComplete) {
+      // Every player keeps what they scored in the round that just ended —
+      // a player who scored nothing keeps a zero.
+      for (const p of draft.players) {
+        const roundMarks = data.roundRecords[p.id]?.marks ?? 0;
+        data.finishedRounds[p.id] = [...(data.finishedRounds[p.id] ?? []), roundMarks];
+      }
       data.currentRound += 1;
-      data.totalDartsThisRound = 0;
+      data.dartsThisRound = {};
       data.roundRecords = {};
     }
 
@@ -146,11 +172,25 @@ function segmentMarks(points: number, target: number): number {
 }
 
 function requireModeData(draft: MutableMatchState): ShanghaiModeData {
-  const existing = draft.modeData as ShanghaiModeData | undefined;
+  const existing = draft.modeData as Partial<ShanghaiModeData> | undefined;
   if (existing && existing.roundRecords !== undefined) {
-    return existing;
+    // A state written before the per-player round history existed still
+    // replays: the fields it lacks are seeded empty.
+    const normalized: ShanghaiModeData = {
+      currentRound: existing.currentRound ?? 0,
+      dartsThisRound: existing.dartsThisRound ?? {},
+      roundRecords: existing.roundRecords,
+      finishedRounds: existing.finishedRounds ?? {},
+    };
+    draft.modeData = normalized;
+    return normalized;
   }
-  const created: ShanghaiModeData = { currentRound: 0, totalDartsThisRound: 0, roundRecords: {} };
+  const created: ShanghaiModeData = {
+    currentRound: 0,
+    dartsThisRound: {},
+    roundRecords: {},
+    finishedRounds: {},
+  };
   draft.modeData = created;
   return created;
 }
