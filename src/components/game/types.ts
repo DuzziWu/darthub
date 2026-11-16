@@ -313,8 +313,21 @@ export interface ShanghaiScoreSheetProps {
   totalRounds: number;
   /** The target of every round, the first round first. */
   targets: readonly number[];
-  /** The marks scored in every round, keyed by the round number as a string. */
-  marksByRound: Record<string, number>;
+  /**
+   * Every seated player and the marks they scored in every round.
+   *
+   * Shanghai has no shared score: the marks belong to the player who threw
+   * them, so the sheet shows a row per player. `marksByRound` is the marks
+   * of every round, the first round first, padded to `totalRounds`.
+   */
+  players: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** The marks scored in every round, the first round first. */
+    marksByRound: number[];
+  }>;
+  /** The player whose turn it is. */
+  currentPlayerId?: string | null;
   /** The segments hit in the round in play. */
   hit: { single: boolean; double: boolean; triple: boolean };
 }

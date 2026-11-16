@@ -237,7 +237,7 @@ describe("per-mode undo & correct", () => {
     const restored = engine.undoLastThrow();
     const data = restored.modeData as ShanghaiModeData;
     expect(data.currentRound).toBe(0);
-    expect(data.totalDartsThisRound).toBe(2);
+    expect(data.dartsThisRound.a).toBe(2);
     expect(data.roundRecords?.a).toMatchObject({ hitSingle: true, hitDouble: false });
     expect(restored.players.find((p) => p.id === "a")?.totalPoints).toBe(1);
   });
@@ -260,6 +260,39 @@ describe("per-mode undo & correct", () => {
     expect(corrected.players.find((p) => p.id === "a")?.totalPoints).toBe(6);
     expect(corrected.status).toBe("completed");
     expect(corrected.currentPlayerId).toBeNull();
+  });
+
+  it("corrects a dart in a two-player shanghai match and keeps the marks per player", () => {
+    const engine = new GameEngine(new ShanghaiMode());
+    engine.startMatch({ playerIds: ["alice", "bob"] });
+    // Alice's turn: a single 1 (one mark) and two misses.
+    engine.recordThrow({ playerId: "alice", points: 1 });
+    engine.recordThrow({ playerId: "alice", points: 0 });
+    engine.recordThrow({ playerId: "alice", points: 0 });
+    // Bob's turn: a double 1 (two marks) and a miss.
+    engine.recordThrow({ playerId: "bob", points: 2 });
+    engine.recordThrow({ playerId: "bob", points: 0 });
+
+    const before = engine.getState();
+    expect((before.modeData as ShanghaiModeData).currentRound).toBe(0);
+    expect(before.currentPlayerId).toBe("bob");
+
+    // Alice's single 1 was really a treble 1. The correction is accepted:
+    // it moves no dart into another turn, so the ledger keeps its shape.
+    const corrected = engine.correctThrow(0, { points: 3 });
+    expect(corrected.throws.map((dart) => dart.playerId)).toEqual(
+      before.throws.map((dart) => dart.playerId),
+    );
+    expect(corrected.currentPlayerId).toBe(before.currentPlayerId);
+
+    // The marks belong to the player who threw them: alice's round-1 marks
+    // are rescored, bob's are untouched, and the round did not move.
+    const data = corrected.modeData as ShanghaiModeData;
+    expect(data.currentRound).toBe(0);
+    expect(data.roundRecords?.alice).toMatchObject({ marks: 3 });
+    expect(data.roundRecords?.bob).toMatchObject({ marks: 2 });
+    expect(corrected.players.find((p) => p.id === "alice")?.totalPoints).toBe(3);
+    expect(corrected.players.find((p) => p.id === "bob")?.totalPoints).toBe(2);
   });
 
   it("undoes the last dart in a neutral match and restores the score", () => {
