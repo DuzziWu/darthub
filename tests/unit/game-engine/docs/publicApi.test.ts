@@ -6,6 +6,7 @@ import type { GameEngineErrorCode } from "@/game-engine";
 
 const README_PATH = resolve(import.meta.dirname, "../../../../src/game-engine/README.md");
 const TYPES_PATH = resolve(import.meta.dirname, "../../../../src/game-engine/types.ts");
+const BARREL_PATH = resolve(import.meta.dirname, "../../../../src/game-engine/index.ts");
 
 function readReadme(): string {
   return readFileSync(README_PATH, "utf8");
@@ -86,6 +87,47 @@ function readmeUnionCodes(readme: string): readonly string[] {
     throw new Error("the README documents no GameEngineErrorCode union");
   }
   return [...declaration[1].matchAll(/"([A-Z_]+)"/g)].flatMap((match) =>
+    match[1] === undefined ? [] : [match[1]],
+  );
+}
+
+/**
+ * The type names the barrel re-exports.
+ *
+ * A type export is erased at runtime, so only the source of the barrel
+ * can tell which names it offers — a runtime check would see an empty
+ * object and prove nothing.
+ */
+function readBarrelTypeExports(): readonly string[] {
+  const source = readFileSync(BARREL_PATH, "utf8");
+  const names: string[] = [];
+  for (const block of source.matchAll(/export type \{([\s\S]*?)\}/g)) {
+    for (const entry of (block[1] ?? "").split(",")) {
+      const name = entry
+        .trim()
+        .split(/\s+as\s+/)[0]
+        ?.trim();
+      if (name !== undefined && name !== "") {
+        names.push(name);
+      }
+    }
+  }
+  return names;
+}
+
+/**
+ * The type names the README lists as exported.
+ *
+ * The list is the paragraph that starts with "Exported types:" — it ends
+ * at the first blank line, so the prose after it is not read.
+ */
+function readmeExportedTypes(readme: string): readonly string[] {
+  const start = readme.indexOf("Exported types:");
+  if (start === -1) {
+    throw new Error("the README lists no exported types");
+  }
+  const paragraph = readme.slice(start).split("\n\n")[0] ?? "";
+  return [...paragraph.matchAll(/`([A-Za-z][A-Za-z0-9]*)`/g)].flatMap((match) =>
     match[1] === undefined ? [] : [match[1]],
   );
 }
@@ -189,6 +231,19 @@ describe("game-engine README documentation", () => {
     // renamed in the declaration must not linger in the doc block.
     for (const code of jsDocCodes) {
       expect(unionCodes).toContain(code);
+    }
+  });
+
+  it("lists only types the barrel really exports", () => {
+    const readme = readReadme();
+    const barrelTypes = readBarrelTypeExports();
+    const listedTypes = readmeExportedTypes(readme);
+
+    // The README promises these names to an importer. A name that the
+    // barrel does not export is a promise the module cannot keep.
+    expect(listedTypes.length).toBeGreaterThan(0);
+    for (const name of listedTypes) {
+      expect(barrelTypes).toContain(name);
     }
   });
 });

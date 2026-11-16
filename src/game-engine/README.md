@@ -277,6 +277,9 @@ the value** of one dart and keeps it in the ledger.
 - make a later recorded dart bust that did not bust before,
 - change the turn rotation of the ledger.
 
+Every one of these refusals carries a stable `code` — the names are listed in
+[Error codes](#error-codes).
+
 An invalid replacement value — `points` outside `0..60`, or a `segment` that
 is impossible for those points — throws `GameEngineValidationError`.
 
@@ -333,7 +336,11 @@ player unless it is their third dart of the turn — check
 ## Error classes
 
 ```ts
-import { GameEngineValidationError, GameEngineStateError } from "@/game-engine";
+import {
+  GameEngineBustError,
+  GameEngineStateError,
+  GameEngineValidationError,
+} from "@/game-engine";
 ```
 
 - **`GameEngineValidationError`** — bad inputs: empty/duplicate/blank player
@@ -353,6 +360,10 @@ All three extend `Error`, set their own `name`, and carry a descriptive
 Every `GameEngineStateError` carries a stable `code` next to its message.
 The **message is English developer text and may change**; the **code is the
 contract** — a UI branches on the code and never on the message text.
+
+The codes of the correction and undo path are part of this contract. The
+rules behind them — what a correction may change and what it may not — are
+described in [Correction and undo](#correction-and-undo).
 
 ```ts
 import type { GameEngineErrorCode } from "@/game-engine";
