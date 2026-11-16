@@ -48,6 +48,30 @@ function readUnionCodes(): readonly string[] {
   );
 }
 
+/**
+ * The codes the JSDoc above the union lists.
+ *
+ * The doc block is the one that documents the declaration, so it is read
+ * as the block that ends right before it. Only the bullets that name a
+ * code are read — the prose around them and the line break inside a
+ * description do not matter, so the block can be reworded and rewrapped
+ * without breaking the guard.
+ */
+function readJsDocCodes(): readonly string[] {
+  const source = readFileSync(TYPES_PATH, "utf8");
+  const declaration = source.match(/export type GameEngineErrorCode\s*=/);
+  if (declaration === null || declaration.index === undefined) {
+    throw new Error("src/game-engine/types.ts declares no GameEngineErrorCode union");
+  }
+  const docBlock = source.slice(0, declaration.index).match(/\/\*\*[\s\S]*\*\/\s*$/);
+  if (docBlock === null || docBlock[0] === undefined) {
+    throw new Error("the GameEngineErrorCode union carries no JSDoc block");
+  }
+  return [...docBlock[0].matchAll(/^[ \t]*\*[ \t]*-[ \t]*`?"([A-Z_]+)"`?/gm)].flatMap((match) =>
+    match[1] === undefined ? [] : [match[1]],
+  );
+}
+
 /** The codes the README's error code table lists. */
 function readmeTableCodes(readme: string): readonly string[] {
   return [...readme.matchAll(/^\|\s*`"([A-Z_]+)"`\s*\|/gm)].flatMap((match) =>
@@ -144,5 +168,22 @@ describe("game-engine README documentation", () => {
 
     // The README's own copy of the union lists the same codes.
     expect([...readmeUnionCodes(readme)].sort()).toEqual([...unionCodes].sort());
+  });
+
+  it("documents every error code of the union in the JSDoc above it", () => {
+    const unionCodes = readUnionCodes();
+    const jsDocCodes = readJsDocCodes();
+
+    // Every code of the union is documented where the union is declared:
+    // the reader of types.ts sees the same list the README carries.
+    for (const code of unionCodes) {
+      expect(jsDocCodes).toContain(code);
+    }
+
+    // The doc block names no code the union does not know: a code that was
+    // renamed in the declaration must not linger in the doc block.
+    for (const code of jsDocCodes) {
+      expect(unionCodes).toContain(code);
+    }
   });
 });

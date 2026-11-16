@@ -20,19 +20,21 @@
  * mid-turn, and a sentence that has to be scrolled is a sentence nobody
  * reads.
  *
- * **A refusal text must never promise a remedy that does not exist.**
+ * **A refusal text must never promise a remedy that does not exist, and
+ * must never send the player into a loop of refusals.**
  *
  * The turn-rotation refusal is the proof. In the very scenario the
  * correction flow exists for — a bust in the middle of a turn, corrected
- * afterwards — *every* value the player can enter is refused: a probe over
- * all 61 values of that journey (0 to 60) accepted none of them. Eleven
- * were refused with `TURN_ROTATION_CHANGED`, eleven with
- * `LATER_DART_WOULD_BUST` and thirty-nine with `CORRECTION_WOULD_BUST`.
- * A text that says "enter another value" therefore sends the player into a
- * loop: the next value is refused too, with a different sentence.
+ * afterwards — *no* value the player can enter is accepted: every value of
+ * that journey was refused without exception (the figures are in
+ * `design-system/darthub/pages/match.md` §6, rule 5). Its text therefore
+ * asks for no other value; it names the one way out that always exists —
+ * take the dart back and throw again.
  *
- * So the turn-rotation text promises no other value. It names the one way
- * out that always exists — take the dart back and throw again.
+ * The other two refusals ask for another value, which is the thing the
+ * player can change: a dart corrected to a busting value is refused, and a
+ * smaller value is accepted there. Where even that is refused, the next
+ * refusal says so — the turn-rotation text names the way out.
  */
 import { GameEngineStateError, type GameEngineErrorCode } from "@/game-engine";
 
@@ -41,8 +43,9 @@ import { GameEngineStateError, type GameEngineErrorCode } from "@/game-engine";
  *
  * The texts speak the player's language, not the engine's: no ledger, no
  * rotation, no replay, no dart index, no English leftovers. A refusal tells
- * the player what to do next — and only promises a next step that really
- * exists. It never names the internal rule that stopped them.
+ * the player what to do next — a next step that really exists, and never a
+ * round-trip into the same refusal. It never names the internal rule that
+ * stopped them.
  */
 export const PLAYER_ERROR_TEXTS: Readonly<Record<GameEngineErrorCode, string>> = {
   INVALID_STATE: "Das hat nicht geklappt. Bitte versuche es noch einmal.",

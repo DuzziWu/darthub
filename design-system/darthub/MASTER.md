@@ -712,6 +712,12 @@ Three consequences the score sheet depends on:
    `GameEngineStateError`, and a string match would report a bust for it. The refusals
    carry a stable `code` instead, and the player text is translated from that code in one
    module — see `match.md` §6, rule 5.
+
+   That computation is meaningful for a **new** dart only: while a correction is armed it
+   runs against the score that is left **now**, which is not the score the corrected dart
+   was thrown at. A refused correction changed nothing at all, so it is **never** announced
+   as a bust — the bust announcement belongs to a new dart. See `match.md` §6, rule 6.
+
 2. **A bust does not consume a dart.** The engine leaves `throwsInCurrentTurn` and the
    score untouched, so the busted dart is not in the returned state and the dart counter
    does not advance. **The BUST chip is UI-local state for the current visit.**

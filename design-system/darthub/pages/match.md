@@ -137,7 +137,7 @@ The two are different facts and the caption says which one the number is.
 
 ---
 
-## 6. The throw pipeline — five rules that are easy to get wrong
+## 6. The throw pipeline — six rules that are easy to get wrong
 
 These are engine behaviours the UI cannot infer from the returned state. Full detail in
 `MASTER.md` §10.2.1–§10.2.3 and `board.md` §6.8.
@@ -152,8 +152,9 @@ These are engine behaviours the UI cannot infer from the returned state. Full de
    `GameEngineStateError("Bust: …")` and leaves the state untouched. **The UI computes the
    bust itself** from the out rule in force, the remaining score and the dart. It must not
    infer a bust from an unchanged score, and it must not string-match the error message —
-   "not your turn" is the same error class. A bust **consumes no dart** and **ends no
-   turn**, so the BUST chip is UI-local visit state.
+   "not your turn" is the same error class. The refusals carry a stable **code** instead
+   (rule 5). A bust **consumes no dart** and **ends no turn**, so the BUST chip is UI-local
+   visit state.
 4. **The three non-x01 modes never read `segment`.** Cricket, Around The Clock and
    Shanghai derive their result from `points` alone; the segment is a **UI label** on those
    views. In cricket the inner bull (50) is **two** marks and the outer bull (25) is
@@ -164,6 +165,13 @@ These are engine behaviours the UI cannot infer from the returned state. Full de
    never reaches the player and it is never matched on. **Exactly one module** turns a
    code into a sentence: `src/components/game/playerErrors.ts`. All five match screens read
    it, so the same refusal cannot read differently in 501 and in cricket.
+6. **A refusal is never announced as a bust.** The bust branch belongs to a **new** dart.
+   While a correction is armed, the view's own bust computation — the one rule 3 asks for —
+   runs against the score that is left **now**, and that score is not the score the
+   corrected dart was thrown at, so the computation says nothing about that dart: it is
+   meaningful for a new dart only. A refused correction changed nothing at all, so
+   announcing a bust would tell the player that something happened that did not happen. A
+   **new** dart that busts still announces „Bust. N remaining."
 
 **So the visit strip is assembled from two sources:** the engine's returned state for the
 counted darts, and a small UI-local record for the busted dart. Both are needed for the
@@ -179,12 +187,32 @@ sentence, so no English developer text can leak into the status line.
 
 **A refusal text must never promise a remedy that does not exist.** The turn-rotation
 refusal (`TURN_ROTATION_CHANGED`) is the cautionary case: for the dart it refuses, **no**
-value is accepted — probing all 61 values the player can enter (0…60) produced 0
-acceptances, every one of them refused under one of three codes
-(`TURN_ROTATION_CHANGED`, `LATER_DART_WOULD_BUST`, `CORRECTION_WOULD_BUST`) — so a text
-that tells the player to enter another value only leads into the next refusal. The remedy
-a refusal names has to be one that exists; for this one it is undoing back past the dart
-and throwing it again.
+value is accepted — so a text that tells the player to enter another value only leads into
+the next refusal. The remedy a refusal names has to be one that exists; for this one it is
+undoing back past the dart and throwing it again.
+
+**The probe behind rule 5's refusal texts.** It is the journey the correction flow exists
+for: a bust in the middle of a turn, corrected afterwards — and every figure below can be
+re-run from it:
+
+- **Match:** 501, **straight out**, one player.
+- **Darts:** eight T20, then a busting T20, then S7, S3, S1.
+- **Score:** 501 − 480 = 21 before the bust; the bust changes nothing; 21 − 7 − 3 − 1 =
+  **10** left.
+- **Correction target:** the busted dart — the ninth dart of the ledger.
+- **Values probed:** every value the player can enter, **0 … 60**, each with the segment
+  that fits it and with no segment at all. The split is the same either way: the code a
+  value earns does not depend on the segment.
+
+**None of the 61 values is accepted.** Every one of them is refused under one of three
+codes: **11 × `TURN_ROTATION_CHANGED`** (0…10), **11 × `LATER_DART_WOULD_BUST`** (11…21)
+and **39 × `CORRECTION_WOULD_BUST`** (22…60). The split belongs to this journey — under
+another checkout rule it shifts (double out: 9 / 11 / 41) — but the fact does not: **no
+value at all is accepted**, so no text may send the player back into the field with
+another value.
+
+The same journey is the one `tests/unit/game/x01CorrectionRefusal.test.tsx` drives
+through the view.
 
 ---
 
@@ -288,6 +316,8 @@ Visible, AA) and SC 2.4.11 (Focus Appearance, 2.2 AA).
 - ❌ Inferring a bust from the absence of a state change
 - ❌ Showing the engine's English error message to the player, or matching on it
 - ❌ A refusal text that promises a remedy that does not exist
+- ❌ Announcing a refused correction as a bust — the bust branch belongs to a new dart
+- ❌ Reading the corrected dart's bust from the score that is left now
 - ❌ Sending a segment with a miss
 - ❌ Deriving a non-x01 mode's result from the segment instead of the points
 - ❌ Collapsing cricket's two bulls into one

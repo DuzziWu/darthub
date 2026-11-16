@@ -34,9 +34,10 @@ const ALL_CODES: readonly GameEngineErrorCode[] = [
  * The text of the refusal this whole feature was written for.
  *
  * It promises no other value: in the scenario the correction flow exists
- * for — a bust in the middle of a turn, corrected afterwards — a probe over
- * all 61 values (0 to 60) was refused by the engine without exception, so
- * "enter another value" would be a promise the engine cannot keep.
+ * for — a bust in the middle of a turn, corrected afterwards — every value
+ * the player can enter was refused by the engine without exception, so
+ * "enter another value" would be a promise the engine cannot keep. The
+ * figures are in `design-system/darthub/pages/match.md` §6, rule 5.
  */
 const TURN_ROTATION_TEXT =
   "Diesen Wurf kannst du nicht mehr ändern. Bitte zurücknehmen und neu werfen.";
@@ -73,15 +74,14 @@ describe("PLAYER_ERROR_TEXTS", () => {
   /**
    * The truthfulness guard.
    *
-   * A refusal text must never promise a remedy that does not exist. The
-   * turn-rotation refusal is the proof: in the very scenario the
-   * correction flow exists for — a bust in the middle of a turn, corrected
-   * afterwards — a probe over all 61 values the player can enter (0 to 60)
-   * was refused by the engine without exception. Eleven were refused with
-   * `TURN_ROTATION_CHANGED`, eleven with `LATER_DART_WOULD_BUST` and
-   * thirty-nine with `CORRECTION_WOULD_BUST`. So a text that tells the
-   * player to enter another value sends them into a loop: the next value
-   * is refused too, with a different sentence.
+   * A refusal text must never promise a remedy that does not exist, and
+   * must never send the player into a loop of refusals. The turn-rotation
+   * refusal is the proof: in the very scenario the correction flow exists
+   * for — a bust in the middle of a turn, corrected afterwards — every value
+   * the player can enter was refused by the engine without exception (the
+   * figures are in `design-system/darthub/pages/match.md` §6, rule 5). So a
+   * text that tells the player to enter another value only leads into the
+   * next refusal; this one names the way out instead.
    */
   it("never tells the player to enter another value when no other value is accepted", () => {
     const text = PLAYER_ERROR_TEXTS.TURN_ROTATION_CHANGED;
