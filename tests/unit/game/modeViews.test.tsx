@@ -350,4 +350,26 @@ describe("the non-x01 match views", () => {
     expect(within(aliceRow).getByLabelText("Round 2, target 2, 1 marks")).toBeTruthy();
     expect(within(bobRow).getByLabelText("Round 2, target 2, 0 marks")).toBeTruthy();
   });
+
+  it("shows the shanghai segments after the match is won", () => {
+    render(<ShanghaiPage />);
+    startMatch("Eve");
+
+    // The single, the double and the treble of the target in one round is
+    // a Shanghai, and it ends the match on the spot.
+    throwOnBoard("Single 1, 1 points");
+    throwOnBoard("Double 1, 2 points");
+    throwOnBoard("Treble 1, 3 points");
+
+    // The match is over, so there is no player on turn any more — the
+    // strip still reports the segments the winner hit.
+    const sheet = screen.getByRole("region", { name: "Shanghai rounds" });
+    expect(within(sheet).getByLabelText("Single, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, hit")).toBeTruthy();
+    expect(within(sheet).queryAllByLabelText(/missed/)).toHaveLength(0);
+
+    // And the round in play is announced as the win it is.
+    expect(within(sheet).getByText("Shanghai")).toBeTruthy();
+  });
 });

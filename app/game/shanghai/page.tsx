@@ -205,8 +205,12 @@ export default function ShanghaiPage() {
   const data = matchState?.modeData as ShanghaiModeData | undefined;
   const currentRound = (data?.currentRound ?? 0) + 1;
   const currentPlayerId = matchState?.currentPlayerId ?? null;
-  // The segments of the round in play belong to the player on turn.
-  const record = currentPlayerId ? data?.roundRecords?.[currentPlayerId] : undefined;
+  // The segments of the round in play belong to the player on turn — and to
+  // the winner once the match is over, because the match has no player on
+  // turn any more and the winning round's segments still live in the mode's
+  // state.
+  const recordPlayerId = currentPlayerId ?? winnerId;
+  const record = recordPlayerId ? data?.roundRecords?.[recordPlayerId] : undefined;
   const hit = {
     single: record?.hitSingle ?? false,
     double: record?.hitDouble ?? false,
