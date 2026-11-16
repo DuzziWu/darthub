@@ -170,5 +170,50 @@ The Playwright command builds and serves the production build itself
 
 ## Result (Ergebnis)
 
-<!-- Filled in when the package is executed. The three steps are recorded separately,
-     each with the command output that proves it. -->
+**The vertical is in flight. None of the three steps is merged yet.** Each step is recorded
+separately, with the command output that proves it.
+
+| Step                                  | Owner         | State                   | Branch         |
+| ------------------------------------- | ------------- | ----------------------- | -------------- |
+| **E1.1** — the registration transport | `backend`     | **in Arbeit**           | `cez/d411ba19` |
+| **E1.2** — the sign-in surface        | `frontend`    | geplant — **nach E1.1** | —              |
+| **E1.3** — the login journeys         | `qa-engineer` | geplant — **nach E1.2** | —              |
+
+The order is fixed: E1.2 posts to the route E1.1 ships, and E1.3 is written against the
+surface E1.2 ships.
+
+**Checked on 2026-11-16 against `integration/opencode-team` at `59df0e3` — the E1.1 merge is
+not visible.**
+
+```text
+$ git log --oneline -3 integration/opencode-team
+59df0e3 merge: E2E-Journeys-Plan (Login, Matchmaking, Karriere) — 9 sequenzierte Schritte, kein Produktcode
+f2134d1 plan(e2e): E2E-Lücken als Workpackage planen — Login, Matchmaking, Karriere
+907863e docs(plans): Finale Verifikationszahlen nachtragen
+
+$ git cat-file -e integration/opencode-team:src/auth/registerRoutes.ts
+fatal: path 'src/auth/registerRoutes.ts' does not exist in 'integration/opencode-team'
+
+$ git cat-file -e integration/opencode-team:app/api/auth/register/route.ts
+fatal: path 'app/api/auth/register/route.ts' does not exist in 'integration/opencode-team'
+
+$ git cat-file -e integration/opencode-team:tests/integration/registerUser.test.ts
+fatal: path 'tests/integration/registerUser.test.ts' does not exist in 'integration/opencode-team'
+
+$ git cat-file -e integration/opencode-team:app/login/page.tsx
+fatal: path 'app/login/page.tsx' does not exist in 'integration/opencode-team'
+
+$ git for-each-ref --format='%(refname:short)' | grep d411ba19
+(no output — the branch cez/d411ba19 is not in the repository's ref list)
+```
+
+**No result numbers are recorded here yet — they are to be filled in.** The merge commit, the
+list of changed files and the test counts of E1.1 belong to the merge; they must be read from
+that commit and are **nachzutragen**, never estimated. The same holds for E1.2 and E1.3,
+whose results are recorded after their own merges.
+
+| Still open                                          | Filled in after |
+| --------------------------------------------------- | --------------- |
+| E1.1 — merge commit, changed files, test counts     | the E1.1 merge  |
+| E1.2 — the sign-in surface, its verification output | the E1.2 merge  |
+| E1.3 — the two journeys, their verification output  | the E1.3 merge  |
