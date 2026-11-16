@@ -263,12 +263,24 @@ export interface MatchLayoutProps {
 export interface CricketScoreSheetProps {
   /** The targets in play, e.g. 20 to 15 and the bull (25). */
   targets: readonly number[];
-  /** The marks on every target, keyed by the target value as a string. */
-  marks: Record<string, number>;
   /** The marks that close a target. */
   marksToClose: number;
-  /** Whose marks the sheet shows. */
-  playerName?: string;
+  /**
+   * Every seated player and the marks they hold, in seating order.
+   *
+   * The sheet is a sheet **per player**: a cricket match has no shared
+   * score, so a component that could show one player's marks could never
+   * show a match. `marks` and `playerName` are therefore gone, not kept
+   * as aliases — this is the convention the other mode sheets follow.
+   */
+  players: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** The marks on every target, keyed by the target value as a string. */
+    marks: Record<string, number>;
+  }>;
+  /** The player whose turn it is. */
+  currentPlayerId?: string | null;
 }
 
 export interface AroundTheClockScoreSheetProps {

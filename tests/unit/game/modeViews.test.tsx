@@ -230,4 +230,34 @@ describe("the non-x01 match views", () => {
     expect(screen.getByRole("region", { name: "Match result" })).toBeTruthy();
     expect(screen.getByText("Carol wins")).toBeTruthy();
   });
+
+  it("shows a cricket score sheet per player", () => {
+    render(<CricketPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected, so every name owns a sheet.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // One section per player, each named by its owner.
+    const alice = screen.getByLabelText("Alice cricket targets");
+    const bob = screen.getByLabelText("Bob cricket targets");
+    expect(alice).toBeTruthy();
+    expect(bob).toBeTruthy();
+
+    // The name is its own element, so it is found by name — scoped to the
+    // sheet, because the overview above names the players as well.
+    expect(within(alice).getByText("Alice")).toBeTruthy();
+    expect(within(bob).getByText("Bob")).toBeTruthy();
+
+    // The target label now matches twice — once per sheet — so it is read
+    // per player.
+    expect(within(alice).getByLabelText("20, 0 of 3 marks")).toBeTruthy();
+    expect(within(bob).getByLabelText("20, 0 of 3 marks")).toBeTruthy();
+
+    // The player on turn is marked on their own sheet, and on no other.
+    expect(within(alice).getByText(/on turn/i)).toBeTruthy();
+    expect(within(bob).queryByText(/on turn/i)).toBeNull();
+  });
 });
