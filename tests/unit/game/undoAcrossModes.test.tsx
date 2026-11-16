@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import CricketPage from "../../../app/game/cricket/page";
@@ -107,5 +109,72 @@ describe("every mode offers the undo", () => {
     fireEvent.click(undoButton());
 
     expect(visitChips().length).toBe(1);
+  });
+});
+
+/**
+ * The finished-visit confirmation, reachable in the product.
+ *
+ * A visit ends when the turn advances and when a dart busts. The throw
+ * strip shows the darts of the turn in progress, so a dart of a finished
+ * visit is only on screen when the turn itself spans two visits — which
+ * is what a bust does: the bust closes the visit, and the dart after it
+ * opens the next one. x01 is the mode that busts, so the 501 view is
+ * where the confirmation has to be reachable.
+ *
+ * The other three views are wired the same way (the test below reads their
+ * source), but their modes never bust: there the turn and the visit are
+ * the same group, and a visit that is over belongs to a turn that is over
+ * as well — its darts are no longer on the strip.
+ */
+
+/** The match views that show the throw strip. */
+const MATCH_VIEWS = [
+  join("app", "game", "cricket", "page.tsx"),
+  join("app", "game", "around-the-clock", "page.tsx"),
+  join("app", "game", "shanghai", "page.tsx"),
+  join("src", "components", "x01", "X01MatchView.tsx"),
+];
+
+describe("the finished-visit confirmation", () => {
+  it("asks for confirmation before correcting a dart of a finished visit", () => {
+    render(<GamePage />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Ann" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // Eight trebles of 20 leave 21 points; the ninth overshoots and busts.
+    for (let dart = 0; dart < 8; dart += 1) {
+      throwOnBoard("Treble 20, 60 points");
+    }
+    throwOnBoard("Treble 20, 60 points"); // the bust
+
+    // The bust closed the visit, so the turn still shows a dart of it.
+    const chips = visitChips();
+    expect(chips.length).toBeGreaterThan(1);
+
+    fireEvent.click(chips[0]!);
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("Finished visit");
+
+    // And the confirmation arms the dart once it is confirmed.
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByText(/Correcting/)).toBeTruthy();
+  });
+
+  it("wires the confirmation through every match view", () => {
+    for (const file of MATCH_VIEWS) {
+      const source = readFileSync(join(process.cwd(), file), "utf8");
+
+      // The strip needs the flag and the handler, or the confirmation can
+      // never appear — however good the hook and the component are.
+      expect(source, `${file} must pass awaitingConfirmation on`).toMatch(
+        /awaitingConfirmation=\{history\.awaitingConfirmation\}/,
+      );
+      expect(source, `${file} must pass onConfirm on`).toMatch(
+        /onConfirm=\{history\.confirmCorrection\}/,
+      );
+    }
   });
 });
