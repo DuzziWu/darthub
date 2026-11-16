@@ -260,4 +260,48 @@ describe("the non-x01 match views", () => {
     expect(within(alice).getByText(/on turn/i)).toBeTruthy();
     expect(within(bob).queryByText(/on turn/i)).toBeNull();
   });
+
+  it("shows an around the clock score sheet per player and announces a miss", () => {
+    render(<AroundTheClockPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected, so every name owns a sheet.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // One section per player, each named by its owner.
+    const alice = screen.getByLabelText("Alice around the clock");
+    const bob = screen.getByLabelText("Bob around the clock");
+    expect(alice).toBeTruthy();
+    expect(bob).toBeTruthy();
+
+    // The name is its own element, so it is found by name — scoped to the
+    // sheet, because the overview above names the players as well.
+    expect(within(alice).getByText("Alice")).toBeTruthy();
+    expect(within(bob).getByText("Bob")).toBeTruthy();
+
+    // The progress readout lives in the player's own section: with two
+    // players an unscoped lookup finds two of them.
+    expect(within(alice).getByText("Progress 0 / 21")).toBeTruthy();
+    expect(within(bob).getByText("Progress 0 / 21")).toBeTruthy();
+
+    // The player on turn is marked on their own sheet, and on no other.
+    expect(within(alice).getByText(/on turn/i)).toBeTruthy();
+    expect(within(bob).queryByText(/on turn/i)).toBeNull();
+
+    // Every player has their own target: Alice's hit moves Alice's target
+    // and leaves Bob's alone.
+    throwOnBoard("Single 1, 1 points");
+    expect(within(alice).getByText("Progress 1 / 21")).toBeTruthy();
+    expect(within(bob).getByText("Progress 0 / 21")).toBeTruthy();
+    expect(alice.querySelector("[data-current-target]")?.textContent).toBe("2");
+    expect(bob.querySelector("[data-current-target]")?.textContent).toBe("1");
+
+    // A dart on the wrong target is a visible miss: the dart is consumed
+    // and the view says so instead of swallowing it.
+    throwOnBoard("Single 5, 5 points");
+    expect(screen.getByRole("status").textContent).toContain("Miss");
+    expect(within(alice).getByText("Progress 1 / 21")).toBeTruthy();
+  });
 });
