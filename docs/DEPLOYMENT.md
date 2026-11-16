@@ -196,8 +196,13 @@ cd /projects/darthub
 npm run build:prefixed
 cp -r public .next-prefixed/standalone/public
 cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
-setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
+setsid -f env HOSTNAME=127.0.0.1 PORT=3000 node .next-prefixed/standalone/server.js
 ```
+
+The server binds the **loopback address**: the proxy runs on the same host and
+the mount points at `http://127.0.0.1:3000`, so the published site reaches the
+server and nothing else on the tailnet or in the LAN does. `0.0.0.0` is the
+rule of the container variant, below.
 
 `next dev` compiles on demand, so a cold route drops requests while it compiles
 and the preview flickers. The standalone server is the same server the Docker
@@ -208,23 +213,37 @@ stays a child of the shell that started it and dies with the session; with it,
 the process is adopted by PID 1 and outlives it. `ps -o pid,ppid,sid,cmd -p <pid>`
 shows a PPID of 1 and a session id of its own when the server is detached.
 
-### The server must listen on every interface
+### The bind address follows the topology
 
-`HOSTNAME=0.0.0.0` binds every interface, so every address the proxy or a client
-may use reaches the server — the loopback address of the mount, the tailnet
-address, the address of a container. With the default `HOSTNAME=127.0.0.1` the
-server listens on loopback only, the proxy's connection can be **refused**, and
-Tailscale Serve answers **502 Bad Gateway** — even though the application
-itself answers `200` on `http://127.0.0.1:3000/` the whole time.
+The bind address is not a detail — it is the difference between a published site
+and a 502. A listener that refuses the connection the proxy actually makes is
+answered by the proxy with **502 Bad Gateway**, while the application itself
+keeps answering 200 on its own address. Recognise that failure mode by its
+shape: a site that is broken for every user while every local health check
+passes.
 
-That is the failure mode of the outage on 2026-11-14, and it is worth
-recognising it by its shape: a site that is broken for every user while every
-local health check passes.
+| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                              |
+| ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Live preview (port 3000)        | `127.0.0.1` | The proxy runs on the same host and the mount points at the loopback address. Loopback is the correct and the safe choice: the published site reaches the server, nothing else does.                                                                                                             |
+| Container image (port 3000)     | `0.0.0.0`   | The proxy runs on the host and reaches the container across the bridge on its published address `172.18.0.2:3000`. A loopback-only container refuses that connection and the proxy answers 502, while the container itself keeps answering 200 on `http://127.0.0.1:3000/` inside the container. |
+| Playwright servers (3100, 3111) | `127.0.0.1` | They are driven by the test runner on the very machine that starts them, so loopback is enough — and they must not be reachable from anywhere else.                                                                                                                                              |
+
+In the host topology the local check `curl http://127.0.0.1:3000/` proves that
+_something_ listens on the port, not that the _preview_ listens on it. That is
+how the outage of 2026-11-14 looked: the local check was green and the site was
+broken for every user. At that time the preview was still the container variant
+and the server had been restarted with `HOSTNAME=127.0.0.1` — the E2E convention.
+The proxy reached the container over the bridge address `172.18.0.2:3000`, the
+loopback-only listener refused that connection, and the site answered 502 while
+the application kept answering 200 on `http://127.0.0.1:3000/` inside the
+container.
 
 Note that `playwright.config.ts` starts its own servers with
 `HOSTNAME=127.0.0.1` on ports **3100** and **3111**. Those are deliberately not
-reachable from the host, and port 3000 is reserved for the published app: a
-server on port 3000 that binds loopback only makes the published site answer 502.
+reachable from anywhere else, and port 3000 is reserved for the published app
+alone: another process on port 3000 displaces the preview, and the proxy then
+reaches _that_ process — the published site serves a build without the path
+prefix (unstyled, unhydrated, 404 on the assets) instead of the preview.
 
 ### The container variant
 

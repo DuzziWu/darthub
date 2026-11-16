@@ -24,12 +24,13 @@ the same host, not at a container on `172.18.0.2:3000`.
 
 ## Scope
 
-| #   | Package                    | Owner       | Files                                                                | Status |
-| --- | -------------------------- | ----------- | -------------------------------------------------------------------- | ------ |
-| 1   | `001-dockerfile-prefix.md` | implementer | `Dockerfile`                                                         | done   |
-| 2   | `002-compose-prefix.md`    | implementer | `docker-compose.yml`                                                 | done   |
-| 3   | `003-regression-test.md`   | implementer | `tests/unit/docker-prefix.test.ts`                                   | done   |
-| 4   | `004-runbook.md`           | implementer | `AGENTS.md`, `docs/DEPLOYMENT.md`, `tests/unit/live-preview.test.ts` | done   |
+| #   | Package                          | Owner       | Files                                                                | Status      |
+| --- | -------------------------------- | ----------- | -------------------------------------------------------------------- | ----------- |
+| 1   | `001-dockerfile-prefix.md`       | implementer | `Dockerfile`                                                         | done        |
+| 2   | `002-compose-prefix.md`          | implementer | `docker-compose.yml`                                                 | done        |
+| 3   | `003-regression-test.md`         | implementer | `tests/unit/docker-prefix.test.ts`                                   | done        |
+| 4   | `004-runbook.md`                 | implementer | `AGENTS.md`, `docs/DEPLOYMENT.md`, `tests/unit/live-preview.test.ts` | done        |
+| 5   | `005-bind-address-correction.md` | implementer | `AGENTS.md`, `docs/DEPLOYMENT.md`, `tests/unit/live-preview.test.ts` | in progress |
 
 Out of scope (must not be touched): `src/**`, `app/**`, `next.config.ts`, `prisma/**`,
 `playwright.config.ts`, `package.json`, `.dockerignore`,
@@ -52,6 +53,12 @@ Out of scope (must not be touched): `src/**`, `app/**`, `next.config.ts`, `prism
   `pkill`), the proxy strips the prefix. `tests/unit/live-preview.test.ts` is adapted
   without weakening it.
 - **R5** Nothing outside the scope is touched. No push, no merge, no branch surgery.
+- **R6 (Owner-Entscheidung 2026-11-16)** Die Vorschau bindet **127.0.0.1**, nicht
+  `0.0.0.0` — die `0.0.0.0`-Regel gehört zur **Container-Topologie**. Die
+  Bind-Adressen-Tabelle nennt beide Topologien, die 502-Fehlform und die
+  Port-Reservierung (3000 für die Vorschau, 3100/3111 für die E2E-Suite) bleiben
+  dokumentiert. Die Assertion in `tests/unit/live-preview.test.ts` wird **ersetzt**,
+  nicht gelöscht, und nagelt zusätzlich die Container-Regel fest.
 
 ## Verification
 
@@ -96,6 +103,13 @@ The root build (empty `ARG`) still passes: the gate checks against `/_next/`.
 
 ## Progress log
 
+- 2026-11-16 — Korrektur der Topologie-Annahme (Owner-Entscheidung 2026-11-16): die
+  Vorschau bindet `127.0.0.1`; `0.0.0.0` gilt nur für die Container-Topologie.
+  `AGENTS.md` (nur Runbook-Abschnitt + Bind-Adressen-Tabelle), `docs/DEPLOYMENT.md`
+  und `tests/unit/live-preview.test.ts` angepasst; die Assertion wurde ersetzt und um
+  die Container-Regel ergänzt. Beleg: der Test ist gegen den alten Stand (Commit
+  `23fb0c2`) rot (2 von 4 Tests) und gegen die Mutation „Container-Regel entfernt"
+  ebenfalls rot.
 - 2026-11-16 — plan written; the four packages are sequenced because they touch
   overlapping files (the new test reads the Dockerfile and the Compose file).
 - 2026-11-16 — all four packages done; the repository gates (typecheck, lint,

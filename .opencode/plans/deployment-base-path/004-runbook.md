@@ -67,3 +67,12 @@ The E2E-suite assertions are untouched.
 
 Verification: `npm run test -- tests/unit/live-preview.test.ts tests/unit/docs/deploymentDocs.test.ts`
 → 6 passed; the Markdown lint in `deploymentDocs.test.ts` passes.
+
+### Superseded by 005 (Owner-Entscheidung 2026-11-16)
+
+The bind-address rule in this package is **superseded**: the owner corrected the
+topology assumption — the published preview binds **`127.0.0.1`**, not `0.0.0.0`;
+the `0.0.0.0` rule belongs to the **container** topology, where the proxy reaches
+the container across the bridge on `172.18.0.2:3000`. The rows "bind address" and
+the acceptance criterion 1 of this package therefore read as history. See
+`005-bind-address-correction.md` for the current state.

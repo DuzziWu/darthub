@@ -89,8 +89,14 @@ cd /projects/darthub
 npm run build:prefixed
 cp -r public .next-prefixed/standalone/public
 cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
-setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
+setsid -f env HOSTNAME=127.0.0.1 PORT=3000 node .next-prefixed/standalone/server.js
 ```
+
+The server binds the **loopback address**, because the proxy that forwards to it runs
+on the same host and the mount points at `http://127.0.0.1:3000`. Loopback is the
+correct and the safe choice in this topology: the published site reaches the server,
+and nothing else on the tailnet or in the LAN does. `0.0.0.0` belongs to the
+container topology — see "The container variant" below.
 
 `npm run build:prefixed` is the prerequisite, because it bakes `BASE_PATH=/darthub` into
 the build. A build without the prefix hands out `/_next/...` asset URLs; the proxy
@@ -114,17 +120,31 @@ The server must be started with `setsid -f`. Without the `-f` the process stays 
 ps -o pid,ppid,sid,cmd -p <pid>   # PPID 1 and a SID of its own means it is detached
 ```
 
-`HOSTNAME=0.0.0.0` binds every interface, so every address the proxy or a client may
-use reaches the server — the loopback address of the mount, the tailnet address, the
-address of a container. The bind address is not a detail — it is the difference between
-a published site and a 502:
+The bind address follows the topology, and the bind address is not a detail — it is the
+difference between a published site and a 502:
 
-| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                                                 |
-| ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Live preview (port 3000)        | `0.0.0.0`   | A listener that refuses the connection the proxy makes is answered by the proxy with **502 Bad Gateway**, while the application itself keeps answering 200 on its own address. The fault looks like a broken site and is not one: it is a site that is broken for every user while every local health check passes. |
-| Playwright servers (3100, 3111) | `127.0.0.1` | They must **not** be reachable from the host, and they are only ever driven from inside the container.                                                                                                                                                                                                              |
+| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live preview (port 3000)        | `127.0.0.1` | The proxy runs on the same host and the mount points at the loopback address, so the loopback bind is the correct and the safe choice: the published site reaches the server, and nothing on the tailnet or in the LAN does.                                                                                                                                                                                                                |
+| Container image (port 3000)     | `0.0.0.0`   | Here the proxy runs on the host and reaches the container across the bridge on its published address `172.18.0.2:3000`. A listener that refuses the connection the proxy makes is answered by the proxy with **502 Bad Gateway**, while the application itself keeps answering 200 on its own address. The fault looks like a broken site and is not one: it is a site that is broken for every user while every local health check passes. |
+| Playwright servers (3100, 3111) | `127.0.0.1` | They are driven by the test runner on the very machine that starts them, so loopback is enough — and they must **not** be reachable from anywhere else.                                                                                                                                                                                                                                                                                     |
 
-The port 3000 conflict that caused the outage of 2026-11-14: `playwright.config.ts` used to start its root-build server on port 3000 as well. With `reuseExistingServer` the suite reuses whatever already listens on the port, so the root build silently **displaced** the live preview and took over port 3000 — bound to loopback, so the host could no longer reach it. The suite now uses port **3100** for the root build and 3111 for the prefixed build; port 3000 belongs to the live preview alone.
+The 502 shape is the same in both topologies: the proxy answers **502 Bad Gateway**
+whenever the listener refuses the connection the proxy actually makes. Recognise it by
+that shape — a site that is broken for every user while every local health check
+passes. In the host topology the check that still answers 200 is
+`curl http://127.0.0.1:3000/`; it proves that _something_ listens on the port, not that
+the _preview_ listens on it.
+
+The port 3000 conflict that caused the outage of 2026-11-14: the preview was still the
+container variant then, the root build of the Playwright suite occupied port 3000, and
+the server was restarted with `HOSTNAME=127.0.0.1` — the E2E convention. The proxy
+reached the container over the bridge address `172.18.0.2:3000`, a loopback-only
+listener refused that connection, and the site answered **502** for every user while the
+application itself kept answering 200 on `http://127.0.0.1:3000/` inside the container.
+Two rules came out of it: the suite uses port **3100** for the root build and 3111 for
+the prefixed build, so port 3000 belongs to the live preview alone — and the bind
+address of the preview follows the topology, as the table above shows.
 
 A rebuild invalidates a running standalone server: replacing the build directory leaves the old process serving a deleted working directory (`/proc/<pid>/cwd` shows `(deleted)`) and still holding its port. Always terminate the old process by **exact PID** before starting a new one — never with a `pkill` pattern, because several Next.js servers run side by side here.
 
