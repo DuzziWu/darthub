@@ -17,13 +17,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - npm 12 blocks **dependency** install scripts unless they are allowlisted, so `npm install` and `npm ci` never run `@prisma/client`'s postinstall and the Prisma client is not generated. Run `npx prisma generate` explicitly after every install; esbuild ships its platform binary as an optional dependency and works without the script. The root project's own scripts (like `prepare`) still run — only the dependencies' scripts are blocked.
 - The Prisma client is **not** checked in, and `npm ci` does not generate it either. Any environment that compiles the app from a clean install must run `npx prisma generate` first — including the Dockerfile's builder stage and both CI jobs, which do this explicitly. `prisma generate` needs no database: it reads the schema, not the datasource URL, so it succeeds without `DATABASE_URL` set. Without it, `npm run typecheck` and `npm run build` both fail with `Module '"@prisma/client"' has no exported member 'PrismaClient'`.
-- The build is **green**: typecheck, lint, format check and the full Vitest suite (105 files, 526 tests) all pass.
+- The build is **green**: typecheck, lint, format check and the full Vitest suite (**108 test files / 553 tests**, measured 2026-11-16) all pass.
 - A **git worktree** of this repository has no `node_modules` of its own. Node's module lookup walks up to the main checkout, so `import … from "tailwindcss"` still resolves — but everything that goes through `<cwd>/node_modules/...` fails: the Prisma client the schema test looks for, the Tailwind stylesheet the token test loads, and the `npx` calls the pre-commit hook makes (with no local ESLint, `npx --no-install` tries to download it and aborts). Run `npm ci` **and** `npx prisma generate` inside the worktree before running the suite.
 
 Two checks are conditional on the environment and skip rather than fail:
 
 - `tests/unit/dockerignore.test.ts` needs a running Docker **daemon** — the CLI alone is not enough, and the test probes this with `docker info`.
 - `tests/unit/tailwind/tailwindToolchain.test.ts` asserts against a production build in `.next/`, so it needs `npm run build` to succeed first.
+
+`tests/unit/dockerignore.test.ts` runs a **real** `docker build` (about nine minutes on a cold layer cache) under a 900 s timeout. On a host that runs several suites at once, the same Docker daemon is shared, and the build then times out — a red `dockerignore` under contention is **not** a regression. Re-run that file alone (`npx vitest run tests/unit/dockerignore.test.ts`) before investigating it.
 
 `tests/unit/ci-workflow.test.ts` runs the CI steps locally, so it fails whenever typecheck or the test suite fails.
 
@@ -261,17 +263,20 @@ The default primary agent is `orchestrator`.
 
 ### Agent responsibilities and file ownership
 
-| Agent           | Mode               | Responsibility and ownership                                                                                                                     |
-| --------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `orchestrator`  | primary + subagent | Planning, delegation, verification and integration. The only agent allowed to reassign ownership.                                                |
-| `architect`     | subagent           | Architecture and documentation. Owns `docs/`, `README.md` and `.opencode/plans/`; does not implement application code.                           |
-| `game-engine`   | subagent           | Owns `src/game-engine/`, `src/board/`, `src/ai/`, `src/camera/` and their relevant unit tests.                                                   |
-| `frontend`      | subagent           | Owns `src/components/` and `app/`, except `app/api/`, plus relevant UI tests.                                                                    |
-| `backend`       | subagent           | Owns `src/auth/`, `src/rating/`, `src/career/`, `src/friends/`, `src/privacy/`, `src/realtime/`, `app/api/`, `prisma/` and their relevant tests. |
-| `qa-engineer`   | subagent           | Owns test harness and meta tests in `tests/`, `e2e/`, `vitest.config.ts`, `playwright.config.ts` and `docs/TESTING.md`.                          |
-| `code-reviewer` | subagent           | Independent, strictly read-only reviewer.                                                                                                        |
+| Agent           | Mode               | Responsibility and ownership                                                                                                                                                                                                                                                                                                   |
+| --------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `orchestrator`  | primary + subagent | Planning, delegation, verification and integration. The only agent allowed to reassign ownership.                                                                                                                                                                                                                              |
+| `architect`     | subagent           | Architecture and documentation. Owns `docs/`, `README.md`, `design-system/`, `AGENTS.md` and `.opencode/plans/`; does not implement application code.                                                                                                                                                                          |
+| `game-engine`   | subagent           | Owns `src/game-engine/`, `src/board/`, `src/ai/`, `src/camera/` and their relevant unit tests.                                                                                                                                                                                                                                 |
+| `frontend`      | subagent           | Owns `src/components/`, `src/lib/` and `app/`, except `app/api/`, plus relevant UI tests.                                                                                                                                                                                                                                      |
+| `backend`       | subagent           | Owns `src/auth/`, `src/rating/`, `src/career/`, `src/friends/`, `src/privacy/`, `src/realtime/`, `app/api/`, `prisma/` and their relevant tests.                                                                                                                                                                               |
+| `infra`         | subagent           | Build, CI and deployment configuration. Owns `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `next.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.prettierignore`, `package.json`, `package-lock.json`, `.github/workflows/`, `scripts/` and `.husky/`. The only agent for dependency, script and CI-workflow changes. |
+| `qa-engineer`   | subagent           | Owns test harness and meta tests in `tests/`, `e2e/`, `vitest.config.ts`, `playwright.config.ts` and `docs/TESTING.md`.                                                                                                                                                                                                        |
+| `code-reviewer` | subagent           | Independent, strictly read-only reviewer.                                                                                                                                                                                                                                                                                      |
 
 File ownership is enforced through OpenCode permissions. A specialist must not work around a denied edit. The orchestrator must reassign or sequence work instead.
+
+The `infra` agent is a subagent with read/write access to the build, CI and deployment configuration. It is the **only** agent that changes `package.json` — the dependencies, the scripts and the version — and the only one that edits the CI workflows in `.github/workflows/`; every other agent routes those changes through it. The permissions that enforce the table above are changed in a separate, parallel ownership package; this table states the intended assignment.
 
 The architect and code reviewer are additionally restricted to read-only shell operations. Implementers must use their permitted editing tools and must not bypass path restrictions through shell commands.
 

@@ -1,6 +1,6 @@
 # Current State
 
-Last verified: 2026-11-15 (repo `/projects/darthub`, branch `main`, HEAD `85d4424` = `origin/main`).
+Last verified: 2026-11-16 (repo `/projects/darthub`, branch `integration/opencode-team`, HEAD `4cba24f`; `origin/main` is still at `b07665a`).
 
 The mobile scoring UX (DF-0004) landed on top of this state: the Board and Manual
 input modes are separated, the player overview with the remaining score sits above the
@@ -21,8 +21,17 @@ an implementation and, where one exists, a test file.
   (`src/game-engine/NeutralScoreMode.ts`) for the realtime layer.
 - Rules: `src/game-engine/rules/OutRules.ts` (`straight`/`double`/`master`, bust,
   stranded bust) and `src/game-engine/rules/LegSetManager.ts` (legs/sets).
+- **Two-player Cricket** (merged `0f11ae4`, package M1 of
+  `.opencode/plans/game-modes-multiplayer/`): the setup seats two players
+  (`app/game/cricket/page.tsx:194`, `maxPlayers={2}`); the score sheet is **one
+  `<section>` per player** (`src/components/game/CricketScoreSheet.tsx:93-94`) and
+  reads the marks of the player who threw (`currentPlayerId`, `:105`); the winner
+  comes from `getCricketWinnerId` (`src/game-engine/modes/CricketMode.ts:138`).
+  The sheet's props are `players` / `currentPlayerId`
+  (`src/components/game/types.ts:263-275`) — the single-player `marks` /
+  `playerName` are gone, not kept as aliases.
 - Tests: `tests/unit/game-engine/**` (`GameEngine.test.ts`, `GameEngineValidation.test.ts`,
-  `modes/*.test.ts`, `rules/*.test.ts`).
+  `modes/*.test.ts` — including `modes/CricketMultiplayer.test.ts` — `rules/*.test.ts`).
 
 **Board & design system**
 
@@ -60,69 +69,63 @@ an implementation and, where one exists, a test file.
 
 **Infrastructure** — `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `.env.example`,
 Husky pre-commit hook, GitHub Actions CI running lint / format:check / typecheck / test.
-Playwright config exists with 6 spec files; `game-center`, `hub-pages` and `visual-qc`
-are active, `login` / `career` / `matchmaking` are fully skipped.
+`e2e/` holds **9** Playwright spec files; `game-center`, `hub-pages`, `score-entry`,
+`start-match`, `subpath-preview` and `visual-qc` are active, while `login` / `career` /
+`matchmaking` are fully skipped — 7 `test.skip` placeholders in total
+(`e2e/login.spec.ts` 2, `e2e/matchmaking.spec.ts` 2, `e2e/career.spec.ts` 3).
 
 ## Active work
 
-**The mobile scoring UX (DF-0004) is implemented in the working tree and verified, but
-not committed.** It consists of the engine half (WP-1) and the frontend half
-(WP-2 to WP-5):
+**The multiplayer game modes are being ported.** The plan is
+`.opencode/plans/game-modes-multiplayer/_plan.md` — seven packages, M1 to M7, each with
+one owning agent.
+
+- **M1 — Cricket with two players and one score sheet per player: merged** as `0f11ae4`
+  ("merge: M1 – Cricket mit zwei Spielern und eigenem Score-Sheet"). The state it
+  produced is listed under _Game core_ above.
+- **M2 — Around The Clock, one target per player: running** as a parallel cezar task on
+  branch `cez/04c2e31f`.
+- **M3 — Shanghai, the round advances on turns and two players score separately:
+  running** as a parallel cezar task on branch `cez/0091ff2f`.
+- **M4 (best-of-N legs and sets), M5 (tie and tie-break), M6 (undo from the result
+  screen) and M7 (the design spec and the docs): not started.**
+
+**M2 and M3 are not in this tree.** Their code and their tests are not counted in the
+measurements below, and neither package may be started again — both are in flight.
+
+**The mobile scoring UX (DF-0004) is committed and shipped.** It consists of the engine
+half (WP-1) and the frontend half (WP-2 to WP-5):
 
 - `src/game-engine/throwLedger.ts` — `deriveTurnThrows(throws, currentPlayerId, dartsPerTurn)`,
   the pure derivation of the darts belonging to the turn in progress. Exposed as
-  `GameEngine.getCurrentTurn()`.
-- `src/components/game/PlayerScoreboard.tsx` (new) — the player overview: the active
+  `GameEngine.getCurrentTurn()` (`src/game-engine/GameEngine.ts:230`).
+- `src/components/game/PlayerScoreboard.tsx` — the player overview: the active
   player as a promoted row with a 2 px brass rail and the words „AM ZUG", the other
   players as ruled rows, the mode's own number in a fixed column of tabular figures.
   The data is a union (`ScoreboardData`), one variant per mode, so no mode loses
   information to a generic field.
-- `src/components/game/VisitTracker.tsx` (new) — the turn tracker with the darts of
+- `src/components/game/VisitTracker.tsx` — the turn tracker with the darts of
   the turn and the single **Undo**, placed directly above the input surface.
 - `src/components/game/MatchLayout.tsx` — the reading order (strip, overview, tracker,
   band switch, input surface, everything else) and the separation of the two input
   surfaces: the manual mode keeps the pad and leaves the board as a read-only preview,
   the board mode keeps the board and removes the pad from the document entirely.
 
-**The design-implementation plan work below was committed in the meantime** — the repo
-now has the full history on `main` (HEAD `85d4424`), and only the DF-0004 work is
-uncommitted. The repo has
-5 commits total (`983cc49`, `fdbfe5f`, `82a0e46`, `663f7a0`, `dc946a4`); everything the
-design plan produced is still in the working tree.
-
-Uncommitted and untracked (new files):
-`app/game/`, `app/game-center/`, `app/globals.css`, `postcss.config.mjs`, `src/board/`,
-`src/components/`, `src/game-engine/modes/AroundTheClockMode.ts`,
-`src/game-engine/modes/ShanghaiMode.ts`, `src/game-engine/modes/registry.ts`,
-`DESIGN.md`, `design-system/`, `docs/LOCAL_SETUP.md`, `AGENTS.md`,
-`.claude/agents/`, `.claude/skills/`, `.claude/plans/{darthub-design-implementation,
-darthub-design-system,game-center-styling-fix}/`, `e2e/{game-center,hub-pages,
-visual-qc}.spec.ts`, `e2e/visual-qc-helpers.ts`, and new test files under
-`tests/unit/{board,game,game-center,shell,tailwind}/`, `tests/integration/invite/`,
-`tests/unit/realtime/inviteService.test.ts`.
-
-Modified, tracked files (44 changed, +1752 / −331 vs `HEAD`): `src/game-engine/types.ts`,
-`src/game-engine/modes/{StandardMode,index}.ts`, `src/game-engine/README.md`,
-`src/camera/CameraDTO.ts`, `src/camera/vision/HitDetector.ts`, `src/career/questLoader.ts`,
-`src/friends/prismaFriendRepository.ts`, `src/realtime/{socketServer,RedisRoomStore,
-antiCheatMiddleware,inviteService}.ts`, the four `app/api/{auth,invite}` routes, five
-`app/` pages, `package.json`, `package-lock.json`, `eslint.config.mjs`, `.gitignore`,
-`.prettierignore`, the `_plan.md` of the full-product plan, and 20 test files. Three
-UI snapshot files (`tests/unit/ui/__snapshots__/{career,dashboard,lobby}.test.tsx.snap`)
-are deleted in the working tree.
+The working tree is clean at `4cba24f`; the repository carries 46 commits on
+`integration/opencode-team`. `origin/main` is still at `b07665a`, so none of the work
+above has reached the published branch yet.
 
 Plan state: `darthub-design-implementation` and `game-center-styling-fix` and
 `darthub-design-system` all say "completed"; `darthub-full-product-planning/_plan.md`
-says 48/48 done while its own `_run-status.md` says 27/48 at the 2026-11-07 stop.
-The current plan is `mobile-scoring-ux/_plan.md` (DF-0004), which says WP-1 to WP-6
-done and WP-7/WP-8 outstanding.
+says 48/48 done while its own `_run-status.md` says 27/48 at the 2026-11-07 stop —
+`docs/ROADMAP.md` now carries the measured status per task, and supersedes both.
 
 ## Known issues
 
-Only issues I could confirm from the repo's own files and recorded outputs. **The test
-suite was not run in this session** — `npm run test` writes outside `.devflow/`
-(Vitest cache, `test-results/`), which this task forbids. So no failure below was
-reproduced today; each is either read from code or taken from a recorded run in the repo.
+Only issues I could confirm from the repo's own files and recorded outputs. The test
+suite **was** run in this session (2026-11-16) — see _Verified on 2026-11-16_ below. So
+no failure below was reproduced today; each is either read from code or taken from a
+recorded run in the repo.
 
 1. `tests/integration/linkGuest.test.ts` fails without a PostgreSQL server on
    `localhost:5432` (recorded in `test_latest_output.log`, 2026-11-08: "expected 500 to be
@@ -138,52 +141,54 @@ reproduced today; each is either read from code or taken from a recorded run in 
    (`src/realtime/GameStateMachine.ts:23-25`); the shipped x01 / Cricket / Around The Clock
    / Shanghai modes are not used by the Socket.IO path.
 5. `src/realtime/matchmaking.ts` (`PublicMatchmaker`) is not referenced by the socket
-   server or the realtime server entry point.
+   server or the realtime server entry point — only by `tests/unit/matchmaking.test.ts`.
 6. `docs/API.md` HTTP paths and Socket.IO event names do not match the implementation
-   (full list in `.devflow/memory/PROJECT.md`, contradictions 4 and 5).
-7. `docs/ROADMAP.md:32-41` and
-   `.claude/plans/darthub-full-product-planning/_run-status.md` disagree with
-   `.claude/plans/darthub-full-product-planning/_plan.md` on completion
-   status; `.claude/architecture.md` and `docs/ARCHITECTURE.md` describe directories that
-   do not exist.
-8. The UI snapshot files for career/dashboard/lobby are deleted in the working tree while
-   the corresponding tests are modified — whether the remaining snapshot assertions still
-   match is **not verified** (suite not run).
-9. The root-level `*.log` artifacts (`test_full_suite_output.log`, `lint_output.log`,
+   (full list in `.devflow/memory/PROJECT.md`, contradictions 4 and 5). The doc names
+   `/api/auth/guest`, `/api/users/me` and `/api/ratings/me`, while the routes that exist
+   are `/api/auth/link-guest`, `/api/privacy/*` and `/api/rating/{[userId],game}`.
+7. `.claude/plans/darthub-full-product-planning/_plan.md` still says 48/48 done while its
+   own `_run-status.md` says 27/48 at the 2026-11-07 stop. `docs/ROADMAP.md` now carries
+   the measured status per task and supersedes both, but the Claude Code plan is a
+   separate workflow's file and was not touched.
+8. The root-level `*.log` artifacts (`test_full_suite_output.log`, `lint_output.log`,
    `typecheck_output.log`, `build_output.log`, …) are stale — dated 2026-11-08 and
    superseded by the measured baselines recorded in the plan documents. They should not be
    cited as current state.
-10. The in-memory invite-code store (`src/realtime/inviteService.ts`) and the in-memory
-    career progress store do not survive a process restart; only the room store has a
-    Redis backend.
+9. The in-memory invite-code store (`src/realtime/inviteService.ts`) and the in-memory
+   career progress store do not survive a process restart; only the room store has a
+   Redis backend.
 
-**Verified on 2026-11-15** (the tree that carries the DF-0004 mobile UX):
+**Verified on 2026-11-16** (the tree at `4cba24f`, carrying the DF-0004 mobile UX and the
+merged M1 cricket package):
 
 - `npm run typecheck`, `npm run lint`, `npm run format:check` — **green**.
-- `npm run test` — **105 files / 526 tests green** (the baseline before the engine and
-  frontend work was 102 files / 494 tests).
-- `npm run build` and `npm run build:prefixed` — **green**.
-- `npx playwright test` — **70 passed, 7 skipped** (the 7 are `test.skip` placeholders).
+- `npx vitest run --reporter=dot` — **108 test files / 553 tests, all green**.
+  `tests/unit/dockerignore.test.ts` is environment-flaky in a full run: its live
+  `docker build` times out at its 900 s cap, or fails with `failed to export image: No
+such image`, when another build touches the same daemon. Run alone on an idle daemon
+  it passes — **3 tests passed, 546 s**. The count does **not** include the two packages
+  that are still in flight (M2 and M3).
+- `npm run build` and `npm run build:prefixed` — **not run in this session**; no build
+  claim is made for this commit.
+- `npx playwright test` — **not run in this session**. The last recorded run was
+  **70 passed, 7 skipped** on 2026-11-15 (the 7 are `test.skip` placeholders).
 
 **Not verified (unknowns)**
 
-- Whether the three deleted snapshot files' tests still pass — **not run**.
-- Whether the three deleted snapshot files' tests still pass — **not run**.
-- CI has never run the E2E suite (`.github/workflows/ci.yml` runs lint/format/typecheck/test
-  only) — the E2E status on CI is therefore **unknown**.
+- The E2E suite on CI — **unknown**. The `End-to-end (Playwright)` job exists in
+  `.github/workflows/ci.yml`, but its result on GitHub was not read in this session.
+- `npm run build` on this exact commit — **not run**.
 
 ## Next recommended step
 
-1. Get explicit user consent, then commit the DF-0004 work (the engine half and the
-   mobile frontend half together) as one checkpoint — the plan commit policy forbids
-   committing without it.
-2. Close the GitHub issues once the commit is in: #6 (integration and regression
-   tests) and the sub-issues #11 (engine), #12 (scoreboard), #13 (throw overview and
-   undo), #14 (match layout), #15 (mode views), #16 (regression tests).
-3. Run an independent review pass over the DF-0004 diff (the plan's WP-8): the union
-   data model, the two input surfaces, and the contracts the end-to-end suite pins.
-4. Reconcile the documentation with the code: `docs/API.md` paths and event names,
-   `docs/ARCHITECTURE.md` directory map, `docs/ROADMAP.md` status table, and
-   `.claude/architecture.md`.
-5. Close the schema gap: add the `CareerQuestProgress` model + migration and switch
+1. Merge M2 (`cez/04c2e31f`) and M3 (`cez/0091ff2f`) into `integration/opencode-team`
+   when their cezar tasks report, then re-measure the suite counts — the ones recorded
+   above do not include them.
+2. Run the remaining game-mode packages in the fixed order M4 → M5 → M6 → M7
+   (`.opencode/plans/game-modes-multiplayer/_plan.md`).
+3. Reconcile the remaining documentation with the code: `docs/API.md` paths and event
+   names, and `.claude/plans/darthub-full-product-planning/_plan.md`'s completion column.
+4. Close the schema gap: add the `CareerQuestProgress` model + migration and switch
    `src/career/questRuntime.ts` to the Prisma repository.
+5. Wire `PublicMatchmaker` into the Socket.IO server, or drop the module — an
+   unreferenced matchmaking path is the gap behind the skipped `e2e/matchmaking.spec.ts`.
