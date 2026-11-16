@@ -135,8 +135,15 @@ export const DARTS_PER_TURN = 3;
 ### Ledger helpers
 
 ```ts
-import { deriveTurnThrows, deriveVisitIndexes, groupVisits } from "@/game-engine";
+import {
+  deriveTurnIndexes,
+  deriveTurnThrows,
+  deriveVisitIndexes,
+  groupVisits,
+} from "@/game-engine";
 import type { RecordedThrow } from "@/game-engine";
+
+function deriveTurnIndexes(throws: readonly RecordedThrow[], dartsPerTurn: number): number[];
 
 function deriveTurnThrows(
   throws: readonly RecordedThrow[],
@@ -149,6 +156,11 @@ function deriveVisitIndexes(throws: readonly RecordedThrow[], dartsPerTurn: numb
 function groupVisits(throws: readonly RecordedThrow[], dartsPerTurn: number): MatchVisit[];
 ```
 
+- **`deriveTurnIndexes(throws: readonly RecordedThrow[], dartsPerTurn: number): number[]`**
+  — returns the turn index of every dart of the ledger, oldest first. A turn
+  holds `dartsPerTurn` counted darts and a bust consumes no slot, so the turn
+  of a dart is the number of counted darts before it, rounded down to the turn
+  it fills.
 - **`deriveTurnThrows(throws: readonly RecordedThrow[], currentPlayerId: string | null, dartsPerTurn: number): RecordedThrow[]`**
   — derives the darts of the turn in progress from the ledger. The walk runs
   backwards from the end of the ledger and collects the darts of

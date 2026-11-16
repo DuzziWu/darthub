@@ -23,6 +23,9 @@ describe("game-engine README documentation", () => {
     expect(readme).toContain(
       "deriveTurnThrows(throws: readonly RecordedThrow[], currentPlayerId: string | null, dartsPerTurn: number): RecordedThrow[]",
     );
+    expect(readme).toContain(
+      "deriveTurnIndexes(throws: readonly RecordedThrow[], dartsPerTurn: number): number[]",
+    );
 
     // Every documented public name exists on the actual barrel export.
     expect(typeof engine.GameEngine).toBe("function");
@@ -31,6 +34,7 @@ describe("game-engine README documentation", () => {
     expect(typeof engine.GameEngineStateError).toBe("function");
     expect(typeof engine.GameEngineValidationError).toBe("function");
     expect(typeof engine.deriveTurnThrows).toBe("function");
+    expect(typeof engine.deriveTurnIndexes).toBe("function");
     expect(typeof engine.deriveVisitIndexes).toBe("function");
     expect(typeof engine.groupVisits).toBe("function");
   });
@@ -39,6 +43,7 @@ describe("game-engine README documentation", () => {
     // The README is a contract: a signature that drifts from the code
     // must fail here, not in a consumer's editor.
     expect(engine.deriveTurnThrows).toHaveLength(3);
+    expect(engine.deriveTurnIndexes).toHaveLength(2);
     expect(engine.deriveVisitIndexes).toHaveLength(2);
     expect(engine.groupVisits).toHaveLength(2);
     expect(typeof engine.GameEngine.prototype.getCurrentTurn).toBe("function");
