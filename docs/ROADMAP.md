@@ -29,16 +29,16 @@ Delivery is organised into phases that map one-to-one onto the plan task list in
 
 ## Delivery Status
 
-| Task   | Description                                                         | Status      |
-| ------ | ------------------------------------------------------------------- | ----------- |
-| 001    | Repository, CI, linting, formatting                                 | completed   |
-| 002    | Database schema for users, guests, rankings, games, friends, quests | in progress |
-| 007    | Statistical AI opponent engine                                      | in progress |
-| 012    | Camera interface abstraction                                        | in progress |
-| 018    | Dockerfile and Docker Compose                                       | in progress |
-| 020    | Career mode quest engine design                                     | in progress |
-| 026    | Documentation set assembly                                          | in progress |
-| others | Remaining tasks of the plan                                         | pending     |
+| Task   | Description                                                         | Status    |
+| ------ | ------------------------------------------------------------------- | --------- |
+| 001    | Repository, CI, linting, formatting                                 | completed |
+| 002    | Database schema for users, guests, rankings, games, friends, quests | completed |
+| 007    | Statistical AI opponent engine                                      | completed |
+| 012    | Camera interface abstraction                                        | completed |
+| 018    | Dockerfile and Docker Compose                                       | completed |
+| 020    | Career mode quest engine design                                     | completed |
+| 026    | Documentation set assembly                                          | completed |
+| others | Remaining tasks of the plan                                         | completed |
 
 ## Milestones
 

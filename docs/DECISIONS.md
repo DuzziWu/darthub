@@ -27,6 +27,7 @@ This log records the architectural and product decisions fixed during planning, 
 | JSON-driven career mode quest engine                         | Decided | Content as data keeps quests moddable and engine-testable                |
 | No CQRS or event sourcing in the MVP                         | Decided | Not needed; simpler architecture with service-repository layering        |
 | No voice or text chat in the MVP                             | Decided | Removes moderation burden and abuse surface                              |
+| OpenCode agent team with path-scoped file ownership          | Decided | Agents own disjoint file sets; the runtime enforces the boundary         |
 
 ## Context Notes
 
