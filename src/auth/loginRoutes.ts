@@ -11,7 +11,8 @@
  * (`src/auth/authService.ts`): it never verifies a password itself and never
  * hashes anything. The answer carries the signed-in user **without** the
  * password hash and the bearer token the service issued — the route invents
- * no token of its own.
+ * no token of its own. The fields the client may see are listed in one
+ * place, `src/auth/publicUser.ts`.
  *
  * The route does **not** establish a session: it sets no cookie. The cookie
  * session belongs to Auth.js (`src/auth/nextauth.ts`); the bearer token in
@@ -20,40 +21,39 @@
  *
  * Refused sign-ins always answer 401 with the same message, so a response
  * never enumerates accounts.
+ *
+ * **The route is rate limited.** A sign-in is the one place where an
+ * attacker gets to try passwords for free, so it carries both an address
+ * limit and an account limit — see `src/security/rateLimitPolicies.ts`.
  */
 
 import { NextResponse } from "next/server";
+import { getDefaultRateLimiter } from "@/security/defaultRateLimiter";
+import { AUTH_LOGIN_POLICY } from "@/security/rateLimitPolicies";
+import { RateLimitGuard, type RateLimiter } from "@/security/rateLimiter";
 import type { AuthService } from "./authService";
+import { isValidEmail, normalizeEmail } from "./email";
 import { InvalidCredentialsError, InvalidEmailError } from "./errors";
-import type { UserRow } from "./repository";
+import { toPublicUser } from "./publicUser";
 
 export interface LoginRouteHandlerDependencies {
   authService: AuthService;
+  /**
+   * The limiter that guards this route. It defaults to the limiter of the
+   * running process; a test injects its own so that it counts only the
+   * requests it makes.
+   */
+  rateLimiter?: RateLimiter;
 }
 
 export interface LoginRouteHandlers {
   POST(request: Request): Promise<Response>;
 }
 
-/** The user as the client may see it — without the password hash. Mirrors
- * `PublicUser` in `src/auth/registerRoutes.ts`; the shape is copied rather
- * than imported so the login route stays independent of the registration
- * route, and both interfaces stay structurally identical. */
-export interface PublicUser {
-  id: string;
-  email: string;
-  displayName: string;
-  role: string;
-  createdAt: string;
-}
-
 interface LoginRequestBody {
   email: string;
   password: string;
 }
-
-/** Same shape the auth service accepts. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function readBody(value: unknown): LoginRequestBody | null {
   if (typeof value !== "object" || value === null) {
@@ -70,30 +70,31 @@ function readBody(value: unknown): LoginRequestBody | null {
 /** Hand-written validation — no new dependency for two rules. The email has
  * to look like one; the password is only checked for presence. A wrong
  * password is a credential problem (401), not a malformed request, so it
- * must not be filtered out here. */
+ * must not be filtered out here.
+ *
+ * The address is returned in its canonical form, so that the account the
+ * service looks up and the account the rate limiter counts are the same
+ * account however it was spelled. */
 function validate(body: LoginRequestBody): { email: string; password: string } | null {
-  const email = body.email.trim();
-  if (!EMAIL_PATTERN.test(email)) {
+  const email = normalizeEmail(body.email);
+  if (!isValidEmail(email)) {
     return null;
   }
   return { email, password: body.password };
 }
 
-/** The user without the password hash — the hash never leaves the server. */
-function toPublicUser(user: UserRow): PublicUser {
-  return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    createdAt: user.createdAt.toISOString(),
-  };
-}
-
 export function createLoginRouteHandlers(deps: LoginRouteHandlerDependencies): LoginRouteHandlers {
   const { authService } = deps;
+  const guard = new RateLimitGuard(deps.rateLimiter ?? getDefaultRateLimiter(), AUTH_LOGIN_POLICY);
 
   const POST = async (request: Request): Promise<Response> => {
+    // The address limit is counted before the body is read: a request with
+    // a broken body is a request too, and it must not be free.
+    const addressRefusal = await guard.checkAddress(request);
+    if (addressRefusal !== null) {
+      return addressRefusal;
+    }
+
     let body: LoginRequestBody | null;
     try {
       body = readBody(await request.json());
@@ -101,6 +102,18 @@ export function createLoginRouteHandlers(deps: LoginRouteHandlerDependencies): L
       body = null;
     }
     const credentials = body === null ? null : validate(body);
+
+    // The account limit is counted once the body was read, because the
+    // account is in the body. It is counted only for an address that has
+    // the accepted shape — a counter for a nonsense address would protect
+    // nothing.
+    const accountRefusal = await guard.checkAccount(
+      credentials === null ? null : credentials.email,
+    );
+    if (accountRefusal !== null) {
+      return accountRefusal;
+    }
+
     if (credentials === null) {
       return NextResponse.json(
         { error: "A valid email address and a password are required." },

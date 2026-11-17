@@ -61,6 +61,7 @@ The client never writes game state directly. REST handles profile, social, priva
 | `src/friends/`     | Friend service and its Prisma-backed repository adapter                                                     | in progress |
 | `src/rating/`      | Elo rating, performance records, and their repository adapters                                              | in progress |
 | `src/lib/`         | Shared helpers that belong to no single feature, such as the path prefix helper that builds the app's links | in progress |
+| `src/security/`    | The request rate limiter and the client-address resolution the auth endpoints count on                      | in progress |
 | `prisma/`          | Prisma schema, migrations, and the generated client                                                         | in progress |
 | `tests/`           | Vitest unit and integration suites, plus Playwright end-to-end specs                                        | in progress |
 | `e2e/`             | Playwright end-to-end specs and fixtures                                                                    | in progress |
@@ -81,6 +82,7 @@ src/
   career/        Career mode engine and quest JSON content
   friends/       Friend service and Prisma repository adapter
   rating/        Elo rating, performance records, repository adapters
+  security/      Request rate limiting and client-address resolution
 prisma/          Prisma schema and migrations
 public/          Static assets
 design-system/   Design tokens and shared visual primitives

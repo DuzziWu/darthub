@@ -16,6 +16,7 @@ import type { User } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { createAuthService } from "./authService";
 import { createGuestService } from "./guest";
+import { assertSessionSecretUsable } from "./session";
 import { createPrismaAuthRepository } from "./prismaAuthRepository";
 
 /** The guest provider hands out more than the Auth.js user shape: the
@@ -35,6 +36,18 @@ function buildNextAuth(secret: string | undefined) {
   const authService = createAuthService({ repository });
   const guestService = createGuestService({ repository });
 
+  /**
+   * Refuses a secret that must not be used, when one is configured.
+   *
+   * A secret that is not set at all is left to Auth.js, which explains the
+   * missing variable better than this module could.
+   */
+  function assertConfiguredSecret(): void {
+    if (secret !== undefined) {
+      assertSessionSecretUsable(secret);
+    }
+  }
+
   return NextAuth({
     secret,
     session: { strategy: "jwt" },
@@ -47,6 +60,10 @@ function buildNextAuth(secret: string | undefined) {
           password: { label: "Password", type: "password" },
         },
         async authorize(credentials) {
+          // Auth.js takes the secret as a plain string, so it cannot go
+          // through the check in `readSessionSecret`. A session signed with
+          // a published secret can be forged, so the sign-in refuses it.
+          assertConfiguredSecret();
           const email = typeof credentials?.email === "string" ? credentials.email : "";
           const password = typeof credentials?.password === "string" ? credentials.password : "";
           try {
@@ -64,6 +81,7 @@ function buildNextAuth(secret: string | undefined) {
         // fresh anonymous guest.
         credentials: {},
         async authorize() {
+          assertConfiguredSecret();
           const { guest, migrationToken } = await guestService.createGuestSession({});
           // The one-time migration token rides along with the session: it is
           // the proof of ownership the client needs for
@@ -86,6 +104,9 @@ function buildNextAuth(secret: string | undefined) {
       // round trip through the JWT, and the session callback decides what the
       // client may read. Account sessions pass through unchanged.
       async jwt({ token, user }) {
+        // Every request that reads a session passes here, so this is where
+        // a secret that must not be used is caught on the way in.
+        assertConfiguredSecret();
         if (user) {
           const guestUser = user as User & Partial<GuestSessionUser>;
           if (typeof guestUser.migrationToken === "string") {

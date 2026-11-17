@@ -3,6 +3,7 @@ import { createAuthService, type AuthService, type LoginInput } from "@/auth/aut
 import { createLoginRouteHandlers } from "@/auth/loginRoutes";
 import { hashPassword } from "@/auth/password";
 import type { UserRow } from "@/auth/repository";
+import { allowAllRateLimiter } from "../support/allowAllRateLimiter";
 import { createInMemoryAuthRepository } from "../support/inMemoryAuthRepository";
 
 // 64 hex characters of entropy — tests inject their own strong secret.
@@ -22,7 +23,7 @@ const authService = createAuthService({
   sessionSecret: STRONG_SECRET,
   issueUserSession: async () => SESSION_TOKEN,
 });
-const handlers = createLoginRouteHandlers({ authService });
+const handlers = createLoginRouteHandlers({ authService, rateLimiter: allowAllRateLimiter });
 
 /** A service double: the route must reach `loginUser` and nothing else. */
 function stubAuthService(loginUser: AuthService["loginUser"]): AuthService {
@@ -167,6 +168,7 @@ describe("POST /api/auth/login", () => {
         calls.push(input);
         return { user, sessionToken: "token-from-the-service" };
       }),
+      rateLimiter: allowAllRateLimiter,
     });
 
     const resp = await stubHandlers.POST(

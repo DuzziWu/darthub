@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createAuthService } from "@/auth/authService";
 import { createRegisterRouteHandlers } from "@/auth/registerRoutes";
 import { verifyPassword } from "@/auth/password";
+import { allowAllRateLimiter } from "../support/allowAllRateLimiter";
 import { createInMemoryAuthRepository } from "../support/inMemoryAuthRepository";
 
 // 64 hex characters of entropy — tests inject their own strong secret.
@@ -18,7 +19,10 @@ function buildHandlers() {
     sessionSecret: STRONG_SECRET,
     issueUserSession: async () => "stub-session-token",
   });
-  return { repository, handlers: createRegisterRouteHandlers({ authService }) };
+  return {
+    repository,
+    handlers: createRegisterRouteHandlers({ authService, rateLimiter: allowAllRateLimiter }),
+  };
 }
 
 function registerRequest(body: unknown): Request {

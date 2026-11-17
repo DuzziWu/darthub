@@ -3,7 +3,13 @@
 #   POSTGRES_USER      (default: darthub)
 #   POSTGRES_PASSWORD  (required, no default — compose fails fast without it)
 #   POSTGRES_DB        (default: darthub)
+#   AUTH_SECRET        (required, no default — compose fails fast without it)
 #   BASE_PATH          (default: empty — the app is served from the root)
+#
+# AUTH_SECRET signs the session tokens (src/auth/session.ts). Generate one
+# with `openssl rand -base64 32` and keep it out of the repository. Without
+# it the application cannot issue or verify a session, so every sign-in
+# fails — compose refuses to start instead.
 #
 # Publishing under a path prefix — for example behind Tailscale Serve, which
 # serves the app at `https://<host>.<tailnet>.ts.net/darthub`:
@@ -39,9 +45,26 @@ services:
         BASE_PATH: "${BASE_PATH:-}"
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Bound to the loopback address of the host. The application is
+      # reached through the reverse proxy; publishing the port on every
+      # interface would offer a second way in that bypasses the proxy — and
+      # with it the client address the rate limiter counts on.
+      #
+      # This does not touch the path the proxy takes: the proxy reaches the
+      # container across the Docker bridge (172.18.0.2:3000), and the
+      # container binds every interface inside its own network namespace
+      # (HOSTNAME=0.0.0.0 in the Dockerfile). Only the *published* host
+      # port is restricted here.
+      - "127.0.0.1:3000:3000"
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-darthub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in the environment}@postgres:5432/${POSTGRES_DB:-darthub}"
+      # Signs the session tokens. Required: without it no session can be
+      # issued or verified, so every sign-in fails.
+      AUTH_SECRET: "${AUTH_SECRET:?AUTH_SECRET must be set in the environment}"
+      # The counter store of the rate limiter (src/security). The redis
+      # service below is a hard dependency of the app, so the URL is always
+      # known and the limits are counted across the whole deployment.
+      REDIS_URL: "redis://redis:6379"
     depends_on:
       postgres:
         condition: service_healthy

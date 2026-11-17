@@ -10,34 +10,44 @@
  * The route creates the account through the existing
  * `authService.registerUser` (`src/auth/authService.ts`) — it never hashes a
  * password itself and never writes to the database. The answer carries the
- * created user **without** the password hash; the hash never leaves the
- * server.
+ * created user **without** the password hash; the fields the client may see
+ * are listed in one place, `src/auth/publicUser.ts`.
+ *
+ * The password rules live in the service (`src/auth/passwordPolicy.ts`), so
+ * that no caller can bypass them. The route checks them as well, because
+ * the route can answer with a message that says what is wrong; it reads the
+ * same constants, so the two cannot disagree.
  *
  * The route does **not** establish a session: it sets no cookie. The browser
  * signs in afterwards through the Auth.js `email` provider
  * (`src/auth/nextauth.ts`), which owns the session cookie.
+ *
+ * **The route is rate limited.** Creating an account is how an attacker
+ * fills a database — see `src/security/rateLimitPolicies.ts`.
  */
 
 import { NextResponse } from "next/server";
+import { getDefaultRateLimiter } from "@/security/defaultRateLimiter";
+import { AUTH_REGISTER_POLICY } from "@/security/rateLimitPolicies";
+import { RateLimitGuard, type RateLimiter } from "@/security/rateLimiter";
 import type { AuthService } from "./authService";
-import { EmailAlreadyRegisteredError, InvalidEmailError } from "./errors";
-import type { UserRow } from "./repository";
+import { isValidEmail, normalizeEmail } from "./email";
+import { EmailAlreadyRegisteredError, InvalidEmailError, InvalidPasswordError } from "./errors";
+import { MIN_PASSWORD_LENGTH, passwordPolicyViolation } from "./passwordPolicy";
+import { toPublicUser } from "./publicUser";
 
 export interface RegisterRouteHandlerDependencies {
   authService: AuthService;
+  /**
+   * The limiter that guards this route. It defaults to the limiter of the
+   * running process; a test injects its own so that it counts only the
+   * requests it makes.
+   */
+  rateLimiter?: RateLimiter;
 }
 
 export interface RegisterRouteHandlers {
   POST(request: Request): Promise<Response>;
-}
-
-/** The user as the client may see it — without the password hash. */
-export interface PublicUser {
-  id: string;
-  email: string;
-  displayName: string;
-  role: string;
-  createdAt: string;
 }
 
 interface RegisterRequestBody {
@@ -52,13 +62,6 @@ interface ValidatedRegistration {
   displayName: string;
 }
 
-/** Same shape the auth service accepts. */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** bcrypt hashes at most 72 bytes and silently drops the rest, so a longer
- * password would accept a truncated secret. It is rejected instead. */
-const MAX_PASSWORD_BYTES = 72;
-const MIN_PASSWORD_LENGTH = 8;
 /** Display names are trimmed to this length, like the guest nickname. */
 const MAX_DISPLAY_NAME_LENGTH = 64;
 
@@ -87,18 +90,18 @@ function deriveDisplayName(email: string): string {
 }
 
 /** Hand-written validation — no new dependency for four rules. Returns
- * `null` when the input must be rejected. */
+ * `null` when the input must be rejected.
+ *
+ * The password rules come from `src/auth/passwordPolicy.ts` — the same
+ * module the service uses — so the route and the service always agree on
+ * what a usable password is. */
 function validate(body: RegisterRequestBody): ValidatedRegistration | null {
-  const email = body.email.trim();
-  if (!EMAIL_PATTERN.test(email)) {
+  const email = normalizeEmail(body.email);
+  if (!isValidEmail(email)) {
     return null;
   }
 
-  const password = body.password;
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return null;
-  }
-  if (new TextEncoder().encode(password).length > MAX_PASSWORD_BYTES) {
+  if (passwordPolicyViolation(body.password) !== null) {
     return null;
   }
 
@@ -108,26 +111,26 @@ function validate(body: RegisterRequestBody): ValidatedRegistration | null {
       ? requestedName.slice(0, MAX_DISPLAY_NAME_LENGTH)
       : deriveDisplayName(email);
 
-  return { email, password, displayName };
-}
-
-/** The user without the password hash — the hash never leaves the server. */
-function toPublicUser(user: UserRow): PublicUser {
-  return {
-    id: user.id,
-    email: user.email,
-    displayName: user.displayName,
-    role: user.role,
-    createdAt: user.createdAt.toISOString(),
-  };
+  return { email, password: body.password, displayName };
 }
 
 export function createRegisterRouteHandlers(
   deps: RegisterRouteHandlerDependencies,
 ): RegisterRouteHandlers {
   const { authService } = deps;
+  const guard = new RateLimitGuard(
+    deps.rateLimiter ?? getDefaultRateLimiter(),
+    AUTH_REGISTER_POLICY,
+  );
 
   const POST = async (request: Request): Promise<Response> => {
+    // The address limit is counted before the body is read, so that a
+    // request with a broken body is not free.
+    const addressRefusal = await guard.checkAddress(request);
+    if (addressRefusal !== null) {
+      return addressRefusal;
+    }
+
     let body: RegisterRequestBody | null;
     try {
       body = readBody(await request.json());
@@ -135,6 +138,14 @@ export function createRegisterRouteHandlers(
       body = null;
     }
     const registration = body === null ? null : validate(body);
+
+    const accountRefusal = await guard.checkAccount(
+      registration === null ? null : registration.email,
+    );
+    if (accountRefusal !== null) {
+      return accountRefusal;
+    }
+
     if (registration === null) {
       return NextResponse.json(
         {
@@ -151,6 +162,17 @@ export function createRegisterRouteHandlers(
       // Map known domain errors to user-friendly HTTP responses.
       if (err instanceof InvalidEmailError) {
         return NextResponse.json({ error: err.message }, { status: 400 });
+      }
+      if (err instanceof InvalidPasswordError) {
+        // The route checked the rules itself, so the service only refuses
+        // here when a caller bypassed the route. It stays a 400: a
+        // malformed password is a bad request.
+        return NextResponse.json(
+          {
+            error: `A valid email address and a password of at least ${MIN_PASSWORD_LENGTH} characters are required.`,
+          },
+          { status: 400 },
+        );
       }
       if (err instanceof EmailAlreadyRegisteredError) {
         // The status code already tells the client that the address is taken;

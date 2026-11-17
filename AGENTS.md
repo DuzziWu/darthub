@@ -94,6 +94,29 @@ cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
 setsid -f env HOSTNAME=127.0.0.1 PORT=3000 node .next-prefixed/standalone/server.js
 ```
 
+`AUTH_SECRET` signs the session tokens (`src/auth/session.ts`). Without it the
+auth API cannot issue or verify a session and every sign-in fails with
+`SessionConfigError`. The secret must be at least 32 characters and must differ
+from the one of every other deployment; generate it with `openssl rand -base64 32`
+and keep it outside the repository. `env` passes the environment of the shell
+through, so exporting the secret before the command is enough:
+
+```bash
+export AUTH_SECRET="$(cat /etc/darthub/auth_secret)"
+```
+
+`REDIS_URL` points the request rate limiter at its counter store
+(`src/security/`). The standalone server sets `NODE_ENV=production`, and a
+production installation **without** a counter store refuses every rate-limited
+request with a `503` — the limits are not silently weakened in production. The
+Redis of the host serves:
+
+```bash
+export REDIS_URL="redis://127.0.0.1:6379"
+```
+
+`env` passes both exports through, so they can be set before the command.
+
 The server binds the **loopback address**, because the proxy that forwards to it runs
 on the same host and the mount points at `http://127.0.0.1:3000`. Loopback is the
 correct and the safe choice in this topology: the published site reaches the server,
