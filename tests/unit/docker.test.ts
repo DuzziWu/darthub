@@ -66,7 +66,18 @@ describe("docker setup", () => {
       context: ".",
       dockerfile: "Dockerfile",
     });
-    expect(app?.ports, "app service must publish port 3000").toContain("3000:3000");
+    // The published port is bound to the loopback address of the host.
+    // Publishing it on every interface would offer a second way into the
+    // application that bypasses the proxy — and with it the client
+    // address the rate limiter counts on.
+    expect(app?.ports, "app service must publish port 3000 on the loopback address").toContain(
+      "127.0.0.1:3000:3000",
+    );
+    for (const mapping of app?.ports ?? []) {
+      expect(mapping, "the published port must not be open on every interface").toMatch(
+        /^127\.0\.0\.1:/,
+      );
+    }
     expect(app?.restart).toBe("unless-stopped");
 
     // The Dockerfile itself must expose port 3000 and start the standalone
@@ -131,6 +142,11 @@ describe("docker setup", () => {
     const requiredNames = requiredVars.map((entry) => entry.slice(2, entry.indexOf(":")));
     expect(requiredNames).toContain("POSTGRES_PASSWORD");
     expect(composeRaw).not.toMatch(/POSTGRES_PASSWORD[=:]\s*["']?[A-Za-z0-9]+["']?\s*$/m);
+    // The session secret is required the same way: without it the
+    // application cannot issue or verify a session, so every sign-in
+    // fails. A default would hide that.
+    expect(requiredNames).toContain("AUTH_SECRET");
+    expect(composeRaw).not.toMatch(/AUTH_SECRET[=:]\s*["']?[A-Za-z0-9]+["']?\s*$/m);
 
     // Live validation (`docker compose config` / `docker compose up`) is
     // attempted whenever a Docker CLI is present; when it is not, the
@@ -148,6 +164,9 @@ describe("docker setup", () => {
       POSTGRES_PASSWORD: "test-password",
       POSTGRES_USER: "test-user",
       POSTGRES_DB: "test-db",
+      // The compose file refuses to resolve without it, so the validation
+      // has to provide one — a placeholder, never a real secret.
+      AUTH_SECRET: "test-secret-that-is-long-enough-for-the-check",
     };
     const result = runCommand("docker compose config --quiet", composeTestEnv);
     expect(

@@ -29,6 +29,13 @@ export class InvalidCredentialsError extends AuthError {
   }
 }
 
+export class InvalidPasswordError extends AuthError {
+  constructor(message = "The password does not meet the required rules.") {
+    super(message);
+    this.name = "InvalidPasswordError";
+  }
+}
+
 export class GuestMigrationError extends AuthError {
   constructor(message = "This guest could not be migrated.") {
     super(message);

@@ -91,6 +91,20 @@ setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.j
 
 `next dev` compiles on demand, so a cold route drops requests while it compiles and the preview flickers. The standalone server is the same server the Docker runner stage uses, and it is stable under a proxy.
 
+`AUTH_SECRET` signs the session tokens (`src/auth/session.ts`) and the Auth.js cookies (`src/auth/nextauth.ts`). Without it the auth API cannot issue or verify a session and every sign-in fails with `SessionConfigError`. The secret must be at least 32 characters and must differ from the one of every other deployment; generate it with `openssl rand -base64 32` and keep it outside the repository. `env` passes the environment of the shell through, so exporting the secret before the command is enough:
+
+```bash
+export AUTH_SECRET="$(cat /path/outside/the/repository/auth_secret)"
+```
+
+`REDIS_URL` points the request rate limiter at its counter store (`src/security/`). The standalone server runs with `NODE_ENV=production`, and a production installation **without** a counter store refuses every rate-limited request with a `503` — the limits are not silently weakened in production. A Redis that is reachable from the preview serves it:
+
+```bash
+export REDIS_URL="redis://127.0.0.1:6379"
+```
+
+`env` passes both exports through, so they can be set before the command.
+
 The server must be started with `setsid -f`. Without the `-f` the process stays a child of the shell that started it, and it dies with the session. With it, the process is adopted by PID 1 and outlives the agent session:
 
 ```bash

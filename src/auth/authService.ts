@@ -2,13 +2,17 @@
  * {@link AuthRepository}; token issuance is injected so this service stays
  * free of JWT details (see `session.ts` for the HS256 implementation). */
 
+import { EMAIL_PATTERN, normalizeEmail } from "./email";
 import { EmailAlreadyRegisteredError, InvalidCredentialsError, InvalidEmailError } from "./errors";
 import { isReservedGuestDomainEmail } from "./guest";
-import { hashPassword, verifyPassword as verifyPasswordDefault } from "./password";
+import {
+  dummyPasswordHash,
+  hashPassword,
+  verifyPassword as verifyPasswordDefault,
+} from "./password";
+import { assertPasswordPolicy } from "./passwordPolicy";
 import type { AuthRepository, UserRow } from "./repository";
 import { createSessionToken, readSessionSecret } from "./session";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface RegisterInput {
   email: string;
@@ -33,10 +37,6 @@ export interface AuthServiceDeps {
 export interface AuthService {
   registerUser(input: RegisterInput): Promise<{ user: UserRow; sessionToken: string }>;
   loginUser(input: LoginInput): Promise<{ user: UserRow; sessionToken: string }>;
-}
-
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
 }
 
 function defaultIssueUserSession(user: UserRow, secret: string): Promise<string> {
@@ -65,6 +65,12 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
       if (isReservedGuestDomainEmail(email)) {
         throw new EmailAlreadyRegisteredError();
       }
+      // The password rules live in the service, not in the route: the
+      // service is what hashes the password, so the service is what has to
+      // refuse one it cannot store faithfully. A caller that goes straight
+      // to the service — the guest conversion, the invitation route — gets
+      // the same rules as the registration route.
+      assertPasswordPolicy(input.password);
 
       return repository.runInTransaction(async (tx) => {
         const existing = await tx.users.findByEmail(email);
@@ -84,12 +90,21 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
 
     async loginUser(input: LoginInput): Promise<{ user: UserRow; sessionToken: string }> {
       const email = normalizeEmail(input.email);
+      // The dummy hash is prepared on **both** paths, so the very first
+      // sign-in costs the same whether the address exists or not. Without
+      // it the first unknown-address request would be the slow one and
+      // every later request the fast one — a difference an attacker can
+      // measure once per process.
+      const unknownAccountHash = await dummyPasswordHash();
+
       const user = await repository.users.findByEmail(email);
 
       // The same generic failure surfaces for unknown emails and wrong
       // passwords so responses never enumerate accounts.
       if (user === null) {
-        await verifyPasswordImpl(input.password, "$invalid-placeholder-hash$");
+        // The comparison runs against a real bcrypt hash, so it costs what
+        // the known-account path costs.
+        await verifyPasswordImpl(input.password, unknownAccountHash);
         throw new InvalidCredentialsError();
       }
 

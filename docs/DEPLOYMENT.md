@@ -74,6 +74,9 @@ real values; provide them via an env file or an export before running Compose.
 | `POSTGRES_USER`     | No               | `darthub` | Superuser name for the PostgreSQL container.        |
 | `POSTGRES_PASSWORD` | Yes (no default) | none      | PostgreSQL password. Compose fails fast without it; |
 | `POSTGRES_DB`       | No               | `darthub` | Database name created on first start.               |
+| `AUTH_SECRET`       | Yes (no default) | none      | Signs the session tokens and the Auth.js cookies.   |
+|                     |                  |           | Generate with `openssl rand -base64 32`. Compose    |
+|                     |                  |           | fails fast without it; every sign-in would fail.    |
 
 `DATABASE_URL` is not set manually under Docker: `docker-compose.yml` derives it from
 the three variables above as
@@ -91,22 +94,43 @@ app can reach your database:
 
 ```text
 DATABASE_URL="postgresql://darthub:<password>@localhost:5432/darthub"
+AUTH_SECRET="<at least 32 characters, e.g. from `openssl rand -base64 32`>"
+REDIS_URL="redis://localhost:6379"
 ```
+
+`AUTH_SECRET` signs the session tokens and the Auth.js cookies. Without it the
+application cannot issue or verify a session, so every sign-in fails. The
+application also refuses the placeholder that `.env.example` ships, so a copy of
+the template that was never changed fails loudly instead of running with a
+published secret.
+
+`REDIS_URL` points the request rate limiter at its counter store. The
+standalone server sets `NODE_ENV=production`, and a **production installation
+without a counter store refuses every rate-limited request with a `503`** —
+the limits are never silently weakened in production. A development run
+without `REDIS_URL` counts in the process instead, which is enough for one
+developer and not enough for a deployment.
+
+The published port of the container is bound to the loopback address of the
+host; see [Ports and Firewall Rules](#ports-and-firewall-rules).
 
 ## Docker Compose Commands
 
-`docker-compose.yml` defines two services: `app` (the Next.js standalone server,
-built by the multi-stage `Dockerfile`) and `postgres` (PostgreSQL 16, Alpine
-variant). The `app` service waits for the `postgres` healthcheck
-(`pg_isready`) before starting.
+`docker-compose.yml` defines three services: `app` (the Next.js standalone server,
+built by the multi-stage `Dockerfile`), `postgres` (PostgreSQL 16, Alpine
+variant) and `redis` (Redis 7, Alpine variant). The `app` service waits for the
+healthcheck of both (`pg_isready` and `redis-cli ping`) before starting.
+Redis carries the counters of the request rate limiter (`src/security/`), so
+the limits are shared by every instance of the application.
 
 ```bash
 # Provide the required variables (or put them in an env file)
 export POSTGRES_USER=darthub
 export POSTGRES_PASSWORD='choose-a-strong-password'
 export POSTGRES_DB=darthub
+export AUTH_SECRET="$(openssl rand -base64 32)"
 
-docker compose up -d          # build the app image and start both services
+docker compose up -d          # build the app image and start all services
 docker compose ps             # check service status and health
 docker compose logs -f app    # follow application logs
 docker compose down           # stop and remove containers (postgres-data volume survives)
@@ -312,11 +336,29 @@ docker compose up -d
 
 ## Ports and Firewall Rules
 
-| Container port | Published host port | Service      | Expose to the internet?                   |
-| -------------- | ------------------- | ------------ | ----------------------------------------- |
-| 3000           | `3000:3000`         | `app` (HTTP) | Yes, or behind a reverse proxy on 80/443. |
-| 5432           | `5432:5432`         | `postgres`   | No.                                       |
-| 3001           | planned             | `realtime`   | Yes, once the Socket.IO service ships.    |
+| Container port | Published host port   | Service      | Expose to the internet?                       |
+| -------------- | --------------------- | ------------ | --------------------------------------------- |
+| 3000           | `127.0.0.1:3000:3000` | `app` (HTTP) | **No.** The proxy reaches it over the bridge. |
+| 5432           | `5432:5432`           | `postgres`   | No.                                           |
+| 3001           | planned               | `realtime`   | Yes, once the Socket.IO service ships.        |
+
+The application is published on the **loopback address of the host**. The
+reverse proxy on the host reaches the container over the Docker bridge
+(`172.18.0.2:3000`), which is a separate path and is not affected by the
+published port. The published port exists for the local health check
+(`curl http://127.0.0.1:3000/`) and for nothing else.
+
+Publishing the port on every interface would offer a second way into the
+application that bypasses the proxy — and with it the client address that
+the rate limiter counts on (`docs/SECURITY.md`). A client that reaches the
+application directly chooses the address it is counted under.
+
+The container itself still binds `0.0.0.0` **inside** its own network
+namespace (`HOSTNAME=0.0.0.0` in the `Dockerfile`): the proxy reaches it
+across the bridge, and a container that bound the loopback only would refuse
+that connection. The two bindings are different things — the address the
+container listens on inside the container, and the host port that is
+published for it.
 
 `docker-compose.yml` currently publishes PostgreSQL on all interfaces
 (`"5432:5432"`). On a VPS, restrict it before going live:
@@ -328,13 +370,25 @@ docker compose up -d
 - Alternatively, if publishing is unavoidable for host-based migration runs, keep
   the firewall closed to 5432 from external networks.
 
+The same holds for Redis (`"6379:6379"`): it carries the counters of the
+request rate limiter, and a counter store that is reachable from outside
+lets anyone read the counters and write them. Bind it to loopback
+(`"127.0.0.1:6379:6379"`) or remove the `ports` entry — the `app` service
+reaches it by the `redis` hostname inside the Compose network either way.
+
 Firewall rules (ufw example):
 
 ```bash
-sudo ufw allow 3000/tcp      # or 80/443 when reverse-proxying
+sudo ufw allow 443/tcp       # the reverse proxy — the only way in
+sudo ufw deny 3000/tcp       # the application is published on the loopback only
 sudo ufw deny 5432/tcp       # PostgreSQL must not be reachable externally
+sudo ufw deny 6379/tcp       # Redis must not be reachable externally
 sudo ufw enable
 ```
+
+The application's port is published on `127.0.0.1`, so it needs no rule in
+the firewall: nothing outside the host can reach it. Only the port of the
+reverse proxy is opened.
 
 Keep Docker's internal bridge traffic in mind: `ufw` filters external interfaces, so
 the Compose-internal `postgres` reachability is unaffected by denying 5432
