@@ -31,6 +31,14 @@
  * be worth nothing. Such a request shares the single "unknown" bucket
  * with every other request that carries no usable address.
  *
+ * **A header that is present decides alone.** `x-forwarded-for` is the
+ * header the proxy writes; when it is there, it is the only source that is
+ * consulted. A list that does not end in an address is not trusted, and it
+ * is **not** patched up from another header: `x-real-ip` is client-
+ * controlled as well, so a fallback would hand the choice of the counter
+ * bucket back to the caller. `x-real-ip` is therefore read only when
+ * `x-forwarded-for` is absent entirely.
+ *
  * The per-account limit (`src/security/rateLimitPolicies.ts`) is the limit
  * that holds in any case: the account is looked up, not declared, so no
  * header can forge it. It is the backstop for the whole mechanism.
@@ -59,24 +67,32 @@ const REAL_IP_HEADER = "x-real-ip";
 export function clientAddress(request: Request): string {
   const forwarded = request.headers.get(FORWARDED_FOR_HEADER);
   if (forwarded !== null) {
+    // The header is present, so it is the only source that is consulted.
     // The list grows at the front when a client supplies entries of its
-    // own, so the **last** entry is the one the closest proxy added. The
-    // last non-empty entry is used; an empty tail means the header is not
-    // trustworthy and the request falls into the shared bucket.
+    // own, so the **last** entry is the one the closest proxy added.
     const entries = forwarded.split(",");
     const last = entries[entries.length - 1]?.trim() ?? "";
-    if (last.length > 0) {
-      const address = normalizeAddress(last);
-      if (isValidAddress(address)) {
-        return address;
-      }
-      // The proxy wrote something that is not an address. The request is
-      // not counted in a bucket of its own — that would let a caller
-      // create a new bucket per request.
+    if (last.length === 0) {
+      // The list does not end in an entry. Falling back to an earlier
+      // entry would put the client back in charge of the address, and
+      // falling back to another header would do the same — that header is
+      // client-controlled as well. The request shares the "unknown" bucket
+      // with every other request that carries no usable address.
       return UNKNOWN_ADDRESS;
     }
+    const address = normalizeAddress(last);
+    if (isValidAddress(address)) {
+      return address;
+    }
+    // The proxy wrote something that is not an address. The request is
+    // not counted in a bucket of its own — that would let a caller
+    // create a new bucket per request.
+    return UNKNOWN_ADDRESS;
   }
 
+  // The standard header is absent entirely, so the secondary one is
+  // consulted. It is only consulted in this case: when the standard header
+  // is present, it is the only header that may decide the address.
   const realIp = request.headers.get(REAL_IP_HEADER);
   if (realIp !== null) {
     const address = normalizeAddress(realIp);

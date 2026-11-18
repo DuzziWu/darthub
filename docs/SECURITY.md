@@ -134,9 +134,14 @@ correctly.** The address of a request is read from the **last** entry of
 and the only one a client cannot put in front of. A value that is not an IP
 address is not used at all, so a caller cannot create a new counter bucket
 per request by sending rubbish; such a request shares one bucket with every
-other request that carries no usable address. The same holds for a header
-that is present but does not end in an address: it is not trusted, and it is
-not replaced by another header the client controls.
+other request that carries no usable address.
+
+**A header that is present decides alone.** `x-forwarded-for` is the header
+the proxy writes; when it is there, it is the only source that is consulted.
+A list that does not end in an address is not trusted, and it is **not**
+patched up from `x-real-ip`: that header is client-controlled as well, so a
+fallback would hand the choice of the counter bucket back to the caller.
+`x-real-ip` is therefore read only when `x-forwarded-for` is absent entirely.
 
 The proxy has to be the **only** way in. The published port of the
 application is bound to the loopback address of the host

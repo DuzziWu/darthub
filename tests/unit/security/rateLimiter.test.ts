@@ -297,6 +297,55 @@ describe("clientAddress", () => {
     expect(clientAddress(requestWith({}))).toBe(UNKNOWN_ADDRESS);
   });
 
+  it("uses the standard header when it is present and valid", () => {
+    // The header the proxy writes decides. The secondary header is not
+    // consulted, so the address cannot be chosen by the client.
+    const address = clientAddress(
+      requestWith({ "x-forwarded-for": "203.0.113.7", "x-real-ip": "198.51.100.9" }),
+    );
+
+    expect(address).toBe("203.0.113.7");
+  });
+
+  it("shares the bucket when the standard header is present but empty", () => {
+    // The header is there, so it decides — and it does not name an address.
+    // The secondary header is client-controlled as well, so it must not be
+    // used to open a bucket of its own.
+    const address = clientAddress(
+      requestWith({ "x-forwarded-for": "", "x-real-ip": "198.51.100.9" }),
+    );
+
+    expect(address).toBe(UNKNOWN_ADDRESS);
+  });
+
+  it("shares the bucket when the standard header is present but ends empty", () => {
+    // The list does not end in an entry. Falling back to the secondary
+    // header would hand the choice of the bucket back to the client.
+    const address = clientAddress(
+      requestWith({ "x-forwarded-for": "203.0.113.7, ", "x-real-ip": "198.51.100.9" }),
+    );
+
+    expect(address).toBe(UNKNOWN_ADDRESS);
+  });
+
+  it("shares the bucket when the standard header is present but invalid", () => {
+    // The header is there and does not hold an address: the secondary
+    // header must not step in for it.
+    const address = clientAddress(
+      requestWith({ "x-forwarded-for": "not-an-address", "x-real-ip": "198.51.100.9" }),
+    );
+
+    expect(address).toBe(UNKNOWN_ADDRESS);
+  });
+
+  it("uses the secondary header only when the standard one is absent", () => {
+    // No standard header at all: the secondary one is the only source
+    // there is, and it is used when it holds an address.
+    const address = clientAddress(requestWith({ "x-real-ip": "198.51.100.9" }));
+
+    expect(address).toBe("198.51.100.9");
+  });
+
   it("reads the same client as the same address however it was written", () => {
     const written = ["203.0.113.7", "203.0.113.7:51000", "[::1]", "::1", "::ffff:203.0.113.7"];
 
