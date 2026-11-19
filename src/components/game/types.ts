@@ -159,12 +159,34 @@ export interface GameResultBannerProps {
   set?: { current: number; total: number };
 }
 
+/**
+ * One match format on offer: how many legs and sets the match is played
+ * over.
+ *
+ * The sizes are "best of N": `legs: 3` means "first to 2 legs". An omitted
+ * size means the match has no such structure — one leg, one set.
+ */
+export interface MatchFormatChoice {
+  /** The id of the choice, e.g. "bo3". */
+  readonly id: string;
+  /** What the choice says on screen, e.g. "Best of 3 legs". */
+  readonly label: string;
+  /** Best of N legs per set. */
+  readonly legs?: number;
+  /** Best of N sets per match. */
+  readonly sets?: number;
+}
+
 /** The choices a player makes before the first dart. */
 export interface PlayerSetupOptions {
   /** The checkout rule the match is played under. */
   outRule: OutRuleId;
   /** Where the darts come from. */
   boardSource: BoardSourceId;
+  /** Best-of-N legs per set, when the match has a leg structure. */
+  legs?: number;
+  /** Best-of-N sets per match, when the match has a set structure. */
+  sets?: number;
 }
 
 export interface PlayerSetupProps {
@@ -186,6 +208,14 @@ export interface PlayerSetupProps {
   /** The board source. Defaults to the virtual board. */
   boardSource?: BoardSourceId;
   onBoardSourceChange?: (id: BoardSourceId) => void;
+  /**
+   * The match formats on offer.
+   *
+   * Absent means the mode has no format choice: the setup then reports no
+   * legs and no sets, and the modes without a leg structure stay as they
+   * are.
+   */
+  readonly matchFormat?: readonly MatchFormatChoice[];
   onStart: (playerNames: string[], options: PlayerSetupOptions) => void;
 }
 
