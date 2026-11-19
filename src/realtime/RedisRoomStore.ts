@@ -16,8 +16,22 @@ export class RedisRoomStore implements IRoomStore {
   /** Lazily creates the Redis client. */
   private getClient(): Redis {
     if (!this.client) {
-      this.client = new Redis({
-        lazyConnect: true,
+      // The same variable the rate limiter reads (src/security): one
+      // variable decides which Redis the application talks to. Without it
+      // the room store would look for a server on the loopback interface
+      // while the limiter counted on the configured one — two different
+      // databases, one of them wrong.
+      const url = process.env.REDIS_URL?.trim();
+      this.client =
+        url !== undefined && url.length > 0
+          ? new Redis(url, { lazyConnect: true })
+          : new Redis({ lazyConnect: true });
+      // Without a listener of its own, ioredis prints the stack of every
+      // connection error — and the stack of a connection error can carry
+      // the connection string, and the connection string can carry a
+      // password.
+      this.client.on("error", () => {
+        console.error("[realtime] the redis connection failed");
       });
     }
     return this.client;

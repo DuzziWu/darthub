@@ -23,21 +23,30 @@ DartHub exposes two transport surfaces: REST route handlers for profile, social,
 
 - All payloads are JSON encoded as UTF-8.
 - Requests and responses use the DTO types defined by the feature that owns the endpoint; raw ORM entities are never serialised.
-- Authentication uses an Auth.js session cookie; Socket.IO connections present the same session during the handshake.
+- Authentication uses an Auth.js session cookie for the browser and a bearer token (`Authorization: Bearer …`) for the API routes.
+- **Not implemented yet:** the Socket.IO handshake does not carry a session. A socket is admitted to a room by a seat token that belongs to the room, not to an account. See `docs/SECURITY.md`.
 - Endpoints return problem-oriented errors in the shape `{ "error": { "code": string, "message": string } }`.
 - Guest requests are allowed where noted; guests receive rate limits identical to registered users for write operations.
 - Camera reports are advisory: the `score` field a client includes in `CameraDTO` is a hint only and is never trusted. The server recomputes the authoritative score from the camera-reported board coordinates using board geometry (server authority) — clients never publish scores.
 
 ## Authentication Endpoints
 
-Handled by Auth.js under `/api/auth/*`.
+The auth surface has two parts: the Auth.js handler under `/api/auth/*` and two
+own routes of the product.
 
-| Method | Path                | Auth    | Description                                    |
-| ------ | ------------------- | ------- | ---------------------------------------------- |
-| GET    | `/api/auth/session` | public  | Returns the current session or null for guests |
-| POST   | `/api/auth/signin`  | public  | Starts an OAuth sign-in flow                   |
-| POST   | `/api/auth/signout` | session | Clears the session                             |
-| POST   | `/api/auth/guest`   | public  | Creates a guest session and guest profile row  |
+| Method | Path                             | Auth    | Description                                    |
+| ------ | -------------------------------- | ------- | ---------------------------------------------- |
+| GET    | `/api/auth/session`              | public  | Returns the current session or null for guests |
+| GET    | `/api/auth/csrf`                 | public  | Returns the CSRF token the callback needs      |
+| POST   | `/api/auth/callback/credentials` | public  | Signs in with an email address and a password  |
+| POST   | `/api/auth/callback/guest`       | public  | Creates a guest session and guest profile row  |
+| POST   | `/api/auth/signout`              | session | Clears the session                             |
+| POST   | `/api/auth/invitation`           | public  | Mints an invitation code or redeems one        |
+| POST   | `/api/auth/link-guest`           | public  | Converts a guest session into a real account   |
+
+**The two provider callbacks are rate limited.** They are counted in front of
+Auth.js, so a reached limit is answered with `429` and a `Retry-After` instead
+of a redirect to an error page — see `docs/SECURITY.md`.
 
 ## User and Profile Endpoints
 

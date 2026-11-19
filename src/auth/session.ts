@@ -33,10 +33,36 @@ export const GUEST_SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
  * is the documented strong-secret floor. */
 const MIN_SECRET_CHARS = 32;
 
-function assertUsableSecret(secret: string): void {
+/**
+ * The placeholder secrets the example file ships.
+ *
+ * A deployment that copies `.env.example` and changes nothing would
+ * otherwise sign its sessions with a secret that is published in the
+ * repository. The placeholder is long enough to pass the length check, so
+ * the length check alone does not stop it — this list does.
+ */
+export const KNOWN_PLACEHOLDER_SECRETS: readonly string[] = [
+  "change-me-with-openssl-rand-base64-32",
+];
+
+/**
+ * Refuses a secret that must not be used to sign or verify a token.
+ *
+ * Exported so that the Auth.js configuration can refuse it too: Auth.js
+ * takes the secret as a plain string, so it cannot go through
+ * {@link readSessionSecret}, and a session signed with a published secret
+ * can be forged.
+ */
+export function assertSessionSecretUsable(secret: string | undefined): void {
   if (typeof secret !== "string" || secret.length < MIN_SECRET_CHARS) {
     throw new SessionConfigError(
       `The session secret must be at least ${MIN_SECRET_CHARS} characters long.`,
+    );
+  }
+  if (KNOWN_PLACEHOLDER_SECRETS.includes(secret)) {
+    throw new SessionConfigError(
+      "The session secret is still the placeholder from the example file. " +
+        "Generate a real one with `openssl rand -base64 32`.",
     );
   }
 }
@@ -46,6 +72,10 @@ export function readSessionSecret(): string {
   if (typeof secret !== "string" || secret.length === 0) {
     throw new SessionConfigError("AUTH_SECRET is not configured.");
   }
+  // The secret is checked here as well as in the token functions, so that a
+  // secret that is too short — or that is still the placeholder from the
+  // example file — never reaches anything that signs or verifies.
+  assertSessionSecretUsable(secret);
   return secret;
 }
 
@@ -59,7 +89,7 @@ export async function createSessionToken(
   secret: string,
   options: CreateSessionOptions = {},
 ): Promise<string> {
-  assertUsableSecret(secret);
+  assertSessionSecretUsable(secret);
   const ttlSeconds = options.expiresIn ?? USER_SESSION_TTL_SECONDS;
   // jose treats a numeric expiration as an absolute epoch timestamp, so the
   // relative TTL is converted to unix seconds here.
@@ -78,7 +108,7 @@ export async function createSessionToken(
 }
 
 export async function verifySessionToken(token: string, secret: string): Promise<SessionClaims> {
-  assertUsableSecret(secret);
+  assertSessionSecretUsable(secret);
   const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
 
   return {

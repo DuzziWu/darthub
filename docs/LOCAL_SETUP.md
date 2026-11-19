@@ -59,9 +59,28 @@ Edit `.env.local`:
 ```env
 DATABASE_URL=postgresql://darthub:your-password@localhost:5432/darthub
 POSTGRES_PASSWORD=your-password
-JWT_SECRET=your-jwt-secret
-AUTH_SECRET=your-auth-secret
+AUTH_SECRET=your-auth-secret-at-least-32-characters-long
 ```
+
+`AUTH_SECRET` is the one and only name of the session secret: it signs the
+session tokens (`src/auth/session.ts`) and the Auth.js cookies
+(`src/auth/nextauth.ts`). There is no `JWT_SECRET` — no code ever read that
+name, and two names for one secret only invite them to drift apart. The
+secret must be **at least 32 characters long** and must differ on every
+installation; generate one with:
+
+```powershell
+openssl rand -base64 32
+```
+
+The application refuses a secret that is too short and the placeholder that
+`.env.example` ships, so a copy of the template that was never changed fails
+loudly at the first sign-in instead of running with a published secret.
+
+`REDIS_URL` is optional for a native run and required in Docker Compose. It
+points the request rate limiter at its counter store; without it a
+development run counts in the process, and a **production** run refuses every
+rate-limited request with a `503`.
 
 ### 3. Initialize the Database
 
@@ -137,12 +156,12 @@ docker stop darthub-postgres
 
 ## Environment Variables Summary
 
-| Variable            | Required For                   | Default              |
-| ------------------- | ------------------------------ | -------------------- |
-| `DATABASE_URL`      | Auth, friends, ratings, career | Must be set manually |
-| `POSTGRES_PASSWORD` | DB auth                        | Must be set manually |
-| `JWT_SECRET`        | Auth                           | Must be set manually |
-| `AUTH_SECRET`       | NextAuth.js                    | Must be set manually |
+| Variable            | Required For                    | Default              |
+| ------------------- | ------------------------------- | -------------------- |
+| `DATABASE_URL`      | Auth, friends, ratings, career  | Must be set manually |
+| `POSTGRES_PASSWORD` | DB auth                         | Must be set manually |
+| `AUTH_SECRET`       | Auth (session tokens, Auth.js)  | Must be set manually |
+| `REDIS_URL`         | Rate limiter (required in prod) | Optional natively    |
 
-All four are only needed when using PostgreSQL-dependent features.
+The first three are only needed when using PostgreSQL-dependent features.
 Single-player 501 (`/game`) needs none of them.

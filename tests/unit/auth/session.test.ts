@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createSessionToken, verifySessionToken, type SessionClaims } from "@/auth/session";
+import {
+  assertSessionSecretUsable,
+  createSessionToken,
+  KNOWN_PLACEHOLDER_SECRETS,
+  readSessionSecret,
+  verifySessionToken,
+  type SessionClaims,
+} from "@/auth/session";
 import { SessionConfigError } from "@/auth/sessionErrors";
 
 // 64 hex characters of entropy — no hard-coded secrets anywhere.
@@ -56,5 +63,42 @@ describe("session", () => {
     const token = await createSessionToken({ ...userClaims }, STRONG_SECRET, { expiresIn: -1 });
 
     await expect(verifySessionToken(token, STRONG_SECRET)).rejects.toThrow();
+  });
+
+  it("refuses the placeholder secret from the example file", async () => {
+    // The placeholder is long enough to pass the length check, so the
+    // length check alone cannot be what stops a deployment from signing
+    // its sessions with a secret that is published in the repository.
+    for (const placeholder of KNOWN_PLACEHOLDER_SECRETS) {
+      expect(placeholder.length).toBeGreaterThanOrEqual(32);
+      expect(() => assertSessionSecretUsable(placeholder)).toThrow(SessionConfigError);
+      await expect(createSessionToken(userClaims, placeholder)).rejects.toThrow(SessionConfigError);
+      await expect(verifySessionToken("a.b.c", placeholder)).rejects.toThrow(SessionConfigError);
+    }
+  });
+
+  it("refuses a secret that is too short, wherever it is read", () => {
+    expect(() => assertSessionSecretUsable("short")).toThrow(SessionConfigError);
+    expect(() => assertSessionSecretUsable(undefined)).toThrow(SessionConfigError);
+  });
+
+  it("refuses the placeholder when the secret is read from the environment", () => {
+    const previous = process.env.AUTH_SECRET;
+    try {
+      process.env.AUTH_SECRET = KNOWN_PLACEHOLDER_SECRETS[0] ?? "";
+      expect(() => readSessionSecret()).toThrow(SessionConfigError);
+
+      process.env.AUTH_SECRET = "short";
+      expect(() => readSessionSecret()).toThrow(SessionConfigError);
+
+      process.env.AUTH_SECRET = STRONG_SECRET;
+      expect(readSessionSecret()).toBe(STRONG_SECRET);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.AUTH_SECRET;
+      } else {
+        process.env.AUTH_SECRET = previous;
+      }
+    }
   });
 });
