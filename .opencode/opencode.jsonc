@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // The orchestrator is the default agent for this project: it plans the work,
+  // delegates it to the specialists and verifies the result.
+  // Switch back to the built-in agent with /agents -> "build" in the TUI.
+  "default_agent": "orchestrator",
+
+  // Project-wide safety net. Agent-specific rules are appended after these and
+  // therefore win where they are narrower.
+  "permissions": [
+    // Never write secrets. `.env.example` stays editable.
+    { "action": "edit", "resource": "*.env", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.*", "effect": "deny" },
+    { "action": "edit", "resource": "*.env.example", "effect": "allow" },
+
+    // Everything stays inside the repository unless the user allows it.
+    { "action": "external_directory", "resource": "*", "effect": "ask" },
+
+    // Never destroy uncommitted work. `git reset`, `git clean`, `git restore`
+    // and `git checkout --` would throw away changes the user has not
+    // committed yet, so they are blocked for every agent of this team.
+    { "action": "shell", "resource": "git reset --hard *", "effect": "deny" },
+    { "action": "shell", "resource": "git clean *", "effect": "deny" },
+    { "action": "shell", "resource": "git restore *", "effect": "deny" },
+    { "action": "shell", "resource": "git checkout -- *", "effect": "deny" },
+
+    // Publishing always needs the user's explicit consent.
+    { "action": "shell", "resource": "git push *", "effect": "ask" },
+  ],
+}

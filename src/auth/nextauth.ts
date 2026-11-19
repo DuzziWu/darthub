@@ -12,10 +12,20 @@
 
 import { PrismaClient } from "@prisma/client";
 import NextAuth from "next-auth";
+import type { User } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { createAuthService } from "./authService";
 import { createGuestService } from "./guest";
+import { assertSessionSecretUsable } from "./session";
 import { createPrismaAuthRepository } from "./prismaAuthRepository";
+
+/** The guest provider hands out more than the Auth.js user shape: the
+ * one-time migration token travels with the session, so the client can
+ * convert the guest into a real account (`POST /api/auth/link-guest`). */
+interface GuestSessionUser extends User {
+  guestId: string;
+  migrationToken: string;
+}
 
 /** Builds the Auth.js exports. Split from the module singleton so tests can
  * never accidentally instantiate the real `PrismaClient`; the route handler
@@ -25,6 +35,18 @@ function buildNextAuth(secret: string | undefined) {
   const repository = createPrismaAuthRepository(prisma);
   const authService = createAuthService({ repository });
   const guestService = createGuestService({ repository });
+
+  /**
+   * Refuses a secret that must not be used, when one is configured.
+   *
+   * A secret that is not set at all is left to Auth.js, which explains the
+   * missing variable better than this module could.
+   */
+  function assertConfiguredSecret(): void {
+    if (secret !== undefined) {
+      assertSessionSecretUsable(secret);
+    }
+  }
 
   return NextAuth({
     secret,
@@ -38,6 +60,10 @@ function buildNextAuth(secret: string | undefined) {
           password: { label: "Password", type: "password" },
         },
         async authorize(credentials) {
+          // Auth.js takes the secret as a plain string, so it cannot go
+          // through the check in `readSessionSecret`. A session signed with
+          // a published secret can be forged, so the sign-in refuses it.
+          assertConfiguredSecret();
           const email = typeof credentials?.email === "string" ? credentials.email : "";
           const password = typeof credentials?.password === "string" ? credentials.password : "";
           try {
@@ -55,11 +81,56 @@ function buildNextAuth(secret: string | undefined) {
         // fresh anonymous guest.
         credentials: {},
         async authorize() {
-          const { guest } = await guestService.createGuestSession({});
-          return { id: guest.id, name: guest.nickname, email: null };
+          assertConfiguredSecret();
+          const { guest, migrationToken } = await guestService.createGuestSession({});
+          // The one-time migration token rides along with the session: it is
+          // the proof of ownership the client needs for
+          // `POST /api/auth/link-guest`. Only its hash is stored
+          // (`src/auth/guest.ts`), so this is the single moment the client
+          // learns it.
+          const guestUser: GuestSessionUser = {
+            id: guest.id,
+            name: guest.nickname,
+            email: null,
+            guestId: guest.id,
+            migrationToken,
+          };
+          return guestUser;
         },
       }),
     ],
+    callbacks: {
+      // The guest provider's one-time migration token has to survive the
+      // round trip through the JWT, and the session callback decides what the
+      // client may read. Account sessions pass through unchanged.
+      async jwt({ token, user }) {
+        // Every request that reads a session passes here, so this is where
+        // a secret that must not be used is caught on the way in.
+        assertConfiguredSecret();
+        if (user) {
+          const guestUser = user as User & Partial<GuestSessionUser>;
+          if (typeof guestUser.migrationToken === "string") {
+            token.guestId = guestUser.guestId;
+            token.migrationToken = guestUser.migrationToken;
+          }
+        }
+        return token;
+      },
+      async session({ session, token }) {
+        const migrationToken = token.migrationToken;
+        if (typeof migrationToken !== "string") {
+          return session;
+        }
+        // Only a guest session carries the conversion proof; an account
+        // session keeps the shape Auth.js hands out by default.
+        const guestSession = {
+          ...session,
+          guestId: token.guestId,
+          migrationToken,
+        };
+        return guestSession;
+      },
+    },
   });
 }
 

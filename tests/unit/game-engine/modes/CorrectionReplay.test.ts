@@ -110,18 +110,43 @@ describe("correction replay across modes", () => {
     engine.recordThrow({ playerId: "a", points: 2 });
     engine.recordThrow({ playerId: "a", points: 5 });
     const before = engine.getState().modeData as AroundTheClockModeData;
-    expect(before.currentTargetIndex).toBe(2);
+    expect(before.currentTargetIndex["a"]).toBe(2);
+    expect(before.currentTargetIndex).toEqual({ a: 2 });
     expect(before.playerProgress).toEqual({ a: 2 });
 
-    // A's first dart was actually a miss: the shared index walks back.
+    // A's first dart was actually a miss: a's own target index walks back.
     const corrected = engine.correctThrow(0, { points: 0 });
     const data = corrected.modeData as AroundTheClockModeData;
-    expect(data.currentTargetIndex).toBe(1);
+    expect(data.currentTargetIndex["a"]).toBe(1);
+    expect(data.currentTargetIndex).toEqual({ a: 1 });
     expect(data.playerProgress).toEqual({ a: 1 });
 
     // And correcting it back restores the index.
     const restored = engine.correctThrow(0, { points: 1 });
-    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex).toBe(2);
+    expect((restored.modeData as AroundTheClockModeData).currentTargetIndex["a"]).toBe(2);
+  });
+
+  it("replays two players' target chains apart after a correction", () => {
+    const engine = new GameEngine(new AroundTheClockMode());
+    engine.startMatch({ playerIds: ["a", "b"] });
+    engine.recordThrow({ playerId: "a", points: 1 }); // a hits her target 1
+    engine.recordThrow({ playerId: "a", points: 2 }); // a hits her target 2
+    engine.recordThrow({ playerId: "a", points: 5 }); // a misses on 3 (9 would be T3)
+    engine.recordThrow({ playerId: "b", points: 1 }); // b hits his own target 1
+
+    const before = engine.getState().modeData as AroundTheClockModeData;
+    expect(before.currentTargetIndex).toEqual({ a: 2, b: 1 });
+
+    // a's first dart was actually a miss: the replay walks a's index back
+    // from 2 to 1 — and leaves b's chain exactly where it was.
+    const corrected = engine.correctThrow(0, { points: 0 });
+    const data = corrected.modeData as AroundTheClockModeData;
+    expect(data.currentTargetIndex).toEqual({ a: 1, b: 1 });
+    expect(data.playerProgress).toEqual({ a: 1, b: 1 });
+    expect(corrected.players.find((p) => p.id === "a")?.totalPoints).toBe(1);
+    expect(corrected.players.find((p) => p.id === "b")?.totalPoints).toBe(1);
+    // The correction replaced the dart, it did not append a second one.
+    expect(corrected.throws).toHaveLength(4);
   });
 
   it("replays shanghai rounds and audits a correction of a finished round", () => {

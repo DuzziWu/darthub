@@ -1,13 +1,27 @@
 node_modules
 .next
+.next-prefixed
 coverage
 prisma
 package-lock.json
 .claude
 CLAUDE.md
 .agents
+.superpowers
 
 # Generated Playwright artifacts
 playwright-report/
 test-results/
 .playwright-mcp/
+
+# cezar runtime directory. Everything below .ai/cezar/ is machine-written
+# (run state, worktrees, artifacts, locks, receipts) and changes on every
+# run, so it must not fail the format gate. The two files that are versioned
+# stay checked: the negation re-includes them. A bare `.ai/cezar/` cannot be
+# used here, because gitignore semantics do not allow re-including a file
+# whose parent directory is excluded — the `*` form excludes the contents
+# while keeping the directory itself eligible for a negation.
+# A newly added versioned file below .ai/cezar/ needs its own `!` line.
+.ai/cezar/*
+!.ai/cezar/config.json
+!.ai/cezar/.gitignore

@@ -74,6 +74,12 @@ real values; provide them via an env file or an export before running Compose.
 | `POSTGRES_USER`     | No               | `darthub` | Superuser name for the PostgreSQL container.        |
 | `POSTGRES_PASSWORD` | Yes (no default) | none      | PostgreSQL password. Compose fails fast without it; |
 | `POSTGRES_DB`       | No               | `darthub` | Database name created on first start.               |
+| `AUTH_SECRET`       | Yes (no default) | none      | Signs the session tokens. Generate with             |
+|                     |                  |           | `openssl rand -base64 32`. Compose fails fast       |
+|                     |                  |           | without it; every sign-in would fail.               |
+| `BASE_PATH`         | No               | empty     | Path prefix the app is published under, e.g.        |
+|                     |                  |           | `/darthub`. Baked into the image build; empty means |
+|                     |                  |           | the app is served from the root.                    |
 
 `DATABASE_URL` is not set manually under Docker: `docker-compose.yml` derives it from
 the three variables above as
@@ -91,20 +97,41 @@ app can reach your database:
 
 ```text
 DATABASE_URL="postgresql://darthub:<password>@localhost:5432/darthub"
+AUTH_SECRET="<at least 32 characters, e.g. from `openssl rand -base64 32`>"
+REDIS_URL="redis://localhost:6379"
 ```
+
+`AUTH_SECRET` signs the session tokens. Without it the application cannot
+issue or verify a session, so every sign-in fails. The application also
+refuses the placeholder that `.env.example` ships, so a copy of the template
+that was never changed fails loudly instead of running with a published
+secret.
+
+`REDIS_URL` points the request rate limiter at its counter store. The
+standalone server sets `NODE_ENV=production`, and a **production installation
+without a counter store refuses every rate-limited request with a `503`** —
+the limits are never silently weakened in production. A development run
+without `REDIS_URL` counts in the process instead, which is enough for one
+developer and not enough for a deployment.
+
+The published port of the container is bound to the loopback address of the
+host; see [Ports and Firewall Rules](#ports-and-firewall-rules).
 
 ## Docker Compose Commands
 
-`docker-compose.yml` defines two services: `app` (the Next.js standalone server,
-built by the multi-stage `Dockerfile`) and `postgres` (PostgreSQL 16, Alpine
-variant). The `app` service waits for the `postgres` healthcheck
-(`pg_isready`) before starting.
+`docker-compose.yml` defines three services: `app` (the Next.js standalone server,
+built by the multi-stage `Dockerfile`), `postgres` (PostgreSQL 16, Alpine
+variant) and `redis` (Redis 7, Alpine variant). The `app` service waits for the
+healthcheck of both (`pg_isready` and `redis-cli ping`) before starting.
+Redis carries the counters of the request rate limiter (`src/security/`), so
+the limits are shared by every instance of the application.
 
 ```bash
 # Provide the required variables (or put them in an env file)
 export POSTGRES_USER=darthub
 export POSTGRES_PASSWORD='choose-a-strong-password'
 export POSTGRES_DB=darthub
+export AUTH_SECRET="$(openssl rand -base64 32)"
 
 docker compose up -d          # build the app image and start both services
 docker compose ps             # check service status and health
@@ -156,46 +183,181 @@ loaded, so it must be set for the build, not only for the server.
 `npm run build:prefixed` is the ready-made command for the `/darthub` prefix.
 It writes to `.next-prefixed/` so it does not overwrite a root build.
 
+For the **image**, the prefix is a build argument. `docker-compose.yml` passes
+`BASE_PATH` through as one, so the same switch works for the container:
+
+```bash
+export BASE_PATH=/darthub
+docker compose build app
+docker compose up -d
+```
+
+Without the variable the image is built for the root — the default, and the
+behaviour of existing deployments. The prefix in the build and the mount point
+of the proxy have to be the same; if they differ, the asset URLs point at a path
+the proxy does not serve and the page arrives unstyled and unhydrated.
+
 ### Serving it with Tailscale
 
-Serve the container's port under the mount point:
+Serve the app's port under the mount point:
 
 ```bash
 tailscale serve --set-path=/darthub http://127.0.0.1:3000
 ```
 
-The prefix in the build and the prefix in `--set-path` must be the same. If they
-differ, the asset URLs point at a path the proxy does not serve and the page
-arrives unstyled and unhydrated.
+`tailscale serve status` shows the mount. The prefix in the build and the
+prefix in `--set-path` must be the same. If they differ, the asset URLs point at
+a path the proxy does not serve and the page arrives unstyled and unhydrated.
 
-### The server must listen on every interface
+### The live preview runs as a host process
 
-The proxy above runs on the VPS host, not in the container. It reaches the
-container over the published address, so the server has to accept that
-connection:
+The published preview is not a container: it is the standalone server of the
+prefixed build, started in the main checkout and reached by the proxy that runs
+on the same host.
 
 ```bash
-setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
+cd /projects/darthub
+npm run build:prefixed
+cp -r public .next-prefixed/standalone/public
+cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
+setsid -f env HOSTNAME=127.0.0.1 PORT=3000 node .next-prefixed/standalone/server.js
 ```
 
-`HOSTNAME=0.0.0.0` binds every interface; the container answers on
-`172.18.0.2:3000`, which is the address the host forwards to. With the default
-`HOSTNAME=127.0.0.1` the server listens on loopback only, the host's connection
-is **refused**, and Tailscale Serve answers **502 Bad Gateway** — even though
-the application itself answers `200` on `http://127.0.0.1:3000/` the whole time.
+The server binds the **loopback address**: the proxy runs on the same host and
+the mount points at `http://127.0.0.1:3000`, so the published site reaches the
+server and nothing else on the tailnet or in the LAN does. `0.0.0.0` is the
+rule of the container variant, below.
 
-That is the failure mode of the outage on 2026-11-14, and it is worth
-recognising it by its shape: a site that is broken for every user while every
-local health check passes. The check that distinguishes it:
+`next dev` compiles on demand, so a cold route drops requests while it compiles
+and the preview flickers. The standalone server is the same server the Docker
+runner stage uses, and it is stable under a proxy.
+
+The server has to be started with `setsid -f`. Without the `-f` the process
+stays a child of the shell that started it and dies with the session; with it,
+the process is adopted by PID 1 and outlives it. `ps -o pid,ppid,sid,cmd -p <pid>`
+shows a PPID of 1 and a session id of its own when the server is detached.
+
+### The bind address follows the topology
+
+The bind address is not a detail — it is the difference between a published site
+and a 502. A listener that refuses the connection the proxy actually makes is
+answered by the proxy with **502 Bad Gateway**, while the application itself
+keeps answering 200 on its own address. Recognise that failure mode by its
+shape: a site that is broken for every user while every local health check
+passes.
+
+| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                              |
+| ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Live preview (port 3000)        | `127.0.0.1` | The proxy runs on the same host and the mount points at the loopback address. Loopback is the correct and the safe choice: the published site reaches the server, nothing else does.                                                                                                             |
+| Container image (port 3000)     | `0.0.0.0`   | The proxy runs on the host and reaches the container across the bridge on its published address `172.18.0.2:3000`. A loopback-only container refuses that connection and the proxy answers 502, while the container itself keeps answering 200 on `http://127.0.0.1:3000/` inside the container. |
+| Playwright servers (3100, 3111) | `127.0.0.1` | They are driven by the test runner on the very machine that starts them, so loopback is enough — and they must not be reachable from anywhere else.                                                                                                                                              |
+
+In the host topology the local check `curl http://127.0.0.1:3000/` proves that
+_something_ listens on the port, not that the _preview_ listens on it. That is
+how the outage of 2026-11-14 looked: the local check was green and the site was
+broken for every user. At that time the preview was still the container variant
+and the server had been restarted with `HOSTNAME=127.0.0.1` — the E2E convention.
+The proxy reached the container over the bridge address `172.18.0.2:3000`, the
+loopback-only listener refused that connection, and the site answered 502 while
+the application kept answering 200 on `http://127.0.0.1:3000/` inside the
+container.
+
+Note that `playwright.config.ts` starts its own servers with
+`HOSTNAME=127.0.0.1` on ports **3100** and **3111**. Those are deliberately not
+reachable from anywhere else, and port 3000 is reserved for the published app
+alone: another process on port 3000 displaces the preview, and the proxy then
+reaches _that_ process — the published site serves a build without the path
+prefix (unstyled, unhydrated, 404 on the assets) instead of the preview.
+
+### The container variant
+
+The image can serve the same mount instead of a host process — with the prefix
+as a build argument, as described above. In that topology the proxy runs on the
+host and reaches the container on its published address, so the container's
+server has to accept a connection from there; `HOSTNAME=0.0.0.0` in the runner
+stage does that. The check that distinguishes it:
 
 ```bash
 curl http://172.18.0.2:3000/    # 200 -> the host can reach the server
 ```
 
-Note that `playwright.config.ts` starts its own servers with
-`HOSTNAME=127.0.0.1` on ports **3100** and **3111**. Those are deliberately not
-reachable from the host, and port 3000 is reserved for the published app: a
-server on port 3000 that binds loopback only makes the published site answer 502.
+The address is an example, not a constant — it is assigned when the network is
+created. Read it instead of assuming it, see
+[below](#the-bridge-address-is-assigned-not-fixed).
+
+The image build runs the asset-prefix gate (`scripts/check-asset-prefix.mjs`) with
+the same `BASE_PATH` the build used, so a prefixed build that loses its prefix
+fails the **image build** instead of the live site.
+
+#### The bridge address is assigned, not fixed
+
+`172.18.0.2` is an **example**, not a constant. The Compose network
+`darthub_default` hands the addresses out in the order the services start: in the
+verified run of 2026-11-16 `redis` got `172.18.0.2`, `postgres` `172.18.0.3` and
+the app `172.18.0.4`. Read the address instead of assuming it:
+
+```bash
+APP_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' darthub-app-1)
+curl "http://$APP_IP:3000/"    # 200 -> the host can reach the server over the bridge
+```
+
+A check that hardcodes `172.18.0.2` starts failing as soon as another service
+takes that address — and a failing check is indistinguishable from the 502 it is
+meant to detect.
+
+#### What the container listens on
+
+The server inside the container has to listen on **every** interface; that is the
+whole point of the container topology. The listening socket is visible in
+`/proc/net/tcp` as `00000000:0BB8` — `0.0.0.0:3000`:
+
+```bash
+docker exec darthub-app-1 cat /proc/net/tcp | awk '$2 ~ /:0BB8$/ {print}'
+# 0: 00000000:0BB8 00000000:0000 0A ...        0A = LISTEN
+```
+
+A loopback-bound listener would read `0100007F:0BB8` — and that is the form that
+produces the 502: the host proxy reaches the container across the bridge, the
+loopback listener refuses the connection, and the proxy answers 502 while the
+application itself keeps answering 200 on its own address.
+
+#### Verified on 2026-11-16
+
+The container variant was verified locally, without touching the published
+preview (which owns port 3000 on this host):
+
+| Check                                           | Result                                                        |
+| ----------------------------------------------- | ------------------------------------------------------------- |
+| `BASE_PATH=/darthub docker compose build app`   | image built; the gate ran with the same prefix                |
+| the gate in that build                          | `✓ 17 asset URLs carry the expected prefix "/darthub/_next/"` |
+| `docker compose up -d`                          | app, postgres and redis up; postgres and redis healthy        |
+| host → published port of the app                | HTTP 200                                                      |
+| host → bridge address of the app                | HTTP 200                                                      |
+| app inside the container on loopback            | HTTP 200                                                      |
+| listening socket inside the container           | `00000000:0BB8` (`0.0.0.0:3000`, `LISTEN`)                    |
+| asset URLs of the delivered page                | 15 of 15 carry `/darthub/_next/`, none unprefixed             |
+| the same asset, requested through the container | HTTP 200, `text/css`                                          |
+| the routes under the prefix, without a proxy    | HTTP 404 — the proxy has to strip the prefix                  |
+
+The published port was moved to `3200` for the check, because port 3000 belongs
+to the live preview on this host. The container's own port and its bridge
+address are the same as in the unmodified Compose file.
+
+The gate compares the **build** with the **gate**, not the prefix with a list of
+known prefixes. What that means, measured:
+
+| Build prefix | Gate prefix  | Image build                                                               |
+| ------------ | ------------ | ------------------------------------------------------------------------- |
+| `/darthub`   | `/darthub`   | passes                                                                    |
+| `/darthub`   | `/falsch`    | **fails** — 17 of 17 asset URLs carry no prefix                           |
+| `/darthub`   | unset        | **fails** — the build carries a `/darthub` prefix, `BASE_PATH` is not set |
+| `/falsch`    | `/falsch`    | passes — a prefix that is wrong but consistent is not caught              |
+| unset (root) | unset (root) | passes — the default is unchanged                                         |
+
+So the gate catches the mistake that breaks the site — a build and a gate that
+disagree. It does not catch a prefix that is consistently wrong; only the mount
+point of the proxy can know that, and the two have to be set from the same
+value.
 
 ### Replacing a running server
 
@@ -223,6 +385,9 @@ prefix the app is published under. A build without `BASE_PATH` hands out asset
 URLs without the prefix; the proxy strips the prefix from the path, so those
 requests find no mount and answer 404. The check fails on that and on the
 opposite mistake — a prefixed build published at the root.
+
+The Docker image build runs the same gate, with the same `BASE_PATH` the build
+used, so a prefixed image that lost its prefix never gets published.
 
 ### Recognising the broken state
 
@@ -312,11 +477,29 @@ docker compose up -d
 
 ## Ports and Firewall Rules
 
-| Container port | Published host port | Service      | Expose to the internet?                   |
-| -------------- | ------------------- | ------------ | ----------------------------------------- |
-| 3000           | `3000:3000`         | `app` (HTTP) | Yes, or behind a reverse proxy on 80/443. |
-| 5432           | `5432:5432`         | `postgres`   | No.                                       |
-| 3001           | planned             | `realtime`   | Yes, once the Socket.IO service ships.    |
+| Container port | Published host port   | Service      | Expose to the internet?                       |
+| -------------- | --------------------- | ------------ | --------------------------------------------- |
+| 3000           | `127.0.0.1:3000:3000` | `app` (HTTP) | **No.** The proxy reaches it over the bridge. |
+| 5432           | `5432:5432`           | `postgres`   | No.                                           |
+| 3001           | planned               | `realtime`   | Yes, once the Socket.IO service ships.        |
+
+The application is published on the **loopback address of the host**. The
+reverse proxy on the host reaches it over the Docker bridge
+(`172.18.0.2:3000`), which is a separate path and is not affected by the
+published port. The published port exists for the local health check
+(`curl http://127.0.0.1:3000/`) and for nothing else.
+
+Publishing the port on every interface would offer a second way into the
+application that bypasses the proxy — and with it the client address that
+the rate limiter counts on (`docs/SECURITY.md`). A client that reaches the
+application directly chooses the address it is counted under.
+
+The container itself still binds `0.0.0.0` **inside** its own network
+namespace (`HOSTNAME=0.0.0.0` in the `Dockerfile`): the proxy reaches it
+across the bridge, and a container that bound the loopback only would refuse
+that connection. The two bindings are different things — the address the
+container listens on inside the container, and the host port that is
+published for it.
 
 `docker-compose.yml` currently publishes PostgreSQL on all interfaces
 (`"5432:5432"`). On a VPS, restrict it before going live:
@@ -331,10 +514,15 @@ docker compose up -d
 Firewall rules (ufw example):
 
 ```bash
-sudo ufw allow 3000/tcp      # or 80/443 when reverse-proxying
+sudo ufw allow 443/tcp       # the reverse proxy — the only way in
+sudo ufw deny 3000/tcp       # the application is published on the loopback only
 sudo ufw deny 5432/tcp       # PostgreSQL must not be reachable externally
 sudo ufw enable
 ```
+
+The application's port is published on `127.0.0.1`, so it needs no rule in
+the firewall: nothing outside the host can reach it. Only the port of the
+reverse proxy is opened.
 
 Keep Docker's internal bridge traffic in mind: `ufw` filters external interfaces, so
 the Compose-internal `postgres` reachability is unaffected by denying 5432
@@ -381,12 +569,25 @@ named volume declared in `docker-compose.yml`, and run
 
 ## Verification Status
 
-The multi-stage `Dockerfile` and `docker-compose.yml` described here have been
-reviewed against the repository sources; a full live end-to-end build-and-serve
-verification has been deferred in this environment. Before relying on this guide
-for a production host, do one clean-room run: start from a fresh VPS (or a clean
-clone) and follow [Docker Compose Commands](#docker-compose-commands) through
-[Data Migration](#data-migration), confirming a healthy `docker compose ps`.
+| What                                                     | Status                                               | When       |
+| -------------------------------------------------------- | ---------------------------------------------------- | ---------- |
+| Multi-stage `Dockerfile` and `docker-compose.yml`        | reviewed against the repository sources              | —          |
+| Image build with a prefix (`BASE_PATH=/darthub`)         | **verified** — real build, real gate                 | 2026-11-16 |
+| Root image build (no prefix)                             | **verified** — the default still passes the gate     | 2026-11-16 |
+| The gate fails a build that lost its prefix              | **verified** — two counter-checks, image build fails | 2026-11-16 |
+| Container reachable from the host over the bridge        | **verified** — HTTP 200                              | 2026-11-16 |
+| Container listens on `0.0.0.0:3000` inside the container | **verified** — `00000000:0BB8` in `/proc/net/tcp`    | 2026-11-16 |
+| Delivered page carries `/darthub/_next/…`                | **verified** — 15 of 15 asset URLs                   | 2026-11-16 |
+| Full VPS clean-room run (install → migrate → serve)      | deferred                                             | —          |
+
+The container variant was verified locally against a running stack — the image
+was built with the prefix, the stack was started, and the app was reached over
+the bridge and over its published port. The published preview on this host was
+not touched.
+
+The full clean-room run on a production host is still open: start from a fresh
+VPS (or a clean clone) and follow [Docker Compose Commands](#docker-compose-commands)
+through [Data Migration](#data-migration), confirming a healthy `docker compose ps`.
 
 ## Related Documents
 

@@ -41,6 +41,14 @@ jobs:
       - name: Test
         run: npm run test
 
+      # The live Docker build — the real image against the real daemon, with
+      # the 200 MB size limit — is opt-in: the build needs several minutes and
+      # it blocks every shared runner that waits for the unit suite. The step
+      # above runs the structural .dockerignore checks, this one runs the
+      # build. Without it the size limit would be checked nowhere.
+      - name: Test (Docker image)
+        run: DART_DOCKER_BUILD=1 npm run test -- tests/unit/dockerignore.test.ts
+
   e2e:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest

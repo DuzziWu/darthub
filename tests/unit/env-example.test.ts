@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, it, expect } from "vitest";
+import { KNOWN_PLACEHOLDER_SECRETS } from "@/auth/session";
 
 const envExamplePath = resolve(process.cwd(), ".env.example");
 const envExample = readFileSync(envExamplePath, "utf-8");
@@ -8,7 +9,7 @@ const gitignorePath = resolve(process.cwd(), ".gitignore");
 const gitignore = readFileSync(gitignorePath, "utf-8");
 
 /** Required variables every developer must configure (or copy) from the template. */
-const REQUIRED_VARS = ["DATABASE_URL", "JWT_SECRET", "POSTGRES_PASSWORD", "PORT"] as const;
+const REQUIRED_VARS = ["DATABASE_URL", "AUTH_SECRET", "POSTGRES_PASSWORD", "PORT"] as const;
 
 /** Lines that assign a variable, e.g. `PORT=3000`. */
 const isAssignment = (line: string): boolean => /^[A-Z][A-Z0-9_]*=/.test(line.trim());
@@ -41,7 +42,7 @@ function isIgnoredByGitignore(path: string): boolean {
 }
 
 describe(".env.example", () => {
-  it("it includes DATABASE_URL, JWT_SECRET, REDIS_URL (optional), and PORT", () => {
+  it("it includes DATABASE_URL, AUTH_SECRET, REDIS_URL (optional), and PORT", () => {
     const lines = envExample.split("\n");
 
     for (const variable of REQUIRED_VARS) {
@@ -96,5 +97,31 @@ describe(".env.example", () => {
     expect(isIgnoredByGitignore(".env.example")).toBe(false);
     // The un-ignore must be explicit so `.env.*` style patterns cannot swallow it.
     expect(gitignore).toMatch(/^[ \t]*!\.env\.example/m);
+  });
+
+  it("names only the secret the code actually reads", () => {
+    // AUTH_SECRET is the one name the session code reads
+    // (src/auth/session.ts). The template must not offer a second name for
+    // the same secret: two names invite the two to drift apart, and the one
+    // that drifts is the one that signs.
+    expect(envExample).not.toMatch(/^\s*JWT_SECRET=/m);
+    expect(envExample).toMatch(/^\s*AUTH_SECRET=/m);
+  });
+
+  it("ships a placeholder that the application refuses to run with", () => {
+    // The placeholder is long enough to pass the length check — so the
+    // length check alone cannot be what stops a deployment from running
+    // with a published secret. The code refuses it by name, and this test
+    // keeps the template and that list in step.
+    const placeholder = envExample
+      .split("\n")
+      .map((line) => line.trim())
+      .find((line) => line.startsWith("AUTH_SECRET="))
+      ?.slice("AUTH_SECRET=".length);
+
+    expect(placeholder).toBeDefined();
+    expect(placeholder).not.toBe("");
+    expect(placeholder?.length ?? 0).toBeGreaterThanOrEqual(32);
+    expect(KNOWN_PLACEHOLDER_SECRETS).toContain(placeholder);
   });
 });

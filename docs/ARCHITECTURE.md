@@ -10,6 +10,7 @@
 - [Patterns Used](#patterns-used)
 - [Key Integrations](#key-integrations)
 - [Real-Time Authority Flow](#real-time-authority-flow)
+- [Authentication and Guest Migration](#authentication-and-guest-migration)
 - [Conventions](#conventions)
 - [Extension Points](#extension-points)
 - [Related Documents](#related-documents)
@@ -60,6 +61,7 @@ The client never writes game state directly. REST handles profile, social, priva
 | `src/friends/`     | Friend service and its Prisma-backed repository adapter                                                     | in progress |
 | `src/rating/`      | Elo rating, performance records, and their repository adapters                                              | in progress |
 | `src/lib/`         | Shared helpers that belong to no single feature, such as the path prefix helper that builds the app's links | in progress |
+| `src/security/`    | The request rate limiter and the client-address resolution the auth endpoints count on                      | in progress |
 | `prisma/`          | Prisma schema, migrations, and the generated client                                                         | in progress |
 | `tests/`           | Vitest unit and integration suites, plus Playwright end-to-end specs                                        | in progress |
 | `e2e/`             | Playwright end-to-end specs and fixtures                                                                    | in progress |
@@ -80,6 +82,7 @@ src/
   career/        Career mode engine and quest JSON content
   friends/       Friend service and Prisma repository adapter
   rating/        Elo rating, performance records, repository adapters
+  security/      Request rate limiting and client-address resolution
 prisma/          Prisma schema and migrations
 public/          Static assets
 design-system/   Design tokens and shared visual primitives
@@ -94,6 +97,7 @@ docs/            Product and engineering documentation
 ## Patterns Used
 
 - **Feature-scoped services**: business logic lives beside the feature that owns it (`src/auth`, `src/career`, `src/friends`, `src/privacy`, `src/rating`) and never leaks into route handlers or UI.
+- **Thin route handlers over injected services**: a handler under `app/api/**` wires the production runtime and delegates; the behaviour lives in the feature module, whose dependencies are **injected**, so the handler is testable without a database — see [Authentication and Guest Migration](#authentication-and-guest-migration).
 - **Repository pattern**: persistence flows through feature-local repository adapters (for example `src/friends/prismaFriendRepository.ts`) over Prisma, with in-memory implementations for tests.
 - **DTOs**: data flowing between layers is shaped explicitly, never passed as raw ORM entities.
 - **Dependency injection**: the AI engine and camera implementations are injected via provider interfaces.
@@ -115,6 +119,31 @@ docs/            Product and engineering documentation
 3. A throw proposal is validated against engine rules and anti-cheat middleware before being applied.
 4. AI turns are generated from a seeded statistical model and checksummed.
 5. On match end, the rating service updates Elo and performance records and the result is persisted.
+
+## Authentication and Guest Migration
+
+The authentication surface is built from two seams that already exist — the **Auth.js
+configuration** (`src/auth/nextauth.ts`) and the **feature services** (`src/auth/authService.ts`,
+`src/auth/guest.ts`). The route handlers in between stay thin.
+
+- **A thin route over an injected service.** A handler under `app/api/**` wires the production
+  runtime and delegates; the behaviour lives in the feature module with **injected**
+  dependencies, so it can be tested without a database — the pattern of
+  `src/auth/linkGuestRoutes.ts` + `app/api/auth/link-guest/route.ts`. **Status: in flight** —
+  step E1.1 of `.opencode/plans/e2e-journeys/001-login-journeys.md` adds the registration
+  transport in the same shape: a thin route over the existing `authService.registerUser`
+  (`src/auth/authService.ts:58-83`), which owns the input validation, the password hashing and
+  the session token. The route never hashes a password itself and never answers with the
+  password hash. The plan names `src/auth/registerRoutes.ts` and
+  `app/api/auth/register/route.ts`; neither file exists in the tree yet.
+- **The one-time guest migration token.** The guest service mints the token when the guest
+  session is created (`src/auth/guest.ts:125-130`) and persists only its hash; the migration
+  burns it (`src/auth/guest.ts:146-179`). **Status: in flight** — step E1.1 of the same plan
+  makes the `guest` credentials provider (`src/auth/nextauth.ts:51-61`) hand the token to the
+  client **once**, so that `POST /api/auth/link-guest` is reachable from a browser; the token
+  is never logged and never rendered as a readable attribute. Today the token is minted and
+  never handed out, which is why the migration route exists but cannot be called from a
+  browser.
 
 ## Conventions
 

@@ -14,8 +14,9 @@ import type { MatchState, RecordedThrow, ThrowSegment } from "@/game-engine/type
  * routing of the pad's value to `correctThrow` instead of `recordThrow`.
  *
  * Every rule (busts, refusals, audit) stays in the engine. Refusals are
- * re-thrown to the caller, which surfaces them as its message; the armed
- * target stays armed so the player can enter the replacement again.
+ * re-thrown to the caller, which surfaces them as its player text — the
+ * code, never the message; the armed target stays armed so the player can
+ * enter the replacement again.
  */
 export function useMatchHistory(options: {
   engine: GameEngine | null;

@@ -21,12 +21,19 @@ DartHub's build is **green**. The baseline is:
 
 **Lint / format — pass**
 
-Two checks are conditional on the environment and skip rather than fail:
+Two checks skip rather than fail:
 
-| Test                                            | Skipped when                                                 |
-| ----------------------------------------------- | ------------------------------------------------------------ |
-| `tests/unit/dockerignore.test.ts`               | no Docker **daemon** reachable (the CLI alone is not enough) |
-| `tests/unit/tailwind/tailwindToolchain.test.ts` | no successful `npm run build` output present                 |
+| Test                                            | Skipped when                                 |
+| ----------------------------------------------- | -------------------------------------------- |
+| `tests/unit/dockerignore.test.ts` (live build)  | `DART_DOCKER_BUILD` is not set               |
+| `tests/unit/tailwind/tailwindToolchain.test.ts` | no successful `npm run build` output present |
+
+The live `docker build` is **opt-in**: it runs only with `DART_DOCKER_BUILD=1`,
+it needs a reachable daemon, and a missing daemon is a **hard failure**, not a
+skip. Without the flag the default suite run never touches the daemon — the
+structural `.dockerignore` checks still run, the skip is printed to stdout and
+the test title names the flag. Run the live build with
+`DART_DOCKER_BUILD=1 npm test -- tests/unit/dockerignore.test.ts`.
 
 **Always diff against this baseline, never against zero.** Report the delta.
 
@@ -74,7 +81,8 @@ global config casually:
 
 - `npx prisma generate` after `npm install` — npm 12 blocks install scripts by
   default, so `@prisma/client` is not generated otherwise.
-- `docker` daemon running for `tests/unit/dockerignore.test.ts`.
+- A reachable Docker daemon **only** for the opt-in live build
+  (`DART_DOCKER_BUILD=1 npm test -- tests/unit/dockerignore.test.ts`).
 - `DATABASE_URL` set and PostgreSQL reachable for the integration suite.
 - A successful `npm run build` for `tests/unit/tailwind/tailwindToolchain.test.ts`.
 - `npx playwright install` for the browser binaries, if not already present.

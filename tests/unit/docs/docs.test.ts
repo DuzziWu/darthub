@@ -1,6 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, resolve, posix } from "node:path";
 import { describe, it, expect } from "vitest";
+import { runCommand } from "../../support/run-command";
 
 const DOCS_DIR = resolve(import.meta.dirname, "../../../docs");
 
@@ -17,6 +18,22 @@ const REQUIRED_DOCS = [
 ] as const;
 
 const SRC_DIR = resolve(import.meta.dirname, "../../../src");
+
+const REPO_ROOT = resolve(import.meta.dirname, "../../..");
+const E2E_DIR = join(REPO_ROOT, "e2e");
+
+/** Every Playwright spec file that exists in `e2e/`. The list is read from
+ * disk rather than hard-coded, so the roadmap check can never drift away
+ * from the suite it describes. */
+const E2E_SPEC_FILES = readdirSync(E2E_DIR)
+  .filter((name) => name.endsWith(".spec.ts"))
+  .sort();
+
+/** Counts the `test.skip(...)` placeholders a spec file carries. */
+const countSkippedTests = (fileName: string): number =>
+  readFileSync(join(E2E_DIR, fileName), "utf8")
+    .split("\n")
+    .filter((line) => /^\s*test\.skip\(/.test(line)).length;
 
 /** Every module directory that actually exists under `src/`. The list is read
  * from disk rather than hard-coded so the documentation check can never drift
@@ -149,6 +166,108 @@ describe("docs documentation set", () => {
       lintDoc(doc, readDoc(doc), problems);
     }
     expect(problems).toEqual([]);
+  });
+});
+
+describe("ROADMAP delivery status", () => {
+  it("states the real number of skipped end-to-end placeholders", () => {
+    const roadmap = readDoc("ROADMAP.md");
+
+    const row = /^\|\s*`test\.skip` placeholders in `e2e\/`\s*\|(.*)\|\s*$/m.exec(roadmap);
+    expect(row, "ROADMAP.md must carry a row for the test.skip placeholders").toBeTruthy();
+    const cell = row?.[1] ?? "";
+
+    const statedTotal = Number(/\*\*(\d+)\*\*/.exec(cell)?.[1] ?? "NaN");
+    expect(Number.isNaN(statedTotal), "the row must state a total count").toBe(false);
+
+    const statedPerFile = new Map<string, number>();
+    for (const match of cell.matchAll(/`(e2e\/[\w.-]+\.spec\.ts)`\s*\((\d+)\)/g)) {
+      statedPerFile.set(match[1] ?? "", Number(match[2]));
+    }
+
+    // The counts the roadmap claims, read back from the disk.
+    const actualPerFile = new Map<string, number>();
+    for (const name of E2E_SPEC_FILES) {
+      actualPerFile.set(`e2e/${name}`, countSkippedTests(name));
+    }
+    const actualTotal = [...actualPerFile.values()].reduce((sum, count) => sum + count, 0);
+
+    expect(statedTotal, "ROADMAP.md must state the real number of skipped placeholders").toBe(
+      actualTotal,
+    );
+
+    // Every spec file that carries a placeholder is named with its count, and
+    // every spec file without one is not named at all.
+    for (const [file, count] of actualPerFile) {
+      if (count === 0) {
+        expect(statedPerFile.has(file), `ROADMAP.md must not claim placeholders in ${file}`).toBe(
+          false,
+        );
+      } else {
+        expect(
+          statedPerFile.get(file),
+          `ROADMAP.md must state the placeholder count of ${file}`,
+        ).toBe(count);
+      }
+    }
+    expect(
+      [...statedPerFile.keys()].every((file) => actualPerFile.has(file)),
+      "ROADMAP.md must only name spec files that exist",
+    ).toBe(true);
+  });
+
+  it("states the real number of end-to-end spec files", () => {
+    const roadmap = readDoc("ROADMAP.md");
+
+    const row = /^\|\s*Playwright specs\s*\|(.*)\|\s*$/m.exec(roadmap);
+    expect(row, "ROADMAP.md must carry a row for the Playwright specs").toBeTruthy();
+    const cell = row?.[1] ?? "";
+
+    const match =
+      /\*\*(\d+) spec files\*\*\s*in `e2e\/`\s*—\s*(\d+) active,\s*(\d+) fully skipped/.exec(cell);
+    expect(
+      match,
+      "the row must state the total, the active and the fully skipped spec files",
+    ).toBeTruthy();
+
+    const total = Number(match?.[1]);
+    const active = Number(match?.[2]);
+    const skipped = Number(match?.[3]);
+
+    const skippedFiles = E2E_SPEC_FILES.filter((name) => countSkippedTests(name) > 0).length;
+
+    expect(total, "ROADMAP.md must state the real number of spec files").toBe(
+      E2E_SPEC_FILES.length,
+    );
+    expect(skipped, "ROADMAP.md must state the real number of fully skipped spec files").toBe(
+      skippedFiles,
+    );
+    expect(active, "ROADMAP.md must state the real number of active spec files").toBe(
+      E2E_SPEC_FILES.length - skippedFiles,
+    );
+  });
+
+  it("names a HEAD commit that exists in the repository", () => {
+    const roadmap = readDoc("ROADMAP.md");
+
+    const match = /at commit `([0-9a-f]{7,40})`/.exec(roadmap);
+    expect(match, "ROADMAP.md must name the commit it was measured against").toBeTruthy();
+    const sha = match?.[1] ?? "";
+
+    // A shallow clone — the CI checkout uses `fetch-depth: 1` — carries only
+    // the tip commit, so the named object can legitimately be missing there.
+    // The full-history case is the one that can actually be checked.
+    const shallow = runCommand("git rev-parse --is-shallow-repository").output.trim() === "true";
+    if (shallow) {
+      expect(sha, "the named commit must be a hex object name").toMatch(/^[0-9a-f]{7,40}$/);
+      return;
+    }
+
+    const exists = runCommand(`git cat-file -e '${sha}^{commit}'`);
+    expect(
+      exists.exitCode,
+      `ROADMAP.md names commit ${sha}, which does not exist in this repository`,
+    ).toBe(0);
   });
 });
 

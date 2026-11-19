@@ -7,7 +7,12 @@ export { GameEngine, DARTS_PER_TURN } from "@/game-engine/GameEngine";
 export { NeutralScoreMode } from "@/game-engine/NeutralScoreMode";
 export { OUT_RULES, getOutRule, LegSetManager } from "@/game-engine/rules";
 export type { OutRule, LegSetConfig, LegSetOutcome, LegSetProgress } from "@/game-engine/rules";
-export { deriveTurnThrows, deriveVisitIndexes, groupVisits } from "@/game-engine/throwLedger";
+export {
+  deriveTurnIndexes,
+  deriveTurnThrows,
+  deriveVisitIndexes,
+  groupVisits,
+} from "@/game-engine/throwLedger";
 export {
   GameEngineBustError,
   GameEngineStateError,
@@ -19,7 +24,9 @@ export type {
   CorrectionRecord,
   CorrectionValue,
   DartGameMode,
+  GameEngineErrorCode,
   MatchConfig,
+  MatchModeData,
   MatchState,
   MatchVisit,
   MutableMatchState,

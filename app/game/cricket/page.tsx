@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { Target } from "lucide-react";
 import { withBasePath } from "@/lib/basePath";
 import { GameEngine } from "@/game-engine/GameEngine";
-import { CRICKET_TARGETS, MARKS_TO_CLOSE, CricketMode } from "@/game-engine/modes/CricketMode";
+import {
+  CRICKET_TARGETS,
+  MARKS_TO_CLOSE,
+  CricketMode,
+  getCricketWinnerId,
+} from "@/game-engine/modes/CricketMode";
 import type { CricketModeData } from "@/game-engine/modes/CricketMode";
 import type { MatchState, ThrowSegment } from "@/game-engine/types";
 import { boardSourceLabel } from "@/board";
@@ -23,17 +28,34 @@ import { VisitTracker } from "@/components/game/VisitTracker";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
+import { playerErrorText } from "@/components/game/playerErrors";
 import type { BoardThrow } from "@/components/game/types";
 
-/** The solo player of a cricket match. */
-const PLAYER_ID = "player1";
+/**
+ * The engine's player ids, in seating order.
+ *
+ * The ids come from the names the setup collected, so the sheet, the
+ * overview and the ledger all speak about the same players.
+ */
+function playerIdsFor(names: readonly string[]): string[] {
+  return names.map((_, index) => `player${index + 1}`);
+}
+
+/**
+ * The marks one player holds, read from the mode's own state.
+ *
+ * Cricket has no remaining score: the marks on the targets are the score,
+ * and they belong to the player who threw them — never to the match.
+ */
+function readMarks(state: MatchState | null, playerId: string): Record<string, number> {
+  const marks = (state?.modeData as CricketModeData | undefined)?.marks;
+  return marks?.[playerId] ?? {};
+}
 
 /**
  * The marks a throw added, read from the mode's own state.
  *
- * Cricket has no remaining score: the marks on the targets are the score,
- * and the mode counts them from the point value of the dart. The inner bull
- * (50) is therefore two marks and the outer bull (25) is one.
+ * The inner bull (50) is two marks and the outer bull (25) is one.
  */
 function marksGained(before: Record<string, number>, after: Record<string, number>): number {
   return CRICKET_TARGETS.reduce((total, target) => {
@@ -62,27 +84,46 @@ export default function CricketPage() {
   // undo button and the correction flow all read from it.
   const history = useMatchHistory({ engine, matchState });
   const inputMode = useInputMode();
+  // The dart a correction replaces. It is read by name so the callback
+  // below does not close over a stale value.
+  const { correctionTarget } = history;
 
-  const startMatch = useCallback((names: string[], options: PlayerSetupOptions) => {
-    const eng = new GameEngine(new CricketMode());
-    const state = eng.startMatch({ playerIds: [PLAYER_ID] });
-    setEngine(eng);
-    setMatchState(state);
-    setPlayerNames({ [PLAYER_ID]: names[0] ?? "Player 1" });
-    setWinnerId(null);
-    setMessage("");
-    setOptions(options);
-    setPhase("playing");
-  }, []);
+  const startMatch = useCallback(
+    (names: string[], options: PlayerSetupOptions) => {
+      // A correction armed in the previous match must not survive into
+      // the next one.
+      history.cancelCorrection();
+      const eng = new GameEngine(new CricketMode());
+      const ids = playerIdsFor(names);
+      const state = eng.startMatch({ playerIds: ids });
+      setEngine(eng);
+      setMatchState(state);
+      const byId: Record<string, string> = {};
+      ids.forEach((id, index) => {
+        byId[id] = names[index] ?? id;
+      });
+      setPlayerNames(byId);
+      setWinnerId(null);
+      setMessage("");
+      setOptions(options);
+      setPhase("playing");
+    },
+    [history],
+  );
 
   const recordThrow = useCallback(
     (throwInput: { points: number; segment?: ThrowSegment }) => {
       if (!engine || !matchState || phase !== "playing") return;
       if (matchState.status === "completed") return;
 
-      const playerId = matchState.currentPlayerId ?? PLAYER_ID;
+      // The marks belong to the player who threw the dart. A correction
+      // replaces a dart of an earlier visit, so its owner is not
+      // necessarily the player on turn.
+      const correctedPlayerId =
+        correctionTarget !== null ? (matchState.throws[correctionTarget]?.playerId ?? null) : null;
+      const playerId = correctedPlayerId ?? matchState.currentPlayerId ?? null;
       const { points } = throwInput;
-      const before = (matchState.modeData as CricketModeData | undefined)?.marks?.[PLAYER_ID] ?? {};
+      const before = playerId ? readMarks(matchState, playerId) : {};
 
       try {
         // Cricket scores from the point value alone. The segment is a label
@@ -90,13 +131,14 @@ export default function CricketPage() {
         // target this replaces the dart; otherwise it records a new one.
         const state = history.submitThrow({ points, segment: throwInput.segment });
         if (!state) return;
-        const after = (state.modeData as CricketModeData | undefined)?.marks?.[PLAYER_ID] ?? {};
+        const after = playerId ? readMarks(state, playerId) : {};
         const earned = marksGained(before, after);
 
         setMatchState(state);
 
         if (state.status === "completed") {
-          setWinnerId(playerId);
+          // The mode owns the win: the sheet never guesses it.
+          setWinnerId(getCricketWinnerId(state));
           setPhase("result");
           setMessage("");
         } else if (points === 0) {
@@ -108,12 +150,13 @@ export default function CricketPage() {
         }
       } catch (error) {
         // A refused correction or an invalid throw: the engine changed
-        // nothing, but the strip re-reads the ledger either way.
-        setMessage((error as Error).message || "Invalid throw");
+        // nothing, but the strip re-reads the ledger either way. The
+        // refusal is reported by its code, never by its message.
+        setMessage(playerErrorText(error));
         setMatchState(engine.getState());
       }
     },
-    [engine, matchState, phase, history],
+    [engine, matchState, phase, history, correctionTarget],
   );
 
   const handleBoardThrow = useCallback(
@@ -150,7 +193,7 @@ export default function CricketPage() {
           modeDescription="Close 20 down to 15 and the bull with three marks each. The inner bull counts as two marks, the outer bull as one."
           modeIcon={Target}
           minPlayers={1}
-          maxPlayers={1}
+          maxPlayers={2}
           showCheckoutRule={false}
           onStart={startMatch}
         />
@@ -158,9 +201,14 @@ export default function CricketPage() {
     );
   }
 
-  const marks = (matchState?.modeData as CricketModeData | undefined)?.marks?.[PLAYER_ID] ?? {};
+  const currentPlayerId = matchState?.currentPlayerId ?? null;
+  // The badge counts the closed targets of the player on turn — and of the
+  // winner once the match is over, because the match has no player on turn
+  // any more.
+  const badgePlayerId = currentPlayerId ?? winnerId;
+  const badgeMarks = badgePlayerId ? readMarks(matchState, badgePlayerId) : {};
   const closed = CRICKET_TARGETS.filter(
-    (target) => (marks[String(target)] ?? 0) >= MARKS_TO_CLOSE,
+    (target) => (badgeMarks[String(target)] ?? 0) >= MARKS_TO_CLOSE,
   ).length;
 
   return (
@@ -187,7 +235,7 @@ export default function CricketPage() {
               name: playerNames[player.id] ?? player.id,
               // Cricket has no score column: the targets are the score.
               value: player.totalPoints,
-              isCurrent: player.id === (matchState.currentPlayerId ?? PLAYER_ID),
+              isCurrent: player.id === currentPlayerId,
             }))}
             data={{
               kind: "cricket",
@@ -224,9 +272,13 @@ export default function CricketPage() {
     >
       <CricketScoreSheet
         targets={CRICKET_TARGETS}
-        marks={marks}
         marksToClose={MARKS_TO_CLOSE}
-        playerName={playerNames[PLAYER_ID]}
+        players={(matchState?.players ?? []).map((player) => ({
+          id: player.id,
+          name: playerNames[player.id] ?? player.id,
+          marks: readMarks(matchState, player.id),
+        }))}
+        currentPlayerId={currentPlayerId}
       />
       <MatchStatus message={message} />
       {phase === "result" ? (

@@ -23,7 +23,8 @@ DartHub exposes two transport surfaces: REST route handlers for profile, social,
 
 - All payloads are JSON encoded as UTF-8.
 - Requests and responses use the DTO types defined by the feature that owns the endpoint; raw ORM entities are never serialised.
-- Authentication uses an Auth.js session cookie; Socket.IO connections present the same session during the handshake.
+- Authentication uses an Auth.js session cookie for the browser and a bearer token (`Authorization: Bearer …`) for the API routes.
+- **Not implemented yet:** the Socket.IO handshake does not carry a session. A socket is admitted to a room by a seat token that belongs to the room, not to an account. See `docs/SECURITY.md`.
 - Endpoints return problem-oriented errors in the shape `{ "error": { "code": string, "message": string } }`.
 - Guest requests are allowed where noted; guests receive rate limits identical to registered users for write operations.
 - Camera reports are advisory: the `score` field a client includes in `CameraDTO` is a hint only and is never trusted. The server recomputes the authoritative score from the camera-reported board coordinates using board geometry (server authority) — clients never publish scores.

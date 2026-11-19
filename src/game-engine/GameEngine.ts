@@ -1,6 +1,11 @@
 import { NeutralScoreMode } from "@/game-engine/NeutralScoreMode";
 import { isValidSegmentScore } from "@/game-engine/rules/OutRules";
-import { deriveTurnThrows, deriveVisitIndexes, groupVisits } from "@/game-engine/throwLedger";
+import {
+  deriveTurnIndexes,
+  deriveTurnThrows,
+  deriveVisitIndexes,
+  groupVisits,
+} from "@/game-engine/throwLedger";
 import {
   GameEngineBustError,
   GameEngineStateError,
@@ -97,10 +102,13 @@ export class GameEngine {
     validateThrowInput(input);
     const state = this.requireState();
     if (state.status === "completed") {
-      throw new GameEngineStateError("Match is already completed");
+      throw new GameEngineStateError("Match is already completed", "MATCH_COMPLETED");
     }
     if (input.playerId !== state.currentPlayerId) {
-      throw new GameEngineStateError(`It is not the turn of player "${input.playerId}"`);
+      throw new GameEngineStateError(
+        `It is not the turn of player "${input.playerId}"`,
+        "NOT_YOUR_TURN",
+      );
     }
 
     const draft = toMutableDraft(state);
@@ -131,7 +139,7 @@ export class GameEngine {
   undoLastThrow(): MatchState {
     const state = this.requireState();
     if (state.throws.length === 0) {
-      throw new GameEngineStateError("There is nothing to undo");
+      throw new GameEngineStateError("There is nothing to undo", "NOTHING_TO_UNDO");
     }
     const remaining = state.throws.slice(0, -1);
     const { state: derived } = this.replay(remaining, state.corrections);
@@ -150,18 +158,19 @@ export class GameEngine {
    * The correction is refused — changing neither the state nor the
    * ledger — when the index does not exist, when the match is already
    * completed, when the replacement would make the corrected dart itself
-   * bust, or when it would make a later recorded dart bust that did not
-   * bust before.
+   * bust, when it would make a later recorded dart bust that did not
+   * bust before, and when it would change the turn rotation of the
+   * ledger.
    */
   correctThrow(dartIndex: number, value: CorrectionValue): MatchState {
     validateCorrectionValue(value);
     const state = this.requireState();
     if (state.status === "completed") {
-      throw new GameEngineStateError("Match is already completed");
+      throw new GameEngineStateError("Match is already completed", "MATCH_COMPLETED");
     }
     const target = state.throws[dartIndex];
     if (!target) {
-      throw new GameEngineStateError(`There is no dart at index ${dartIndex}`);
+      throw new GameEngineStateError(`There is no dart at index ${dartIndex}`, "NO_DART_AT_INDEX");
     }
 
     const candidate = state.throws.map((dart, index) =>
@@ -177,15 +186,19 @@ export class GameEngine {
     if (busts[dartIndex]) {
       throw new GameEngineStateError(
         `The corrected dart would bust: ${value.points} points is not a valid result for player "${target.playerId}"`,
+        "CORRECTION_WOULD_BUST",
       );
     }
     for (let index = dartIndex + 1; index < busts.length; index++) {
       if (busts[index] && !state.throws[index]!.bust) {
         throw new GameEngineStateError(
           `The correction would make dart ${index + 1} bust: ${state.throws[index]!.points} points is no longer a valid result for player "${state.throws[index]!.playerId}"`,
+          "LATER_DART_WOULD_BUST",
         );
       }
     }
+
+    this.assertTurnRotationUnchanged(state.throws, derived.throws, dartIndex);
 
     const corrections = this.shouldAudit(state, derived, dartIndex)
       ? [...state.corrections, toCorrectionRecord(dartIndex, target, value)]
@@ -334,6 +347,48 @@ export class GameEngine {
   }
 
   /**
+   * Refuses a correction that would change the turn rotation of the ledger.
+   *
+   * The rotation is the shape of the match: which dart belongs to which
+   * turn of which player. A turn holds `DARTS_PER_TURN` counted darts and
+   * a bust consumes no slot, so the turn of a dart is the number of
+   * counted darts before it, rounded down to the turn it fills — the
+   * player of that turn is the player the rotation is on.
+   *
+   * A correction may change the score, the counters and the audit trail —
+   * but it must not move a dart into another turn. A bust consumes no
+   * dart slot, so correcting a bust into a counting dart hands that turn
+   * a fourth dart: the ledger would then hold a player order the engine's
+   * own rotation can never produce, and `recordThrow` would have refused
+   * every one of those darts.
+   *
+   * The player of a dart never changes — the correction keeps it — so the
+   * player order of the ledger is the same before and after. What the
+   * check pins is the turn membership: the turns the darts fall into.
+   *
+   * The refusal changes neither the state nor the ledger, and it writes no
+   * audit entry.
+   */
+  private assertTurnRotationUnchanged(
+    before: readonly RecordedThrow[],
+    after: readonly RecordedThrow[],
+    dartIndex: number,
+  ): void {
+    const beforeTurns = deriveTurnIndexes(before, DARTS_PER_TURN);
+    const afterTurns = deriveTurnIndexes(after, DARTS_PER_TURN);
+    const unchanged =
+      beforeTurns.length === afterTurns.length &&
+      beforeTurns.every((turn, index) => turn === afterTurns[index]);
+    if (unchanged) {
+      return;
+    }
+    throw new GameEngineStateError(
+      `The correction would change the turn order: dart ${dartIndex + 1} would no longer belong to the same turn`,
+      "TURN_ROTATION_CHANGED",
+    );
+  }
+
+  /**
    * Decides whether a correction belongs in the audit trail.
    *
    * A correction of a dart from a finished visit is always audited. A
@@ -365,7 +420,7 @@ export class GameEngine {
 
   private requireState(): MatchState {
     if (this.state === null) {
-      throw new GameEngineStateError("No match has been started yet");
+      throw new GameEngineStateError("No match has been started yet", "NO_MATCH");
     }
     return this.state;
   }

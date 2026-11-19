@@ -107,6 +107,41 @@ export function deriveTurnThrows(
 }
 
 /**
+ * The turn each dart of the ledger belongs to.
+ *
+ * A turn holds `dartsPerTurn` counted darts, and a bust consumes no slot
+ * — so the turn of a dart is the number of counted darts before it,
+ * rounded down to the turn it fills.
+ *
+ * The visits say the same thing: a visit ends when the turn advances and
+ * when a dart busts, and every visit boundary is exactly one of the two
+ * — a dart is either a bust or the dart that fills the turn, never both.
+ * The turn of a dart is therefore its visit minus the busts that came
+ * before it.
+ *
+ * @param throws the ledger, oldest first
+ * @param dartsPerTurn the darts a turn holds
+ * @returns the turn index of each dart, oldest first
+ */
+export function deriveTurnIndexes(
+  throws: readonly RecordedThrow[],
+  dartsPerTurn: number,
+): number[] {
+  const visits = deriveVisitIndexes(throws, dartsPerTurn);
+  const turns: number[] = [];
+  let busts = 0;
+
+  throws.forEach((dart, index) => {
+    turns.push(visits[index]! - busts);
+    if (dart.bust) {
+      busts += 1;
+    }
+  });
+
+  return turns;
+}
+
+/**
  * Groups the ledger into visits.
  *
  * @param throws the ledger, oldest first

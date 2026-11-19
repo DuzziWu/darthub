@@ -17,12 +17,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - npm 12 blocks **dependency** install scripts unless they are allowlisted, so `npm install` and `npm ci` never run `@prisma/client`'s postinstall and the Prisma client is not generated. Run `npx prisma generate` explicitly after every install; esbuild ships its platform binary as an optional dependency and works without the script. The root project's own scripts (like `prepare`) still run — only the dependencies' scripts are blocked.
 - The Prisma client is **not** checked in, and `npm ci` does not generate it either. Any environment that compiles the app from a clean install must run `npx prisma generate` first — including the Dockerfile's builder stage and both CI jobs, which do this explicitly. `prisma generate` needs no database: it reads the schema, not the datasource URL, so it succeeds without `DATABASE_URL` set. Without it, `npm run typecheck` and `npm run build` both fail with `Module '"@prisma/client"' has no exported member 'PrismaClient'`.
-- The build is **green**: typecheck, lint, format check and the full Vitest suite (97 files, 456 tests) all pass.
+- The build is **green**: typecheck, lint, format check and the full Vitest suite (**109 test files / 602 tests**, measured 2026-11-16) all pass.
+- A **git worktree** of this repository has no `node_modules` of its own. Node's module lookup walks up to the main checkout, so `import … from "tailwindcss"` still resolves — but everything that goes through `<cwd>/node_modules/...` fails: the Prisma client the schema test looks for, the Tailwind stylesheet the token test loads, and the `npx` calls the pre-commit hook makes (with no local ESLint, `npx --no-install` tries to download it and aborts). Run `npm ci` **and** `npx prisma generate` inside the worktree before running the suite.
 
-Two checks are conditional on the environment and skip rather than fail:
+Two checks skip rather than fail:
 
-- `tests/unit/dockerignore.test.ts` needs a running Docker **daemon** — the CLI alone is not enough, and the test probes this with `docker info`.
-- `tests/unit/tailwind/tailwindToolchain.test.ts` asserts against a production build in `.next/`, so it needs `npm run build` to succeed first.
+- `tests/unit/dockerignore.test.ts` — its structural checks (the `.dockerignore` file list and the filtered build context) run in **every** suite run and need neither the `docker` CLI nor a daemon. The **live** image build is **opt-in**: it runs only when `DART_DOCKER_BUILD=1` is set, it needs a reachable daemon, and a missing daemon is a **hard failure**, not a skip. Without the flag the live block is skipped, the reason is printed to stdout (`[dockerignore] DART_DOCKER_BUILD is not set: …`) and the test title names the flag. The default suite run never touches the daemon — it does not even run `docker info`. Run the live build with `DART_DOCKER_BUILD=1 npm test -- tests/unit/dockerignore.test.ts`; CI does the same in its `Test (Docker image)` step, so the 200 MB image-size limit stays verified on every push. `tests/unit/dockerignoreBuild.test.ts` proves the default run starts no build: it runs the dockerignore suite in a child process with a `docker` shim first on `PATH` and asserts that the shim recorded no invocation. `tests/unit/ci-workflow.test.ts` guards the CI side: it asserts that a dedicated step sets `DART_DOCKER_BUILD=1` and runs the dockerignore suite, that the plain unit-suite step does not set the flag, and that the meta test does not replay the docker step locally.
+- `tests/unit/tailwind/tailwindToolchain.test.ts` — conditional on the environment: it asserts against a production build in `.next/`, so it needs `npm run build` to succeed first.
+
+The opt-in live build is slow: it needs about nine minutes on a cold Docker layer cache (the `npm ci` inside the container downloads the whole dependency tree), and on a host that runs several suites at once the same Docker daemon is shared, so the build takes even longer — a red live build under contention is **not** a regression. It has its own budget of 2 100 000 ms, which covers the cold path, a concurrent build on the same daemon and the one retry a broken cache chain gets. Run it alone (`DART_DOCKER_BUILD=1 npm test -- tests/unit/dockerignore.test.ts`) and never as part of a full suite run.
 
 `tests/unit/ci-workflow.test.ts` runs the CI steps locally, so it fails whenever typecheck or the test suite fails.
 
@@ -79,17 +82,62 @@ Seven tests are `test.skip(...)` placeholders for features that are not built ye
 
 ### Serving the live preview
 
-The preview is served by the standalone server of the prefixed build, not by `next dev`:
+The published preview is **not** a container: it is a **host process** — the standalone
+server of the prefixed build, started in the main checkout, reached by the Tailscale
+Serve proxy that runs on the same host.
 
 ```bash
 cd /projects/darthub
 npm run build:prefixed
 cp -r public .next-prefixed/standalone/public
 cp -r .next-prefixed/static .next-prefixed/standalone/.next-prefixed/static
-setsid -f env HOSTNAME=0.0.0.0 PORT=3000 node .next-prefixed/standalone/server.js
+setsid -f env HOSTNAME=127.0.0.1 PORT=3000 node .next-prefixed/standalone/server.js
 ```
 
+`AUTH_SECRET` signs the session tokens (`src/auth/session.ts`). Without it the
+auth API cannot issue or verify a session and every sign-in fails with
+`SessionConfigError`. The secret must be at least 32 characters and must differ
+from the one of every other deployment; generate it with `openssl rand -base64 32`
+and keep it outside the repository. `env` passes the environment of the shell
+through, so exporting the secret before the command is enough:
+
+```bash
+export AUTH_SECRET="$(cat /etc/darthub/auth_secret)"
+```
+
+`REDIS_URL` points the request rate limiter at its counter store
+(`src/security/`). The standalone server sets `NODE_ENV=production`, and a
+production installation **without** a counter store refuses every rate-limited
+request with a `503` — the limits are not silently weakened in production. The
+Redis of the host serves:
+
+```bash
+export REDIS_URL="redis://127.0.0.1:6379"
+```
+
+`env` passes both exports through, so they can be set before the command.
+
+The server binds the **loopback address**, because the proxy that forwards to it runs
+on the same host and the mount points at `http://127.0.0.1:3000`. Loopback is the
+correct and the safe choice in this topology: the published site reaches the server,
+and nothing else on the tailnet or in the LAN does. `0.0.0.0` belongs to the
+container topology — see "The container variant" below.
+
+`npm run build:prefixed` is the prerequisite, because it bakes `BASE_PATH=/darthub` into
+the build. A build without the prefix hands out `/_next/...` asset URLs; the proxy
+strips the mount prefix from the path it forwards, those requests find no mount and
+answer 404 — the page arrives unstyled and never hydrates.
+
 `next dev` compiles on demand, so a cold route drops requests while it compiles and the preview flickers. The standalone server is the same server the Docker runner stage uses, and it is stable under a proxy.
+
+The mount points at the loopback address of the same host:
+
+```bash
+tailscale serve --set-path=/darthub http://127.0.0.1:3000
+```
+
+`tailscale serve status` shows the mount. The proxy strips the prefix from the path it
+forwards, so the server receives `/game` for a browser that asked for `/darthub/game`.
 
 The server must be started with `setsid -f`. Without the `-f` the process stays a child of the shell that started it, and it dies with the session. With it, the process is adopted by PID 1 and outlives the agent session:
 
@@ -97,20 +145,59 @@ The server must be started with `setsid -f`. Without the `-f` the process stays 
 ps -o pid,ppid,sid,cmd -p <pid>   # PPID 1 and a SID of its own means it is detached
 ```
 
-`HOSTNAME=0.0.0.0` binds every interface. The container reaches itself at `172.18.0.2`, which is the address Tailscale Serve forwards to, so `curl http://172.18.0.2:3000/` is the check that the host side can reach the server.
+The bind address follows the topology, and the bind address is not a detail — it is the
+difference between a published site and a 502:
 
-The bind address is not a detail — it is the difference between a published site and a 502:
+| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Live preview (port 3000)        | `127.0.0.1` | The proxy runs on the same host and the mount points at the loopback address, so the loopback bind is the correct and the safe choice: the published site reaches the server, and nothing on the tailnet or in the LAN does.                                                                                                                                                                                                                |
+| Container image (port 3000)     | `0.0.0.0`   | Here the proxy runs on the host and reaches the container across the bridge on its published address `172.18.0.2:3000`. A listener that refuses the connection the proxy makes is answered by the proxy with **502 Bad Gateway**, while the application itself keeps answering 200 on its own address. The fault looks like a broken site and is not one: it is a site that is broken for every user while every local health check passes. |
+| Playwright servers (3100, 3111) | `127.0.0.1` | They are driven by the test runner on the very machine that starts them, so loopback is enough — and they must **not** be reachable from anywhere else.                                                                                                                                                                                                                                                                                     |
 
-| Server                          | `HOSTNAME`  | Why                                                                                                                                                                                                                                                                                                |
-| ------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Live preview (port 3000)        | `0.0.0.0`   | The Tailscale Serve proxy runs on the **host** and reaches the container on `172.18.0.2`. A loopback-only listener refuses that connection, and the proxy answers **502 Bad Gateway**. The application itself keeps answering 200, which is why the fault looks like a broken site and is not one. |
-| Playwright servers (3100, 3111) | `127.0.0.1` | They must **not** be reachable from the host, and they are only ever driven from inside the container.                                                                                                                                                                                             |
+The 502 shape is the same in both topologies: the proxy answers **502 Bad Gateway**
+whenever the listener refuses the connection the proxy actually makes. Recognise it by
+that shape — a site that is broken for every user while every local health check
+passes. In the host topology the check that still answers 200 is
+`curl http://127.0.0.1:3000/`; it proves that _something_ listens on the port, not that
+the _preview_ listens on it.
 
-The port 3000 conflict that caused the outage of 2026-11-14: `playwright.config.ts` used to start its root-build server on port 3000 as well. With `reuseExistingServer` the suite reuses whatever already listens on the port, so the root build silently **displaced** the live preview and took over port 3000 — bound to loopback, so the host could no longer reach it. The suite now uses port **3100** for the root build and 3111 for the prefixed build; port 3000 belongs to the live preview alone.
+The port 3000 conflict that caused the outage of 2026-11-14: the preview was still the
+container variant then, the root build of the Playwright suite occupied port 3000, and
+the server was restarted with `HOSTNAME=127.0.0.1` — the E2E convention. The proxy
+reached the container over the bridge address `172.18.0.2:3000`, a loopback-only
+listener refused that connection, and the site answered **502** for every user while the
+application itself kept answering 200 on `http://127.0.0.1:3000/` inside the container.
+Two rules came out of it: the suite uses port **3100** for the root build and 3111 for
+the prefixed build, so port 3000 belongs to the live preview alone — and the bind
+address of the preview follows the topology, as the table above shows.
 
 A rebuild invalidates a running standalone server: replacing the build directory leaves the old process serving a deleted working directory (`/proc/<pid>/cwd` shows `(deleted)`) and still holding its port. Always terminate the old process by **exact PID** before starting a new one — never with a `pkill` pattern, because several Next.js servers run side by side here.
 
 The server answers the routes at the root, not at `/darthub`: Tailscale Serve strips the mount prefix before it forwards. `/darthub` on the backend answers 404, and that is correct — it is the proxy that turns `/darthub` into `/`. The assets are served under both paths, so either direction resolves them.
+
+### The container variant
+
+The image can serve the same mount instead of a host process. The prefix has to be
+baked into the **build**, so it is a build argument:
+
+```bash
+export BASE_PATH=/darthub
+docker compose build app
+docker compose up -d
+```
+
+Without `BASE_PATH` the image is built for the root — the default, and the behaviour of
+the existing deployments. In the container topology the proxy runs on the host and
+reaches the container on its published address `172.18.0.2:3000`, so the container's
+server has to accept a connection from there; `HOSTNAME=0.0.0.0` in the runner stage
+does that. `curl http://172.18.0.2:3000/` is the check that the host side can reach the
+server.
+
+The asset-prefix gate runs inside the image build and reads the same
+`process.env.BASE_PATH` the build used (`scripts/check-asset-prefix.mjs`), so a
+prefixed build that loses its prefix fails the **image build** instead of the live site.
+The Dockerfile exports the build argument for both the build and the gate — without
+that, the gate would check against `/_next/` and pass unconditionally.
 
 ## Continuous integration
 
@@ -182,3 +269,94 @@ the `readOnly` prop is what selects between them.
 The skills are **installed** in `.agents/skills/` — the OpenHands 1.61.0 project-scoped location — and are byte-identical to `docs/ai-skills/skills/`. Edit `docs/ai-skills/skills/` and copy across, or the two will drift. `.claude/skills/` holds Claude Code format skills, which OpenHands does not read.
 
 The skills encode the architectural invariants documented in `docs/ai-skills/README.md` §2.3. Read that section before making a structural change.
+
+---
+
+## OpenCode agent team
+
+The autonomous development team is configured in `.opencode/`:
+
+- Agents: `.opencode/agents/`
+- Skills: `.opencode/skills/`
+- Commands: `.opencode/commands/`
+- Project configuration: `.opencode/opencode.jsonc`
+- Planning: `.opencode/plans/`
+
+The default primary agent is `orchestrator`.
+
+### Agent responsibilities and file ownership
+
+| Agent           | Mode               | Responsibility and ownership                                                                                                                                                                                                                                                                                                   |
+| --------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `orchestrator`  | primary + subagent | Planning, delegation, verification and integration. The only agent allowed to reassign ownership.                                                                                                                                                                                                                              |
+| `architect`     | subagent           | Architecture and documentation. Owns `docs/`, `README.md`, `design-system/`, `AGENTS.md` and `.opencode/plans/`; does not implement application code.                                                                                                                                                                          |
+| `game-engine`   | subagent           | Owns `src/game-engine/`, `src/board/`, `src/ai/`, `src/camera/` and their relevant unit tests.                                                                                                                                                                                                                                 |
+| `frontend`      | subagent           | Owns `src/components/`, `src/lib/` and `app/`, except `app/api/`, plus relevant UI tests.                                                                                                                                                                                                                                      |
+| `backend`       | subagent           | Owns `src/auth/`, `src/rating/`, `src/career/`, `src/friends/`, `src/privacy/`, `src/realtime/`, `app/api/`, `prisma/` and their relevant tests.                                                                                                                                                                               |
+| `infra`         | subagent           | Build, CI and deployment configuration. Owns `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `next.config.ts`, `eslint.config.mjs`, `.prettierrc`, `.prettierignore`, `package.json`, `package-lock.json`, `.github/workflows/`, `scripts/` and `.husky/`. The only agent for dependency, script and CI-workflow changes. |
+| `qa-engineer`   | subagent           | Owns test harness and meta tests in `tests/`, `e2e/`, `vitest.config.ts`, `playwright.config.ts` and `docs/TESTING.md`.                                                                                                                                                                                                        |
+| `code-reviewer` | subagent           | Independent, strictly read-only reviewer.                                                                                                                                                                                                                                                                                      |
+
+File ownership is enforced through OpenCode permissions. A specialist must not work around a denied edit. The orchestrator must reassign or sequence work instead.
+
+The `infra` agent is a subagent with read/write access to the build, CI and deployment configuration. It is the **only** agent that changes `package.json` — the dependencies, the scripts and the version — and the only one that edits the CI workflows in `.github/workflows/`; every other agent routes those changes through it. The permissions that enforce the table above are changed in a separate, parallel ownership package; this table states the intended assignment.
+
+The architect and code reviewer are additionally restricted to read-only shell operations. Implementers must use their permitted editing tools and must not bypass path restrictions through shell commands.
+
+### Orchestration protocol
+
+1. Plan first: for work beyond a trivial change, create `.opencode/plans/<slug>/_plan.md` using the `project-planning` skill and `.opencode/plans/README.md`.
+2. Obtain user approval before starting substantial implementation.
+3. Give every work package exactly one owning agent and an explicit file list.
+4. Parallelize only independent work. Never let two agents modify the same file concurrently.
+5. Define verifiable acceptance criteria and the commands needed to prove them.
+6. Run the relevant tests after implementation. A claim without test output is not verification.
+7. Have important changes independently reviewed by `code-reviewer` and, where appropriate, `qa-engineer`.
+8. Fix errors or explicitly document why they remain unresolved.
+9. Do not report success without verification.
+10. Maintain progress logs for long-running work, including completed tasks, outstanding tasks and the next step.
+11. For session recovery, read the plan's task table and `## Result` sections. Resume at the first task not marked done.
+
+### Available project skills
+
+Load skills only when relevant to the task:
+
+- `project-planning`
+- `dart-game-engine`
+- `frontend-development`
+- `backend-development`
+- `testing`
+- `code-review`
+
+These are on-demand instructions, not a replacement for reading the actual source code and current project documentation.
+
+### Available project commands
+
+- `/start-feature`: analyze, plan, assign and request approval.
+- `/execute-plan`: execute an approved plan package by package and verify the results.
+- `/review`: independent code review and QA.
+- `/release-check`: lint, format, typecheck, tests, build and security checks.
+
+A release check does not authorize publishing or pushing.
+
+### OpenCode security and approval rules
+
+- Never commit, tag or push without the user's explicit approval for that specific action.
+- Never introduce paid services, APIs or subscriptions without explicit approval.
+- Never modify secrets, credentials or server configuration.
+- Never expose passwords, tokens, session secrets or personal identifiers in logs or responses.
+- Never modify or delete `CLAUDE.md` or `.claude/`; these remain part of the parallel Claude Code workflow.
+- Treat `.env` files as protected.
+- Never delete or overwrite existing project files unless the task explicitly requires it.
+- Do not bypass agent file permissions or shell restrictions.
+
+### UI and design requirements
+
+Before UI work, consult `DESIGN.md`, `design-system/darthub/MASTER.md` and the relevant page-specific design documentation when present.
+
+- Use the established DartHub design tokens; do not introduce arbitrary raw hex colors.
+- Color must not be the only indicator of a game state.
+- Use tabular figures and stable layouts for changing scores and statistics.
+- Render game state from the authoritative engine; never invent statistics in the UI.
+- Preserve keyboard accessibility, visible focus states and reduced-motion preferences.
+- Check responsive layouts at 1440 px, 1024 px and 390 px when changing relevant UI surfaces.

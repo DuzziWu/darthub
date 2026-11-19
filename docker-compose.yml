@@ -3,6 +3,33 @@
 #   POSTGRES_USER      (default: darthub)
 #   POSTGRES_PASSWORD  (required, no default — compose fails fast without it)
 #   POSTGRES_DB        (default: darthub)
+#   AUTH_SECRET        (required, no default — compose fails fast without it)
+#   BASE_PATH          (default: empty — the app is served from the root)
+#
+# AUTH_SECRET signs the session tokens (src/auth/session.ts). Generate one
+# with `openssl rand -base64 32` and keep it out of the repository. Without
+# it the application cannot issue or verify a session, so every sign-in
+# fails — compose refuses to start instead.
+#
+# Publishing under a path prefix — for example behind Tailscale Serve, which
+# serves the app at `https://<host>.<tailnet>.ts.net/darthub`:
+#
+#   export BASE_PATH=/darthub
+#   docker compose build app
+#   docker compose up -d
+#
+# The prefix is baked into the build: `next.config.ts` reads BASE_PATH when it
+# loads the config, so a value set on the running container would be too late.
+# The build argument below carries it into the Dockerfile's builder stage,
+# which exports it for `next build` *and* for the asset-prefix gate — so a
+# prefixed build that loses its prefix fails the image build instead of the
+# live site. The prefix in the build and the mount point of the proxy must be
+# the same; if they differ, the asset URLs point at a path the proxy does not
+# serve and the page arrives unstyled and unhydrated.
+#
+# Without BASE_PATH the image is built for the root (`http://<host>:3000/`).
+# That is the default and the behaviour of existing deployments: the prefixed
+# build is an explicit switch, never a default.
 
 name: darthub
 
@@ -12,11 +39,32 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
+      args:
+        # The path prefix the app is published under, e.g. `/darthub`. Empty by
+        # default, so the image is built for the root. See the header comment.
+        BASE_PATH: "${BASE_PATH:-}"
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Bound to the loopback address of the host. The application is
+      # reached through the reverse proxy; publishing the port on every
+      # interface would offer a second way in that bypasses the proxy — and
+      # with it the client address the rate limiter counts on.
+      #
+      # This does not touch the path the proxy takes: the proxy reaches the
+      # container across the Docker bridge (172.18.0.2:3000), and the
+      # container binds every interface inside its own network namespace
+      # (HOSTNAME=0.0.0.0 in the Dockerfile). Only the *published* host
+      # port is restricted here.
+      - "127.0.0.1:3000:3000"
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER:-darthub}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in the environment}@postgres:5432/${POSTGRES_DB:-darthub}"
+      # Signs the session tokens. Required: without it no session can be
+      # issued or verified, so every sign-in fails.
+      AUTH_SECRET: "${AUTH_SECRET:?AUTH_SECRET must be set in the environment}"
+      # The counter store of the rate limiter (src/security). The redis
+      # service below is a hard dependency of the app, so the URL is always
+      # known and the limits are counted across the whole deployment.
+      REDIS_URL: "redis://redis:6379"
     depends_on:
       postgres:
         condition: service_healthy

@@ -92,4 +92,52 @@ describe("PlayerSetup", () => {
     expect(start.className).toContain("disabled:");
     expect(start.className).toContain("h-11");
   });
+
+  it("offers the match format and reports the chosen one", () => {
+    const { onStart } = renderSetup({
+      matchFormat: [
+        { id: "single", label: "Single leg" },
+        { id: "bo3", label: "Best of 3 legs", legs: 3 },
+      ],
+    });
+
+    expect(screen.getByRole("radiogroup", { name: /match format/i })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /single leg/i })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /best of 3 legs/i })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    expect(onStart).toHaveBeenCalledTimes(1);
+    const [, options] = onStart.mock.calls[0] as unknown as [string[], Record<string, unknown>];
+    expect(options.legs).toBe(3);
+    // The format has no sets, so the match reports none.
+    expect(options.sets).toBeUndefined();
+  });
+
+  it("reports no legs when the first format is a single leg", () => {
+    const { onStart } = renderSetup({
+      matchFormat: [
+        { id: "single", label: "Single leg" },
+        { id: "bo3", label: "Best of 3 legs", legs: 3 },
+      ],
+    });
+
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    const [, options] = onStart.mock.calls[0] as unknown as [string[], Record<string, unknown>];
+    expect(options.legs).toBeUndefined();
+    expect(options.sets).toBeUndefined();
+  });
+
+  it("offers no match format when the mode has none", () => {
+    renderSetup();
+
+    // The modes without a leg structure keep the setup they had: the
+    // checkout rule is the only radio group on the form.
+    expect(screen.queryByRole("radiogroup", { name: /match format/i })).toBeNull();
+    expect(screen.getAllByRole("radiogroup")).toHaveLength(1);
+  });
 });

@@ -115,6 +115,27 @@ describe("cricket correction & undo", () => {
     expect(screen.getByRole("button", { name: "Dart 1: T20" })).toBeTruthy();
     expect(screen.getByLabelText("20, 3 of 3 marks, closed")).toBeTruthy();
   });
+
+  it("shows two cricket sheets, one per player", () => {
+    render(<CricketPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    const alice = screen.getByLabelText("Alice cricket targets");
+    const bob = screen.getByLabelText("Bob cricket targets");
+    expect(alice).toBeTruthy();
+    expect(bob).toBeTruthy();
+
+    // The marks belong to the player who threw the dart: Alice closes the
+    // 20 and Bob's sheet is untouched.
+    throwTreble20();
+    expect(within(alice).getByLabelText("20, 3 of 3 marks, closed")).toBeTruthy();
+    expect(within(bob).getByLabelText("20, 0 of 3 marks")).toBeTruthy();
+  });
 });
 
 describe("the result banner offers an undo of the winning dart", () => {

@@ -159,12 +159,34 @@ export interface GameResultBannerProps {
   set?: { current: number; total: number };
 }
 
+/**
+ * One match format on offer: how many legs and sets the match is played
+ * over.
+ *
+ * The sizes are "best of N": `legs: 3` means "first to 2 legs". An omitted
+ * size means the match has no such structure — one leg, one set.
+ */
+export interface MatchFormatChoice {
+  /** The id of the choice, e.g. "bo3". */
+  readonly id: string;
+  /** What the choice says on screen, e.g. "Best of 3 legs". */
+  readonly label: string;
+  /** Best of N legs per set. */
+  readonly legs?: number;
+  /** Best of N sets per match. */
+  readonly sets?: number;
+}
+
 /** The choices a player makes before the first dart. */
 export interface PlayerSetupOptions {
   /** The checkout rule the match is played under. */
   outRule: OutRuleId;
   /** Where the darts come from. */
   boardSource: BoardSourceId;
+  /** Best-of-N legs per set, when the match has a leg structure. */
+  legs?: number;
+  /** Best-of-N sets per match, when the match has a set structure. */
+  sets?: number;
 }
 
 export interface PlayerSetupProps {
@@ -186,6 +208,14 @@ export interface PlayerSetupProps {
   /** The board source. Defaults to the virtual board. */
   boardSource?: BoardSourceId;
   onBoardSourceChange?: (id: BoardSourceId) => void;
+  /**
+   * The match formats on offer.
+   *
+   * Absent means the mode has no format choice: the setup then reports no
+   * legs and no sets, and the modes without a leg structure stay as they
+   * are.
+   */
+  readonly matchFormat?: readonly MatchFormatChoice[];
   onStart: (playerNames: string[], options: PlayerSetupOptions) => void;
 }
 
@@ -263,19 +293,47 @@ export interface MatchLayoutProps {
 export interface CricketScoreSheetProps {
   /** The targets in play, e.g. 20 to 15 and the bull (25). */
   targets: readonly number[];
-  /** The marks on every target, keyed by the target value as a string. */
-  marks: Record<string, number>;
   /** The marks that close a target. */
   marksToClose: number;
-  /** Whose marks the sheet shows. */
-  playerName?: string;
+  /**
+   * Every seated player and the marks they hold, in seating order.
+   *
+   * The sheet is a sheet **per player**: a cricket match has no shared
+   * score, so a component that could show one player's marks could never
+   * show a match. `marks` and `playerName` are therefore gone, not kept
+   * as aliases — this is the convention the other mode sheets follow.
+   */
+  players: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** The marks on every target, keyed by the target value as a string. */
+    marks: Record<string, number>;
+  }>;
+  /** The player whose turn it is. */
+  currentPlayerId?: string | null;
 }
 
 export interface AroundTheClockScoreSheetProps {
   /** The targets in order: 1 to 20 and the bull (25). */
   targets: readonly number[];
-  /** The index of the target in play. The length of the list when it is over. */
-  currentIndex: number;
+  /**
+   * Every seated player and the target they are aiming at.
+   *
+   * Around the clock has no shared score: every player walks their own
+   * run of the 21 targets, so a component that could show one player's
+   * target could never show a match. The sheet is therefore a sheet
+   * **per player** — the same convention the cricket sheet follows.
+   */
+  players: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** The index of the target this player is aiming at. */
+    currentIndex: number;
+    /** How many of the targets this player has hit. */
+    hits: number;
+  }>;
+  /** The player whose turn it is. */
+  currentPlayerId?: string | null;
 }
 
 export interface ShanghaiScoreSheetProps {
@@ -285,8 +343,21 @@ export interface ShanghaiScoreSheetProps {
   totalRounds: number;
   /** The target of every round, the first round first. */
   targets: readonly number[];
-  /** The marks scored in every round, keyed by the round number as a string. */
-  marksByRound: Record<string, number>;
+  /**
+   * Every seated player and the marks they scored in every round.
+   *
+   * Shanghai has no shared score: the marks belong to the player who threw
+   * them, so the sheet shows a row per player. `marksByRound` is the marks
+   * of every round, the first round first, padded to `totalRounds`.
+   */
+  players: ReadonlyArray<{
+    id: string;
+    name: string;
+    /** The marks scored in every round, the first round first. */
+    marksByRound: number[];
+  }>;
+  /** The player whose turn it is. */
+  currentPlayerId?: string | null;
   /** The segments hit in the round in play. */
   hit: { single: boolean; double: boolean; triple: boolean };
 }

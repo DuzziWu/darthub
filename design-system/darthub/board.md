@@ -465,11 +465,17 @@ So the board and pad views must compute the bust themselves, before submitting:
 1. The UI knows the out rule in force, the player's remaining score, and the dart's
    `{ points, segment }`. That is enough to determine that the dart busts.
 2. It must **not** infer a bust from the absence of a state change, and it must **not**
-   string-match the error message — "not your turn" is also a `GameEngineStateError`, and
-   a string match would report a bust for it.
+   decide anything from the error's English message — the message is developer text and
+   changes whenever the engine is reworded. The refusals carry a stable **code** instead,
+   and the player text is translated from that code in one module — see `match.md` §6,
+   rule 5.
 3. A bust **does not consume a dart** (the engine leaves `throwsInCurrentTurn` untouched) and
    **does not end the turn** (the engine keeps the same `currentPlayerId`). The BUST chip
    is therefore UI-local state for the current visit.
+4. The bust **announcement** belongs to a **new** dart. While a correction is armed, the
+   view's own bust computation runs against the score that is left **now** — not against
+   the score the corrected dart was thrown at — so it says nothing about that dart, and a
+   refused correction changed nothing at all. See `match.md` §6, rule 6.
 
 The visit strip is assembled from **two** sources: the engine's returned state for the
 counted darts, and a small UI-local record for the busted dart.

@@ -230,4 +230,173 @@ describe("the non-x01 match views", () => {
     expect(screen.getByRole("region", { name: "Match result" })).toBeTruthy();
     expect(screen.getByText("Carol wins")).toBeTruthy();
   });
+
+  it("shows a cricket score sheet per player", () => {
+    render(<CricketPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected, so every name owns a sheet.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // One section per player, each named by its owner.
+    const alice = screen.getByLabelText("Alice cricket targets");
+    const bob = screen.getByLabelText("Bob cricket targets");
+    expect(alice).toBeTruthy();
+    expect(bob).toBeTruthy();
+
+    // The name is its own element, so it is found by name — scoped to the
+    // sheet, because the overview above names the players as well.
+    expect(within(alice).getByText("Alice")).toBeTruthy();
+    expect(within(bob).getByText("Bob")).toBeTruthy();
+
+    // The target label now matches twice — once per sheet — so it is read
+    // per player.
+    expect(within(alice).getByLabelText("20, 0 of 3 marks")).toBeTruthy();
+    expect(within(bob).getByLabelText("20, 0 of 3 marks")).toBeTruthy();
+
+    // The player on turn is marked on their own sheet, and on no other.
+    expect(within(alice).getByText(/on turn/i)).toBeTruthy();
+    expect(within(bob).queryByText(/on turn/i)).toBeNull();
+  });
+
+  it("shows an around the clock score sheet per player and announces a miss", () => {
+    render(<AroundTheClockPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected, so every name owns a sheet.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // One section per player, each named by its owner.
+    const alice = screen.getByLabelText("Alice around the clock");
+    const bob = screen.getByLabelText("Bob around the clock");
+    expect(alice).toBeTruthy();
+    expect(bob).toBeTruthy();
+
+    // The name is its own element, so it is found by name — scoped to the
+    // sheet, because the overview above names the players as well.
+    expect(within(alice).getByText("Alice")).toBeTruthy();
+    expect(within(bob).getByText("Bob")).toBeTruthy();
+
+    // The progress readout lives in the player's own section: with two
+    // players an unscoped lookup finds two of them.
+    expect(within(alice).getByText("Progress 0 / 21")).toBeTruthy();
+    expect(within(bob).getByText("Progress 0 / 21")).toBeTruthy();
+
+    // The player on turn is marked on their own sheet, and on no other.
+    expect(within(alice).getByText(/on turn/i)).toBeTruthy();
+    expect(within(bob).queryByText(/on turn/i)).toBeNull();
+
+    // Every player has their own target: Alice's hit moves Alice's target
+    // and leaves Bob's alone.
+    throwOnBoard("Single 1, 1 points");
+    expect(within(alice).getByText("Progress 1 / 21")).toBeTruthy();
+    expect(within(bob).getByText("Progress 0 / 21")).toBeTruthy();
+    expect(alice.querySelector("[data-current-target]")?.textContent).toBe("2");
+    expect(bob.querySelector("[data-current-target]")?.textContent).toBe("1");
+
+    // A dart on the wrong target is a visible miss: the dart is consumed
+    // and the view says so instead of swallowing it.
+    throwOnBoard("Single 5, 5 points");
+    expect(screen.getByRole("status").textContent).toContain("Miss");
+    expect(within(alice).getByText("Progress 1 / 21")).toBeTruthy();
+  });
+
+  it("shows a shanghai row per player and the marks of every round", () => {
+    render(<ShanghaiPage />);
+
+    // Two players are seated: the ids come from the names the setup
+    // collected, so every name owns a row of the table.
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bob" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start match" }));
+
+    // The sheet is one table: a row per player, a column per round.
+    const table = screen.getByRole("table");
+    const aliceRow = within(table).getByText("Alice").closest("tr") as HTMLElement;
+    const bobRow = within(table).getByText("Bob").closest("tr") as HTMLElement;
+    expect(aliceRow).toBeTruthy();
+    expect(bobRow).toBeTruthy();
+
+    // The player on turn is marked on their own row, and on no other.
+    expect(within(aliceRow).getByText(/on turn/i)).toBeTruthy();
+    expect(within(bobRow).queryByText(/on turn/i)).toBeNull();
+
+    // Alice throws the three darts of the first round: a single 1 is one
+    // mark, the two darts off the target score nothing.
+    throwOnBoard("Single 1, 1 points");
+    throwOnBoard("Single 20, 20 points");
+    throwOnBoard("Single 20, 20 points");
+    // Bob throws the three darts of the same round: a treble 1 is three
+    // marks.
+    throwOnBoard("Treble 1, 3 points");
+    throwOnBoard("Single 20, 20 points");
+    throwOnBoard("Single 20, 20 points");
+
+    // The round is over when every player has thrown three darts.
+    expect(screen.getByText("Round 2 / 7")).toBeTruthy();
+
+    // The marks of the finished round are still in the table, and they
+    // belong to the player who threw them: Alice scored one, Bob three.
+    expect(within(aliceRow).getByLabelText("Round 1, target 1, 1 marks")).toBeTruthy();
+    expect(within(bobRow).getByLabelText("Round 1, target 1, 3 marks")).toBeTruthy();
+
+    // The next dart lands in the round in play: the table follows the
+    // mode's rounds, not the index of the dart in the ledger.
+    throwOnBoard("Single 2, 2 points");
+    expect(within(aliceRow).getByLabelText("Round 2, target 2, 1 marks")).toBeTruthy();
+    expect(within(bobRow).getByLabelText("Round 2, target 2, 0 marks")).toBeTruthy();
+
+    // The strip of the three segments follows the player on turn. Alice is
+    // on turn and has hit the single of the target, so the sheet says so —
+    // and the double and the treble of the target are still to come.
+    const sheet = screen.getByRole("region", { name: "Shanghai rounds" });
+    expect(within(sheet).getByLabelText("Single, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, missed")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, missed")).toBeTruthy();
+    // The round is not a Shanghai yet, so the sheet says what is still
+    // possible rather than claiming the win.
+    expect(within(sheet).getByText("Shanghai possible")).toBeTruthy();
+    expect(within(sheet).queryByText("Shanghai")).toBeNull();
+
+    // Alice finishes her visit of three darts and the turn rotates to Bob.
+    throwOnBoard("Single 20, 20 points");
+    throwOnBoard("Single 20, 20 points");
+    expect(within(aliceRow).queryByText(/on turn/i)).toBeNull();
+    expect(within(bobRow).getByText(/on turn/i)).toBeTruthy();
+
+    // The strip belongs to the player on turn, so it now reports Bob's
+    // round — and Bob has thrown nothing in it. Alice's single is gone.
+    expect(within(sheet).getByLabelText("Single, missed")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, missed")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, missed")).toBeTruthy();
+    expect(within(sheet).queryByLabelText("Single, hit")).toBeNull();
+    expect(within(sheet).getByText("Shanghai possible")).toBeTruthy();
+    expect(within(sheet).queryByText("Shanghai")).toBeNull();
+  });
+
+  it("shows the shanghai segments after the match is won", () => {
+    render(<ShanghaiPage />);
+    startMatch("Eve");
+
+    // The single, the double and the treble of the target in one round is
+    // a Shanghai, and it ends the match on the spot.
+    throwOnBoard("Single 1, 1 points");
+    throwOnBoard("Double 1, 2 points");
+    throwOnBoard("Treble 1, 3 points");
+
+    // The match is over, so there is no player on turn any more — the
+    // strip still reports the segments the winner hit.
+    const sheet = screen.getByRole("region", { name: "Shanghai rounds" });
+    expect(within(sheet).getByLabelText("Single, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Double, hit")).toBeTruthy();
+    expect(within(sheet).getByLabelText("Triple, hit")).toBeTruthy();
+    expect(within(sheet).queryAllByLabelText(/missed/)).toHaveLength(0);
+
+    // And the round in play is announced as the win it is.
+    expect(within(sheet).getByText("Shanghai")).toBeTruthy();
+  });
 });

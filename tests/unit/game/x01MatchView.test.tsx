@@ -82,6 +82,21 @@ function armBand(band: "Single" | "Double" | "Treble") {
   fireEvent.click(pad().getByRole("radio", { name: new RegExp(band, "i") }));
 }
 
+/**
+ * The match's status line — the `role="status"` region of `MatchStatus`.
+ *
+ * The strip names the armed dart in a status region of its own, so the
+ * announcement is picked out by its element: the status line is the
+ * paragraph.
+ */
+function statusLine(): HTMLElement {
+  const line = screen.getAllByRole("status").find((region) => region.tagName === "P");
+  if (line === undefined) {
+    throw new Error("the match status line is not in the document");
+  }
+  return line;
+}
+
 describe("the x01 match view", () => {
   it("submits the segment with every throw", () => {
     const recordThrow = vi.spyOn(GameEngine.prototype, "recordThrow");
@@ -166,10 +181,86 @@ describe("the x01 match view", () => {
     expect(sheet().getByText("20")).toBeTruthy();
   });
 
+  /**
+   * The positive half of the bust announcement.
+   *
+   * A bust that really happened is announced with the score that is left —
+   * the bust takes nothing off the board, so the number is the one before
+   * the dart. This is the counterpart of the correction refusal, which must
+   * **not** be announced as a bust: there the dart changed nothing at all.
+   */
+  it("announces a bust with the score that is left", () => {
+    startMatch(20);
+
+    // A single of 20 would finish the leg, but only a double may.
+    armBand("Single");
+    fireEvent.click(pad().getByRole("button", { name: "Single 20, 20 points" }));
+
+    expect(statusLine().textContent).toBe("Bust. 20 remaining.");
+  });
+
+  it("announces a bust with the score that is left when the dart overshoots", () => {
+    startMatch(30);
+
+    // A treble 20 is 60 points on a score of 30: the dart overshoots.
+    armBand("Treble");
+    fireEvent.click(pad().getByRole("button", { name: "Treble 20, 60 points" }));
+
+    expect(statusLine().textContent).toBe("Bust. 30 remaining.");
+  });
+
   it("shows the board source in the match header", () => {
     startMatch(501);
 
     expect(header().getByText("Virtual Board")).toBeTruthy();
+  });
+
+  it("passes the chosen match format to the engine configuration", () => {
+    const startMatchSpy = vi.spyOn(GameEngine.prototype, "startMatch");
+
+    render(<X01MatchView startScore={501} modeName="501" />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    expect(startMatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ playerIds: ["player1"], legs: 3 }),
+    );
+  });
+
+  it("names the leg in play in the score sheet's header", () => {
+    render(<X01MatchView startScore={501} modeName="501" />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    // The readout stands in the sheet's header, and it stands there once.
+    expect(sheet().getByText("Leg 1/3")).toBeTruthy();
+    expect(screen.getAllByText("Leg 1/3")).toHaveLength(1);
+  });
+
+  it("says nothing about legs in a single-leg match", () => {
+    startMatch(501);
+
+    // A single leg has no leg structure: the header says nothing rather
+    // than "1/1".
+    expect(sheet().queryByText(/^Leg /)).toBeNull();
+  });
+
+  it("advances the leg readout when a leg is won", () => {
+    render(<X01MatchView startScore={40} modeName="501" />);
+    fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+    fireEvent.click(screen.getByRole("radio", { name: /best of 3 legs/i }));
+    fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+    expect(sheet().getByText("Leg 1/3")).toBeTruthy();
+
+    // A double 20 finishes the first leg; the match goes on with the next.
+    armBand("Double");
+    fireEvent.click(pad().getByRole("button", { name: "Double 20, 40 points" }));
+
+    // The leg in play is now the second of three.
+    expect(sheet().getByText("Leg 2/3")).toBeTruthy();
   });
 
   it("renders inside the shell's main landmark", async () => {
