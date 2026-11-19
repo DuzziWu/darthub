@@ -10,16 +10,20 @@ import { test, expect, type Page } from "@playwright/test";
 
 /** The modes, and the route and score each one starts from. */
 const MODES = [
-  { name: "501", path: "/game", startScore: "501" },
-  { name: "301", path: "/game/301", startScore: "301" },
-  { name: "Cricket", path: "/game/cricket", startScore: null },
-  { name: "Around the Clock", path: "/game/around-the-clock", startScore: null },
-  { name: "Shanghai", path: "/game/shanghai", startScore: null },
+  // The 501 needs two players; the other modes accept one.
+  { name: "501", path: "/game", startScore: "501", players: 2 },
+  { name: "301", path: "/game/301", startScore: "301", players: 1 },
+  { name: "Cricket", path: "/game/cricket", startScore: null, players: 1 },
+  { name: "Around the Clock", path: "/game/around-the-clock", startScore: null, players: 1 },
+  { name: "Shanghai", path: "/game/shanghai", startScore: null, players: 1 },
 ] as const;
 
 /** Fills the setup form and starts the match. */
-const startMatch = async (page: Page, name: string): Promise<void> => {
+const startMatch = async (page: Page, name: string, players = 1): Promise<void> => {
   await page.getByLabel("Player 1").fill(name);
+  if (players > 1) {
+    await page.getByLabel("Player 2").fill("Bo");
+  }
   await page.getByRole("button", { name: /start match/i }).click();
   await expect(page.getByRole("region", { name: "Dart pad" })).toBeVisible();
 };
@@ -29,7 +33,7 @@ for (const mode of MODES) {
     test("it starts a match and accepts a dart", async ({ page }) => {
       await page.goto(mode.path);
 
-      await startMatch(page, "Alice");
+      await startMatch(page, "Alice", mode.players);
 
       // The dart pad is the in-play surface; a mode that never reaches it
       // has not started the match.
@@ -47,7 +51,7 @@ for (const mode of MODES) {
     if (mode.startScore !== null) {
       test("it renders the start score of the mode", async ({ page }) => {
         await page.goto(mode.path);
-        await startMatch(page, "Alice");
+        await startMatch(page, "Alice", mode.players);
 
         await expect(page.locator("[data-score]").first()).toContainText(mode.startScore as string);
       });
@@ -64,7 +68,8 @@ test.describe("start match", () => {
     // The setup screen stays put and the reason is on screen.
     await expect(page.getByLabel("Player 1")).toBeVisible();
     // The route announcer is also an alert, so the message is picked by text.
-    await expect(page.getByText(/at least 1 player required/i)).toBeVisible();
+    // The 501 needs two players, so the setup says so.
+    await expect(page.getByText(/at least 2 players required/i)).toBeVisible();
   });
 
   test("the page is interactive, not just rendered", async ({ page }) => {

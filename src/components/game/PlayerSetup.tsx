@@ -3,23 +3,22 @@
 import { useState } from "react";
 import { Target, TriangleAlert } from "lucide-react";
 import type { BoardSourceId } from "@/board";
+import { OUT_RULE_CHOICES } from "@/game-engine/modes/registry";
 import type { OutRuleId } from "@/game-engine/types";
 import { BoardSourceSelector } from "./BoardSourceSelector";
-import type { MatchFormatChoice, PlayerSetupProps } from "./types";
+import { PlayerSeatSetup } from "./PlayerSeatSetup";
+import type { MatchFormatChoice, PlayerSeat, PlayerSetupProps } from "./types";
 import { DISABLED, FOCUS_RING, RADIO_CELL, RADIO_INPUT, RADIO_MARK, TARGET_SIZE } from "./classes";
 
 /**
  * The setup form: the mode, the players, the checkout rule and the board
  * source. Every field has a visible label — a placeholder is a hint, never
  * the label — and the error is announced, not just coloured.
+ *
+ * The players come in two shapes. A mode without a seat management asks for
+ * plain names; a mode with one (the 501) manages *seats*: a name, a person
+ * or the AI, and — for the AI — the average that sets its strength.
  */
-
-/** The three checkout rules the engine supports. */
-const OUT_RULES: ReadonlyArray<{ id: OutRuleId; label: string; note: string }> = [
-  { id: "double", label: "Double out", note: "finish on a double" },
-  { id: "master", label: "Master out", note: "finish on a double or the inner bull (50)" },
-  { id: "straight", label: "Straight out", note: "any finish counts" },
-];
 
 export function PlayerSetup({
   modeName,
@@ -30,12 +29,17 @@ export function PlayerSetup({
   outRule,
   onOutRuleChange,
   showCheckoutRule = true,
+  outRuleChoices = OUT_RULE_CHOICES,
+  seatConfig,
   boardSource,
   onBoardSourceChange,
   matchFormat,
   onStart,
 }: PlayerSetupProps) {
   const [names, setNames] = useState<string[]>(Array(maxPlayers).fill(""));
+  // The seats exist only in the modes that manage them; the other modes
+  // keep their plain name fields.
+  const [seats, setSeats] = useState<readonly PlayerSeat[]>(() => createSeats(minPlayers));
   const [error, setError] = useState("");
   const [localRule, setLocalRule] = useState<OutRuleId>("double");
   const [localSource, setLocalSource] = useState<BoardSourceId>("virtual");
@@ -57,6 +61,33 @@ export function PlayerSetup({
   }
 
   function handleStart() {
+    if (seatConfig) {
+      // A seat takes part when it carries a name. An AI seat is named from
+      // the start, so it always takes part.
+      const playing = seats.filter((seat) => seat.name.trim() !== "");
+      if (playing.length < minPlayers) {
+        setError(`At least ${minPlayers} player${minPlayers > 1 ? "s" : ""} required`);
+        return;
+      }
+      // A match needs someone at the table: the AI alone cannot play it.
+      if (!playing.some((seat) => seat.kind === "human")) {
+        setError("At least one human player is required");
+        return;
+      }
+      setError("");
+      onStart(
+        playing.map((seat) => seat.name.trim()),
+        {
+          outRule: rule,
+          boardSource: source,
+          ...(format?.legs === undefined ? {} : { legs: format.legs }),
+          ...(format?.sets === undefined ? {} : { sets: format.sets }),
+          seats: playing,
+        },
+      );
+      return;
+    }
+
     const filled = names.map((name) => name.trim()).filter(Boolean);
     if (filled.length < minPlayers) {
       setError(`At least ${minPlayers} player${minPlayers > 1 ? "s" : ""} required`);
@@ -73,7 +104,7 @@ export function PlayerSetup({
     });
   }
 
-  function handleKeyDown(event: React.KeyboardEvent, index: number) {
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>, index: number) {
     if (event.key !== "Enter") return;
     event.preventDefault();
     if (index < maxPlayers - 1) {
@@ -98,40 +129,50 @@ export function PlayerSetup({
       </header>
 
       {/* The players. */}
-      <div className="space-y-md">
-        {names.map((name, index) => (
-          <div key={index}>
-            <label
-              htmlFor={`player-name-${index}`}
-              className="mb-xs block font-label text-label text-ink-muted"
-            >
-              Player {index + 1}
-            </label>
-            <input
-              id={`player-name-${index}`}
-              type="text"
-              maxLength={24}
-              value={name}
-              aria-describedby={`player-name-${index}-hint`}
-              onChange={(event) => {
-                const updated = [...names];
-                updated[index] = event.target.value;
-                setNames(updated);
-                setError("");
-              }}
-              onKeyDown={(event) => handleKeyDown(event, index)}
-              placeholder="Name"
-              className={`${TARGET_SIZE} w-full rounded-sm border border-edge bg-sunken px-md font-body text-body text-ink placeholder:text-ink-faint transition-colors duration-fast hover:border-brass-deep focus-visible:border-brass ${FOCUS_RING} ${DISABLED}`}
-            />
-            <p
-              id={`player-name-${index}-hint`}
-              className="mt-xs font-body text-caption text-ink-faint"
-            >
-              Shown on the score sheet.
-            </p>
-          </div>
-        ))}
-      </div>
+      {seatConfig ? (
+        <PlayerSeatSetup
+          seats={seats}
+          onChange={setSeats}
+          config={seatConfig}
+          minPlayers={minPlayers}
+          maxPlayers={maxPlayers}
+        />
+      ) : (
+        <div className="space-y-md">
+          {names.map((name, index) => (
+            <div key={index}>
+              <label
+                htmlFor={`player-name-${index}`}
+                className="mb-xs block font-label text-label text-ink-muted"
+              >
+                Player {index + 1}
+              </label>
+              <input
+                id={`player-name-${index}`}
+                type="text"
+                maxLength={24}
+                value={name}
+                aria-describedby={`player-name-${index}-hint`}
+                onChange={(event) => {
+                  const updated = [...names];
+                  updated[index] = event.target.value;
+                  setNames(updated);
+                  setError("");
+                }}
+                onKeyDown={(event) => handleKeyDown(event, index)}
+                placeholder="Name"
+                className={`${TARGET_SIZE} w-full rounded-sm border border-edge bg-sunken px-md font-body text-body text-ink placeholder:text-ink-faint transition-colors duration-fast hover:border-brass-deep focus-visible:border-brass ${FOCUS_RING} ${DISABLED}`}
+              />
+              <p
+                id={`player-name-${index}-hint`}
+                className="mt-xs font-body text-caption text-ink-faint"
+              >
+                Shown on the score sheet.
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* The match format. Only the modes with a leg/set structure offer a
           choice; the others have no such choice to make. */}
@@ -174,7 +215,7 @@ export function PlayerSetup({
             Checkout
           </p>
           <div className="space-y-sm">
-            {OUT_RULES.map((option) => (
+            {outRuleChoices.map((option) => (
               <label key={option.id} className="flex items-center gap-md">
                 <span className={RADIO_CELL}>
                   <input
@@ -189,7 +230,9 @@ export function PlayerSetup({
                 </span>
                 <span className="space-y-xs">
                   <span className="block font-label text-label text-ink">{option.label}</span>
-                  <span className="block font-body text-caption text-ink-muted">{option.note}</span>
+                  <span className="block font-body text-caption text-ink-muted">
+                    {option.description}
+                  </span>
                 </span>
               </label>
             ))}
@@ -221,4 +264,18 @@ export function PlayerSetup({
       </button>
     </section>
   );
+}
+
+/**
+ * The seats a fresh match starts with: the fewest the mode accepts.
+ *
+ * The list grows from there — the player adds seats up to the mode's
+ * maximum — so the form never starts with more seats than the match needs.
+ */
+function createSeats(count: number): PlayerSeat[] {
+  return Array.from({ length: count }, (_unused, index) => ({
+    id: `seat-${index + 1}`,
+    name: "",
+    kind: "human" as const,
+  }));
 }

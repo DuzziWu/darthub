@@ -17,12 +17,18 @@ import { ThrowHistoryControls } from "@/components/game/ThrowHistoryControls";
 import { VisitTracker } from "@/components/game/VisitTracker";
 import { visitBadge } from "@/components/game/VisitChips";
 import { SECONDARY_BUTTON } from "@/components/game/classes";
-import type { MatchFormatChoice, PlayerSetupOptions } from "@/components/game/types";
+import type {
+  MatchFormatChoice,
+  PlayerSeat,
+  PlayerSetupOptions,
+  SeatConfig,
+  SeatKind,
+} from "@/components/game/types";
 import { useMatchHistory } from "@/components/game/useMatchHistory";
 import { useInputMode } from "@/components/game/useInputMode";
 import { GameEngine } from "@/game-engine/GameEngine";
 import { StandardMode } from "@/game-engine/modes/StandardMode";
-import { OUT_RULE_CHOICES } from "@/game-engine/modes/registry";
+import { OUT_RULE_CHOICES, type OutRuleChoice } from "@/game-engine/modes/registry";
 import { getOutRule, type OutRule } from "@/game-engine/rules";
 import { LEG_SET_MODE_DATA_KEY, type LegSetProgress } from "@/game-engine/rules/LegSetManager";
 import {
@@ -51,6 +57,32 @@ export interface X01MatchViewProps {
   readonly startScore: number;
   /** The mode's name on the sheet, e.g. "501". */
   readonly modeName: string;
+  /**
+   * The fewest players the match accepts. Defaults to 1.
+   *
+   * The 501 needs two: a game with a single participant is not a 501 game.
+   */
+  readonly minPlayers?: number;
+  /**
+   * The checkout rules the setup offers. Defaults to every rule the engine
+   * knows.
+   *
+   * The 501 offers straight out and double out only (E-3); the other rules
+   * stay in the engine and in the modes that offer them.
+   */
+  readonly outRuleChoices?: readonly OutRuleChoice[];
+  /**
+   * The seat management of the mode. Absent means plain name fields.
+   *
+   * The 501 manages seats: a person or the AI in each of them, the AI's
+   * average, and the order the seats play in.
+   */
+  readonly seatConfig?: SeatConfig;
+  /**
+   * The match formats on offer. Defaults to single leg, best of 3 and best
+   * of 5 legs.
+   */
+  readonly matchFormats?: readonly MatchFormatChoice[];
 }
 
 /** The label of the checkout rule, from the registry's own vocabulary. */
@@ -59,16 +91,48 @@ function checkoutLabel(outRule: OutRuleId): string {
 }
 
 /**
- * The match formats x01 offers.
+ * The seat information the score sheet shows, keyed by player id.
+ *
+ * The seats arrive in the order they play, and the player ids follow that
+ * order, so the seat at a position belongs to the player at that position.
+ * A match without seats reports nothing: every player is a person.
+ */
+function seatScoreboardData(seats: readonly PlayerSeat[]): {
+  seats?: Record<string, SeatKind>;
+  seatAverages?: Record<string, number>;
+} {
+  if (seats.length === 0) return {};
+  const kinds: Record<string, SeatKind> = {};
+  const averages: Record<string, number> = {};
+  seats.forEach((seat, index) => {
+    const playerId = `player${index + 1}`;
+    kinds[playerId] = seat.kind;
+    if (seat.average !== undefined) averages[playerId] = seat.average;
+  });
+  return { seats: kinds, seatAverages: averages };
+}
+
+/**
+ * The match formats an x01 mode offers.
  *
  * The sizes are "best of N": "Best of 3 legs" is first to 2 legs. A single
  * leg reports no legs and no sets, so the engine runs no leg structure at
  * all and the sheet header says nothing about legs.
+ *
+ * The 501 offers the five formats of its requirement; the other x01 mode
+ * keeps the three it has always had.
  */
 const MATCH_FORMATS: readonly MatchFormatChoice[] = [
   { id: "single", label: "Single leg" },
   { id: "bo3", label: "Best of 3 legs", legs: 3 },
   { id: "bo5", label: "Best of 5 legs", legs: 5 },
+];
+
+/** The match formats the 501 offers. */
+export const DART_501_MATCH_FORMATS: readonly MatchFormatChoice[] = [
+  ...MATCH_FORMATS,
+  { id: "bo7", label: "Best of 7 legs", legs: 7 },
+  { id: "bo9", label: "Best of 9 legs", legs: 9 },
 ];
 
 /**
@@ -141,13 +205,24 @@ export function isBustThrow(
 }
 
 /** True below the md breakpoint, where the board is a preview, not an input. */
-export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
+export function X01MatchView({
+  startScore,
+  modeName,
+  minPlayers = 1,
+  outRuleChoices = OUT_RULE_CHOICES,
+  seatConfig,
+  matchFormats = MATCH_FORMATS,
+}: X01MatchViewProps) {
   const router = useRouter();
 
   const [phase, setPhase] = useState<"setup" | "playing" | "result">("setup");
   const [engine, setEngine] = useState<GameEngine | null>(null);
   const [matchState, setMatchState] = useState<MatchState | null>(null);
   const [playerNames, setPlayerNames] = useState<Record<string, string>>({});
+  // The seats of the match, in the order they play. The engine knows the
+  // order through the player ids; the seat list keeps what the sheet shows:
+  // who sits where, and the average of an AI seat.
+  const [seats, setSeats] = useState<readonly PlayerSeat[]>([]);
   const [outRule, setOutRule] = useState<OutRuleId>("double");
   const [boardSource, setBoardSource] = useState<BoardSourceId>("virtual");
   // The sizes of the match format. They are the configuration the match was
@@ -169,6 +244,8 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
       // travels with the match configuration, so the choice governs.
       const mode = new StandardMode({ startScore });
       const nextEngine = new GameEngine(mode);
+      // The seats arrive in the order they play, so their order is the order
+      // of the visits. The player ids follow it.
       const playerIds = names.map((_, index) => `player${index + 1}`);
       const state = nextEngine.startMatch({
         playerIds,
@@ -184,6 +261,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
 
       setEngine(nextEngine);
       setMatchState(state);
+      setSeats(options.seats ?? []);
       setPlayerNames(namesById);
       setOutRule(options.outRule);
       setBoardSource(options.boardSource);
@@ -262,7 +340,14 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
   }, [engine, history]);
 
   const playAgain = useCallback(() => {
-    const names = Object.entries(playerNames).map(([, name]) => name);
+    // The seats keep the order they played in, so the replay starts from
+    // the same table. Reading the names out of the id map instead would
+    // lose that order.
+    const replaySeats = seats.length > 0 ? seats : [];
+    const names =
+      replaySeats.length > 0
+        ? replaySeats.map((seat) => seat.name)
+        : Object.entries(playerNames).map(([, name]) => name);
     // The format travels with the match: "Play again" must not silently
     // drop the best-of-N the players chose.
     startMatch(names, {
@@ -270,8 +355,9 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
       boardSource,
       ...(legs === undefined ? {} : { legs }),
       ...(sets === undefined ? {} : { sets }),
+      ...(replaySeats.length > 0 ? { seats: replaySeats } : {}),
     });
-  }, [boardSource, legs, outRule, playerNames, sets, startMatch]);
+  }, [boardSource, legs, outRule, playerNames, seats, sets, startMatch]);
 
   if (phase === "setup") {
     return (
@@ -280,9 +366,11 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
           modeName={modeName}
           modeDescription={`Classic x01 — start at ${startScore} and count down to zero. The match format and the checkout rule are chosen below.`}
           modeIcon={Target}
-          minPlayers={1}
+          minPlayers={minPlayers}
           maxPlayers={4}
-          matchFormat={MATCH_FORMATS}
+          outRuleChoices={outRuleChoices}
+          seatConfig={seatConfig}
+          matchFormat={matchFormats}
           onStart={startMatch}
         />
       </div>
@@ -343,6 +431,7 @@ export function X01MatchView({ startScore, modeName }: X01MatchViewProps) {
             data={{
               kind: "x01",
               checkoutLabel: checkoutLabel(outRule),
+              ...seatScoreboardData(seats),
             }}
           />
         )

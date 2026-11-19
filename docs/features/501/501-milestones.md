@@ -83,6 +83,26 @@ KI-Plätze, Namen, Reihenfolge, Out-Regel und Spielformat.
 `npm run lint` fehlerfrei, die neuen Bausteine durch Unit-Tests abgedeckt, die
 Konfiguration über alle Auswahlkombinationen durchgeprüft.
 
+**Umsetzungsstand (M1):** Alle fünf Issues sind umgesetzt. Die Konfiguration läuft
+ausschließlich über Requisiten der gemeinsamen Ansichten, damit die 301, Cricket, Around
+the Clock und Shanghai unverändert bleiben:
+
+- `app/game/page.tsx` — die 501 übergibt `minPlayers={2}`, die Auswahl
+  `outRuleChoices(["straight", "double"])`, die Sitz-Konfiguration und
+  `DART_501_MATCH_FORMATS`.
+- `src/components/x01/X01MatchView.tsx` — die neuen Requisiten `minPlayers`,
+  `outRuleChoices`, `seatConfig` und `matchFormats`; die Sitzliste wird beim Start in der
+  konfigurierten Reihenfolge an den Motor gegeben.
+- `src/components/game/PlayerSeatSetup.tsx` — die Sitzliste mit Art, Name, KI-Average und
+  Reihenfolge; die Schaltflächen benennen den Spieler, damit die Wirkung vorgelesen wird.
+- `src/ai/averages.ts` — die Average-Stufen 25/40/55/70/85.
+- `src/game-engine/modes/registry.ts` — `outRuleChoices()` liefert eine Teilmenge der
+  gemeinsamen Liste, ohne sie global zu verändern.
+
+**Offen für spätere Milestones:** Die durchschnittliche KI-Stärke wird konfiguriert und
+über die Partie getragen, wirkt aber noch nicht — das ist 501-I18 (M7). Eine Änderung der
+Reihenfolge ist nur vor dem Start möglich, wie in 501-I04 vorgesehen.
+
 ---
 
 ### M2 — Spieloberfläche und Scoreboard
@@ -334,7 +354,7 @@ grün.
 
 | Milestone                                  | Status | Fortschritt |
 | ------------------------------------------ | ------ | ----------- |
-| M1 — Spielvorbereitung und Konfiguration   | offen  | 0 / 5       |
+| M1 — Spielvorbereitung und Konfiguration   | fertig | 5 / 5       |
 | M2 — Spieloberfläche und Scoreboard        | offen  | 0 / 2       |
 | M3 — Wurfeingabe und Dartboard-Integration | offen  | 0 / 2       |
 | M4 — Spielregeln und Punkteberechnung      | offen  | 0 / 4       |

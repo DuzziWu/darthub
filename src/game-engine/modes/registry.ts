@@ -60,6 +60,22 @@ export const OUT_RULE_CHOICES: readonly OutRuleChoice[] = (
   description: describeCheckout(OUT_RULES[id]),
 }));
 
+/**
+ * The offered checkout rules, restricted to the given ids.
+ *
+ * The full list stays the default: the Game Center shows every rule the
+ * engine knows. A mode that offers only some of them — the 501 offers
+ * straight out and double out — asks for its subset here instead of
+ * filtering the shared list, which would take the Master Out line away
+ * from the modes that still offer it.
+ *
+ * The order of the shared list is kept, so a subset reads in the same order
+ * the full list does.
+ */
+export function outRuleChoices(ids: readonly OutRuleId[]): readonly OutRuleChoice[] {
+  return OUT_RULE_CHOICES.filter((choice) => ids.includes(choice.id));
+}
+
 /** Explains a checkout rule by the finishes it accepts. */
 function describeCheckout(rule: OutRule): string {
   if (rule.isCheckout("single", 20)) {

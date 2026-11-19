@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { BoardSourceId } from "@/board";
 import type { ArmedSegment } from "@/components/board";
 import type { InputMode } from "@/components/game/InputModeSwitch";
+import type { OutRuleChoice } from "@/game-engine/modes/registry";
 import type { OutRuleId, ThrowSegment } from "@/game-engine/types";
 
 /**
@@ -69,6 +70,16 @@ export interface X01ScoreboardData {
   readonly checkoutLabel: string;
   readonly leg?: { readonly current: number; readonly total: number };
   readonly set?: { readonly current: number; readonly total: number };
+  /**
+   * The seats of the match, by player id: who sits there and — for the AI —
+   * the average it plays at.
+   *
+   * Absent means the mode has no seats to manage and every player is a
+   * person.
+   */
+  readonly seats?: Readonly<Record<string, SeatKind>>;
+  /** The average of each AI seat, by player id. */
+  readonly seatAverages?: Readonly<Record<string, number>>;
 }
 
 /** The cricket variant: the marks of every player on every target. */
@@ -177,6 +188,52 @@ export interface MatchFormatChoice {
   readonly sets?: number;
 }
 
+/**
+ * Who sits in a seat: a person at the table, or the AI.
+ *
+ * The kinds are the two the 501 offers. A mode without AI seats (cricket,
+ * around the clock, shanghai) never offers the choice and therefore never
+ * needs the type.
+ */
+export type SeatKind = "human" | "ai";
+
+/**
+ * One seat at the table.
+ *
+ * A seat carries what the sheet shows: the name, who sits there and — for
+ * the AI — the average that sets its strength. The order of the seats is
+ * the order of the visits, so the seat list is more than a list of names.
+ */
+export interface PlayerSeat {
+  /** The seat's id. Stable for the whole match. */
+  readonly id: string;
+  /** The name on the score sheet. */
+  readonly name: string;
+  /** Who sits in the seat. */
+  readonly kind: SeatKind;
+  /** The AI's 3-dart average. Absent on a human seat. */
+  readonly average?: number;
+}
+
+/**
+ * What a mode's seat management offers.
+ *
+ * Absent means the mode has no seats to manage: every slot asks for a
+ * name and nothing else. The 501 passes one of these and gets the
+ * human/AI choice, the average of an AI seat and the order of the seats.
+ */
+export interface SeatConfig {
+  /** The averages an AI seat can be set to. */
+  readonly averages: readonly number[];
+  /**
+   * The average an AI seat gets when the player does not choose one.
+   *
+   * An AI seat without an average must not stop the match from starting,
+   * so it falls back to this level.
+   */
+  readonly defaultAverage: number;
+}
+
 /** The choices a player makes before the first dart. */
 export interface PlayerSetupOptions {
   /** The checkout rule the match is played under. */
@@ -187,6 +244,13 @@ export interface PlayerSetupOptions {
   legs?: number;
   /** Best-of-N sets per match, when the match has a set structure. */
   sets?: number;
+  /**
+   * The seats of the match, in the order they play.
+   *
+   * Only the modes with a seat management report them; the other modes
+   * leave them out and every one of their players is a human.
+   */
+  readonly seats?: readonly PlayerSeat[];
 }
 
 export interface PlayerSetupProps {
@@ -205,6 +269,22 @@ export interface PlayerSetupProps {
    * be offered a rule they cannot use. Defaults to true.
    */
   showCheckoutRule?: boolean;
+  /**
+   * The checkout rules on offer.
+   *
+   * Absent means every rule the engine knows. A mode that offers only some
+   * of them passes the subset here — the 501 offers straight out and double
+   * out, while the Game Center keeps showing every rule the engine knows.
+   */
+  readonly outRuleChoices?: readonly OutRuleChoice[];
+  /**
+   * The seat management of the mode.
+   *
+   * Absent means the mode has no seats to manage: every slot asks for a
+   * name and the form offers nothing else. The modes that pass it get the
+   * human/AI choice, the average of an AI seat and the order of the seats.
+   */
+  readonly seatConfig?: SeatConfig;
   /** The board source. Defaults to the virtual board. */
   boardSource?: BoardSourceId;
   onBoardSourceChange?: (id: BoardSourceId) => void;

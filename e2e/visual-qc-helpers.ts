@@ -25,9 +25,17 @@ export interface Surface {
   readonly enter?: (page: Page) => Promise<void>;
 }
 
-/** Fills the setup form and starts the match. */
-export async function startMatch(page: Page, name = "Alice"): Promise<void> {
+/**
+ * Fills the setup form and starts the match.
+ *
+ * The 501 needs two players; the other modes accept one. The second name
+ * goes into the plain "Player 2" field of the seat list.
+ */
+export async function startMatch(page: Page, name = "Alice", players = 1): Promise<void> {
   await page.getByLabel("Player 1").fill(name);
+  if (players > 1) {
+    await page.getByLabel("Player 2").fill("Bo");
+  }
   await page.getByRole("button", { name: "Start match" }).click();
   await page.getByRole("region", { name: "Dart pad" }).waitFor();
 }
@@ -62,7 +70,8 @@ export const SURFACES: readonly Surface[] = [
     name: "match-501",
     path: "/game",
     enter: async (page) => {
-      await startMatch(page);
+      // The 501 needs two players.
+      await startMatch(page, "Alice", 2);
       await throwFromPad(page);
     },
   },

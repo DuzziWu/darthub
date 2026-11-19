@@ -58,8 +58,15 @@ function modeFacts(data: ScoreboardData): string {
 /** The extra line of a row, per mode: what its number means right now. */
 function rowDetail(playerId: string, data: ScoreboardData): string | null {
   switch (data.kind) {
-    case "x01":
-      return null;
+    case "x01": {
+      // The seats of a managed match say who sits there: the AI is marked,
+      // a person is not. The average of an AI seat travels with it.
+      const kind = data.seats?.[playerId];
+      if (kind === undefined) return null;
+      if (kind === "human") return "Mensch";
+      const average = data.seatAverages?.[playerId];
+      return average === undefined ? "KI" : `KI · ${average}`;
+    }
     case "cricket": {
       // Cricket has no score column: the marks on the closed targets are
       // the score, and they are counted here rather than in the number.
