@@ -7,6 +7,7 @@ import { withBasePath } from "@/lib/basePath";
 import { boardSourceLabel, type BoardSourceId } from "@/board";
 import type { ArmedSegment } from "@/components/board";
 import { GameResultBanner } from "@/components/game/GameResultBanner";
+import { MatchHistory } from "@/components/game/MatchHistory";
 import { MatchLayout } from "@/components/game/MatchLayout";
 import { MatchStatus } from "@/components/game/MatchStatus";
 import { PlayerScoreboard } from "@/components/game/PlayerScoreboard";
@@ -442,6 +443,7 @@ export function X01MatchView({
             throws={turn}
             turnOffset={history.currentTurnOffset}
             correctionTarget={history.correctionTarget}
+            armedDart={history.armedDart}
             awaitingConfirmation={history.awaitingConfirmation}
             correctionsDisabled={matchState?.status === "completed"}
             onSelectThrow={history.selectThrow}
@@ -449,6 +451,19 @@ export function X01MatchView({
             onCancel={history.cancelCorrection}
           />
         </VisitTracker>
+      }
+      history={
+        matchState && (
+          <MatchHistory
+            visits={history.visits}
+            playerNames={playerNames}
+            correctionTarget={history.correctionTarget}
+            correctionsDisabled={matchState.status === "completed"}
+            expanded={history.historyExpanded}
+            onToggle={history.toggleHistory}
+            onSelectThrow={history.selectThrow}
+          />
+        )
       }
       actions={
         <button type="button" onClick={() => setPhase("setup")} className={SECONDARY_BUTTON}>
@@ -468,7 +483,6 @@ export function X01MatchView({
           throwHistory={[...matchState.throws]}
           leg={legSet.leg}
           set={legSet.set}
-          caption="Remaining"
         />
       )}
       <MatchStatus message={announcement} />

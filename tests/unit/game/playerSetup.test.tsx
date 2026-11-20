@@ -69,6 +69,25 @@ describe("PlayerSetup", () => {
     expect(options.boardSource).toBe("virtual");
   });
 
+  it("scrolls to the top when the match starts", () => {
+    // The form disappears, and the browser would keep the scroll position
+    // of the button that was pressed — on a phone that is below the fold,
+    // where the remaining score is not to be seen.
+    const scrollIntoView = vi.fn();
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    try {
+      renderSetup();
+      fireEvent.change(screen.getByLabelText("Player 1"), { target: { value: "Dave" } });
+      fireEvent.click(screen.getByRole("button", { name: /start match/i }));
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
   it("refuses to start without enough players", () => {
     const { onStart } = renderSetup({ minPlayers: 2 });
 

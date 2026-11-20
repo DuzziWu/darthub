@@ -42,6 +42,7 @@ export function MatchLayout({
   sourceLabel,
   scoreboard,
   visit,
+  history,
   actions,
   onBackToHub,
   armedSegment,
@@ -150,10 +151,14 @@ export function MatchLayout({
           )}
         </div>
 
-        {/* 6 — everything else: the score sheet, the status line, the mode's
-            own panels. It is read, never tapped for a throw. On a phone it
-            sits between the input and the board preview. */}
-        <div className="order-2 lg:order-3 lg:col-start-2 lg:row-start-2">{children}</div>
+        {/* 6 — everything else: the score sheet, the history, the status
+            line, the mode's own panels. It is read, never tapped for a
+            throw. On a phone it sits between the input and the board
+            preview. */}
+        <div className="order-2 lg:order-3 lg:col-start-2 lg:row-start-2">
+          {children}
+          {history}
+        </div>
       </div>
     </div>
   );

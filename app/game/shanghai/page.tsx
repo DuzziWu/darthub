@@ -265,7 +265,6 @@ export default function ShanghaiPage() {
         currentPlayerId={matchState?.currentPlayerId ?? null}
         playerNames={playerNames}
         throwHistory={matchState ? [...matchState.throws] : []}
-        caption="Marks"
       />
       <MatchStatus message={message} />
       {phase === "result" ? (

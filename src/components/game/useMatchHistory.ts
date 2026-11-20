@@ -24,6 +24,10 @@ export function useMatchHistory(options: {
   const { engine, matchState } = options;
   const [correctionTarget, setCorrectionTarget] = useState<number | null>(null);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  // Whether the history shows every visit of the match or only the one in
+  // progress. A whole evening of darts would be unreadable as one wall of
+  // chips, so the short list is the default.
+  const [historyExpanded, setHistoryExpanded] = useState(false);
 
   const throws = matchState?.throws ?? [];
   const visits = engine !== null && throws.length > 0 ? engine.getVisits() : [];
@@ -62,6 +66,15 @@ export function useMatchHistory(options: {
    */
   const currentTurnOffset = Math.max(0, throws.length - currentTurn.length);
   const canUndo = throws.length > 0;
+  /**
+   * The dart the correction targets, straight from the ledger.
+   *
+   * The turn holds only the darts of the turn in progress, so a dart of an
+   * earlier visit is not in it. The ledger has every dart, so the status
+   * line can name the one that is about to be replaced.
+   */
+  const armedDart: RecordedThrow | null =
+    correctionTarget === null ? null : (throws[correctionTarget] ?? null);
 
   const selectThrow = useCallback(
     (dartIndex: number) => {
@@ -113,9 +126,19 @@ export function useMatchHistory(options: {
     currentVisitOffset,
     currentTurn,
     currentTurnOffset,
+    /**
+     * Every visit of the match, oldest first.
+     *
+     * The list comes from the engine, so it cannot drift from the ledger: a
+     * correction rewrites the ledger and the engine regroups it.
+     */
+    visits,
     canUndo,
     correctionTarget,
+    armedDart,
     awaitingConfirmation,
+    historyExpanded,
+    toggleHistory: () => setHistoryExpanded((open) => !open),
     selectThrow,
     confirmCorrection,
     cancelCorrection,

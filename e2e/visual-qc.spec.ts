@@ -212,6 +212,11 @@ test.describe("visual quality control", () => {
       const counter = pad.locator("p", { hasText: "/ 3 darts" });
       const before = await counter.textContent();
 
+      // The board preview sits at the end of the phone's reading order, so
+      // it is below the fold. The click has to go where the board actually
+      // is — a click at the edge of the viewport would hit the navigation
+      // instead.
+      await board.scrollIntoViewIfNeeded();
       const box = await board.boundingBox();
       if (box) {
         await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -249,5 +254,72 @@ test.describe("visual quality control", () => {
     const pad = page.getByRole("region", { name: "Dart pad" });
     await expect(pad.getByRole("radio")).toHaveCount(3);
     await expect(pad.getByRole("button")).toHaveCount(23);
+  });
+
+  test("it shows the remaining score of the player on turn without scrolling", async ({ page }) => {
+    // 390 px is the phone: the score decides whether the next dart is
+    // safe, so it has to be on the screen before the player scrolls.
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.goto("/game");
+    await page.getByLabel("Player 1").fill("Alice");
+    // The 501 needs two players.
+    await page.getByLabel("Player 2").fill("Bo");
+    await page.getByRole("button", { name: "Start match" }).click();
+    await page.getByRole("region", { name: "Dart pad" }).waitFor();
+
+    // The leading number: the score of every player, in the overview.
+    const overview = page.getByRole("region", { name: "Player overview" });
+    const remaining = overview.locator("[data-remaining]").first();
+    await expect(remaining).toContainText("501");
+
+    // It is inside the fold: no scrolling needed to see it.
+    await expect(remaining).toBeInViewport();
+
+    // The player on turn is recognisable by more than colour: the rail and
+    // the words.
+    const active = overview.locator('[data-active-player="true"]');
+    await expect(active).toHaveCount(1);
+    await expect(active).toContainText("AM ZUG");
+
+    // The number stands in one place only: the score sheet does not carry
+    // a second copy of it.
+    const sheet = page.getByRole("region", { name: "Score sheet" });
+    await expect(sheet.locator("[data-score]")).toHaveCount(0);
+  });
+
+  test("it shows the history of the match on the phone", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.goto("/game");
+    await page.getByLabel("Player 1").fill("Alice");
+    await page.getByLabel("Player 2").fill("Bo");
+    await page.getByRole("button", { name: "Start match" }).click();
+    await page.getByRole("region", { name: "Dart pad" }).waitFor();
+
+    const pad = page.getByRole("region", { name: "Dart pad" });
+    // Three darts fill the turn of Alice; the fourth belongs to Bo and
+    // opens the second visit.
+    for (let dart = 0; dart < 4; dart += 1) {
+      await pad.getByRole("button", { name: "Single 20, 20 points" }).click();
+    }
+
+    // The history counts the visits of the match.
+    const history = page.getByRole("region", { name: "Match history" });
+    await expect(history).toBeVisible();
+    await expect(history).toContainText("2 visits");
+
+    // The visit in progress is shown, and its dart is choosable.
+    const darts = history.locator('[aria-label^="History dart"]');
+    await expect(darts).toHaveCount(1);
+
+    // With more than one visit the list opens on demand.
+    const toggle = history.getByRole("button", { name: /all visits/i });
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+    await expect(history.getByRole("button", { name: /current visit/i })).toBeVisible();
+
+    // Open, every dart of the match is choosable.
+    await expect(history.locator('[aria-label^="History dart"]')).toHaveCount(4);
   });
 });

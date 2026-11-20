@@ -218,7 +218,6 @@ export default function AroundTheClockPage() {
         currentPlayerId={matchState?.currentPlayerId ?? null}
         playerNames={playerNames}
         throwHistory={matchState ? [...matchState.throws] : []}
-        caption="Hit"
       />
       <MatchStatus message={message} />
       {phase === "result" ? (

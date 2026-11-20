@@ -5,11 +5,16 @@ import type { ScoreDisplayProps } from "./types";
 import { VISIT_BUST_CLASS, VISIT_COUNTED_CLASS, visitBadge } from "./VisitChips";
 
 /**
- * The score sheet.
+ * The score sheet: what each player's last visit was.
  *
- * A ruled list, one row per player: the remaining score in tabular figures,
- * the player's last visit, and the turn indicator. No cards, no colour wash
- * per player — a row is a row.
+ * A ruled list, one row per player: the name, the player's last visit and
+ * the turn indicator. No cards, no colour wash per player — a row is a row.
+ *
+ * The sheet carries **no score**. The remaining score of every player is
+ * the player overview's job, and it is there in one place only: two
+ * surfaces showing the same number would leave the player wondering which
+ * of them is the truth. This sheet answers the other question — what did
+ * each player just throw.
  */
 export function ScoreDisplay({
   players,
@@ -18,7 +23,6 @@ export function ScoreDisplay({
   throwHistory = [],
   leg,
   set,
-  caption,
 }: ScoreDisplayProps) {
   return (
     <section aria-label="Score sheet" className="rounded-md border border-rule bg-surface">
@@ -36,16 +40,8 @@ export function ScoreDisplay({
             Set {set.current}/{set.total}
           </span>
         )}
-        {/*
-          The caption says what the number is — REMAINING, HIT, MARKS — and
-          sits over the score column: the tally dots' width is reserved
-          beside it, so the caption's right edge is the score's right edge.
-        */}
-        {caption && (
-          <span className="min-w-[3ch] text-right font-caption text-caption uppercase tracking-[0.04em] text-ink-faint">
-            {caption}
-          </span>
-        )}
+        {/* The space the score column used to take, so the visit chips and
+            the tally dots keep their place on the right edge. */}
         <span aria-hidden="true" className="w-[28px]" />
       </header>
 
@@ -95,14 +91,6 @@ export function ScoreDisplay({
                     </span>
                   ),
                 )}
-              </span>
-
-              {/* The remaining score: a fixed column of tabular figures. */}
-              <span
-                data-score={player.id}
-                className="min-w-[3ch] text-right font-mono text-score-lg font-bold tabular-nums text-ink md:text-score-xl"
-              >
-                {player.totalPoints}
               </span>
 
               {/* Three dots, always three: the darts of the last visit. */}

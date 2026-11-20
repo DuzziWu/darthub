@@ -52,6 +52,16 @@ function sheet() {
   return within(screen.getByRole("region", { name: "Score sheet" }));
 }
 
+/**
+ * The player overview: the leading surface of the match.
+ *
+ * The remaining score is here and nowhere else — the score sheet shows
+ * what every player just threw, not a second copy of the number.
+ */
+function overview() {
+  return within(screen.getByRole("region", { name: "Player overview" }));
+}
+
 /** The strip along the top of the match. */
 function header() {
   return within(screen.getByRole("region", { name: "Match header" }));
@@ -140,7 +150,7 @@ describe("the x01 match view", () => {
     expect(recordThrow.mock.calls.at(-1)?.[0]).not.toHaveProperty("segment");
 
     // It is a legal throw: the score is unchanged and the dart was counted.
-    expect(sheet().getByText("501")).toBeTruthy();
+    expect(overview().getByText("501")).toBeTruthy();
     expect(sheet().getByText("MISS")).toBeTruthy();
   });
 
@@ -162,8 +172,9 @@ describe("the x01 match view", () => {
     fireEvent.click(pad().getByRole("button", { name: "Single 20, 20 points" }));
 
     expect(sheet().getByText("BUST")).toBeTruthy();
-    // The bust consumed no dart and took no score.
-    expect(sheet().getByText("20")).toBeTruthy();
+    // The bust consumed no dart and took no score — the remaining score
+    // stands where it is stated: in the player overview.
+    expect(overview().getByText("20")).toBeTruthy();
   });
 
   it("shows the board source in the match header", () => {

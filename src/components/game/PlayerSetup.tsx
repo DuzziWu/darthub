@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Target, TriangleAlert } from "lucide-react";
 import type { BoardSourceId } from "@/board";
 import { OUT_RULE_CHOICES } from "@/game-engine/modes/registry";
@@ -36,6 +36,15 @@ export function PlayerSetup({
   matchFormat,
   onStart,
 }: PlayerSetupProps) {
+  /**
+   * The form itself.
+   *
+   * It is the anchor for the scroll to the top when the match starts: the
+   * form disappears, and the browser would leave the page where its button
+   * was. On a phone that is below the fold, and the number that decides
+   * whether the next dart is safe would be out of sight.
+   */
+  const formRef = useRef<HTMLElement | null>(null);
   const [names, setNames] = useState<string[]>(Array(maxPlayers).fill(""));
   // The seats exist only in the modes that manage them; the other modes
   // keep their plain name fields.
@@ -60,6 +69,22 @@ export function PlayerSetup({
     onBoardSourceChange?.(next);
   }
 
+  /**
+   * The scroll to the top, before the form is replaced by the match.
+   *
+   * The browser keeps the scroll position of the button that was pressed,
+   * so the match would otherwise start in the middle of the page — on a
+   * phone below the fold, where the remaining score is not to be seen.
+   */
+  function scrollToTop(): void {
+    // The browser scrolls on its own when the API is there; where it is
+    // not — a test environment, an old browser — the match still starts,
+    // only the scroll is missing. A missing convenience must never stop
+    // the match.
+    if (typeof formRef.current?.scrollIntoView !== "function") return;
+    formRef.current.scrollIntoView({ block: "start" });
+  }
+
   function handleStart() {
     if (seatConfig) {
       // A seat takes part when it carries a name. An AI seat is named from
@@ -75,6 +100,7 @@ export function PlayerSetup({
         return;
       }
       setError("");
+      scrollToTop();
       onStart(
         playing.map((seat) => seat.name.trim()),
         {
@@ -94,6 +120,7 @@ export function PlayerSetup({
       return;
     }
     setError("");
+    scrollToTop();
     onStart(filled, {
       outRule: rule,
       boardSource: source,
@@ -116,6 +143,7 @@ export function PlayerSetup({
 
   return (
     <section
+      ref={formRef}
       aria-label={`${modeName} setup`}
       className="mx-auto max-w-[420px] rounded-md border border-rule bg-surface p-2xl space-y-xl"
     >
