@@ -21,10 +21,12 @@ import { SCOREBOARD_ACTIVE_RAIL, SCOREBOARD_HEADER, SCOREBOARD_SURFACE } from ".
  * squeezed into a generic field that every mode would then interpret on its
  * own.
  *
- * The markers are `data-remaining` and `data-active-player`. There is
- * deliberately **no** `data-score` here: that marker belongs to the existing
- * score sheet, and two elements carrying it would make a `.first()` lookup
- * ambiguous.
+ * The markers are `data-remaining`, `data-score` and `data-active-player`.
+ *
+ * This is the **leading** surface of the match: it states how much each
+ * player has left, and it does so in exactly one place. The score sheet
+ * below shows what every player just threw — it carries no score of its
+ * own, so no number appears twice on the screen.
  */
 
 /** The caption of the score column, per mode. */
@@ -156,10 +158,16 @@ export function PlayerScoreboard({ players, data }: PlayerScoreboardProps) {
               )}
 
               {/* The score: a fixed column of tabular figures, so the
-                  number does not jump when it changes. */}
+                  number does not jump when it changes.
+
+                  This is the **leading** number of the match — the one place
+                  that states how much each player has left. The score sheet
+                  below shows what every player just threw, not a second
+                  copy of the number. */}
               {caption && (
                 <span
                   data-remaining={player.id}
+                  data-score={player.id}
                   className={`min-w-[3ch] text-right font-mono tabular-nums ${
                     player.isCurrent
                       ? "text-score-xl font-bold text-ink"

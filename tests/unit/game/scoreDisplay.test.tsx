@@ -47,18 +47,16 @@ describe("ScoreDisplay", () => {
     expect(bust?.querySelector("svg")).not.toBeNull();
   });
 
-  it("renders the remaining score in tabular figures", () => {
+  it("carries no score of its own", () => {
     const { container } = render(
       <ScoreDisplay players={PLAYERS} currentPlayerId="p1" playerNames={NAMES} />,
     );
 
-    const score = container.querySelector('[data-score="p1"]');
-    expect(score).not.toBeNull();
-    expect(score?.textContent).toBe("140");
-    expect(score?.className).toContain("font-mono");
-    expect(score?.className).toContain("tabular-nums");
-    // A fixed column: the score does not reflow as it falls.
-    expect(score?.className).toContain("min-w-[3ch]");
+    // The remaining score is the player overview's job, and it is there in
+    // one place only. Two surfaces showing the same number would leave the
+    // player wondering which of them is the truth.
+    expect(container.querySelector("[data-score]")).toBeNull();
+    expect(container.querySelector("[data-remaining]")).toBeNull();
   });
 
   it("names the player on turn in text", () => {

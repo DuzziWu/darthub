@@ -133,12 +133,15 @@ function canBust(): boolean {
 /**
  * The finished-visit confirmation, reachable in the product.
  *
- * A visit ends when the turn advances and when a dart busts. The throw
- * strip shows the darts of the turn in progress, so a dart of a finished
- * visit is only on screen when the turn itself spans two visits — which
- * is what a bust does: the bust closes the visit, and the dart after it
- * opens the next one. x01 is the mode that busts, so the 501 view is
- * where the confirmation has to be reachable.
+ * A visit ends when the turn advances and when a dart busts. The turn
+ * tracker shows the darts of the turn in progress, so a dart of a
+ * **finished** visit is only on screen in the match history — the list of
+ * every visit the match has seen. Picking a dart there arms it as the
+ * correction target, and the confirmation asks before the correction
+ * rewrites a visit that is already over.
+ *
+ * x01 is the mode that busts, so the 501 view is where the confirmation
+ * has to be reachable.
  */
 describe("the finished-visit confirmation", () => {
   it("asks for confirmation before correcting a dart of a finished visit", () => {
@@ -148,6 +151,12 @@ describe("the finished-visit confirmation", () => {
     fireEvent.change(screen.getByLabelText("Player 2"), { target: { value: "Bo" } });
     fireEvent.click(screen.getByRole("button", { name: "Start match" }));
 
+    // One whole visit first — three trebles close it, so the match has a
+    // finished visit before the bust creates a second one.
+    for (let dart = 0; dart < 3; dart += 1) {
+      throwOnBoard("Treble 20, 60 points");
+    }
+
     // Trebles of 20 until Ann is low enough to bust.
     for (let dart = 0; dart < 40 && !canBust(); dart += 1) {
       throwOnBoard("Treble 20, 60 points");
@@ -155,11 +164,19 @@ describe("the finished-visit confirmation", () => {
     // The trebles overshoot and bust, which closes the visit.
     throwOnBoard("Treble 20, 60 points");
 
-    // The bust closed the visit, so the turn still shows a dart of it.
-    const chips = visitChips();
-    expect(chips.length).toBeGreaterThan(1);
+    // The history shows the visits of the whole match. It starts on the
+    // visit in progress and opens on demand — a whole evening of darts
+    // would be unreadable as one wall of chips.
+    const history = screen.getByRole("region", { name: "Match history" });
+    fireEvent.click(within(history).getByRole("button", { name: /all visits/i }));
 
-    fireEvent.click(chips[0]!);
+    // The earlier visit is there now, and its dart can be chosen.
+    const earlier = within(history)
+      .getAllByRole("button")
+      .filter((b) => (b.getAttribute("aria-label") ?? "").startsWith("History dart"));
+    expect(earlier.length).toBeGreaterThan(1);
+
+    fireEvent.click(earlier[0]!);
 
     const alert = screen.getByRole("alert");
     expect(alert.textContent).toContain("Finished visit");

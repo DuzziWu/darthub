@@ -49,12 +49,15 @@ describe("PlayerScoreboard", () => {
     expect(score?.className).toContain("min-w-[3ch]");
   });
 
-  it("carries no data-score marker, so the score sheet keeps it to itself", () => {
+  it("carries the data-score marker, so the score is named in one place", () => {
     const { container } = render(<PlayerScoreboard players={PLAYERS} data={X01} />);
 
-    // `data-score` belongs to the existing score sheet. A second element
-    // carrying it would make a `.first()` lookup ambiguous.
-    expect(container.querySelector("[data-score]")).toBeNull();
+    // The overview leads: it states how much each player has left, and it
+    // is the only surface that does. The marker follows the number, so a
+    // lookup finds exactly one element per player.
+    const scores = container.querySelectorAll("[data-score]");
+    expect(scores).toHaveLength(2);
+    expect(container.querySelector('[data-score="p1"]')?.textContent).toBe("140");
   });
 
   it("keeps the players in their seating order", () => {

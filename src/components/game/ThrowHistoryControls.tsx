@@ -34,6 +34,15 @@ export interface ThrowHistoryControlsProps {
   readonly dartsPerTurn?: number;
   /** The dart armed as the correction target, or null. */
   readonly correctionTarget: number | null;
+  /**
+   * The dart the correction targets, straight from the ledger.
+   *
+   * The tracker holds the darts of the turn in progress, so it cannot find
+   * a dart of an earlier visit on its own. The ledger can: the dart is
+   * there whichever turn it was thrown in, and the status line names it —
+   * "Correcting T20" — so the player sees what is about to be replaced.
+   */
+  readonly armedDart?: RecordedThrow | null;
   /** The armed target sits in a finished visit and needs confirmation. */
   readonly awaitingConfirmation: boolean;
   /** Darts cannot be corrected while the match is over. */
@@ -76,14 +85,22 @@ export function ThrowHistoryControls(props: ThrowHistoryControlsProps) {
     turnOffset = 0,
     dartsPerTurn = 3,
     correctionTarget,
+    armedDart: armedDartProp,
     awaitingConfirmation,
     correctionsDisabled = false,
     onSelectThrow,
     onConfirm,
     onCancel,
   } = props;
+  /**
+   * The dart the correction targets.
+   *
+   * The ledger has the truth; the turn is the fallback for a caller that
+   * does not keep the ledger at hand.
+   */
   const armedDart =
-    correctionTarget === null ? null : (throws[correctionTarget - turnOffset] ?? null);
+    armedDartProp ??
+    (correctionTarget === null ? null : (throws[correctionTarget - turnOffset] ?? null));
   /**
    * The slots of the turn that are still free.
    *

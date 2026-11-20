@@ -137,7 +137,14 @@ export interface VisitEntry {
 }
 
 export interface ScoreDisplayProps {
-  players: ReadonlyArray<{ id: string; totalPoints: number }>;
+  /**
+   * The players of the match, in their seating order.
+   *
+   * The sheet carries no score of its own — the remaining score of
+   * every player is the player overview's job — so the sheet needs
+   * nothing but the player's id.
+   */
+  players: ReadonlyArray<{ id: string }>;
   currentPlayerId: string | null;
   playerNames: Record<string, string>;
   /** The darts of the match, oldest first. */
@@ -146,11 +153,6 @@ export interface ScoreDisplayProps {
   leg?: { current: number; total: number };
   /** The set in play, e.g. `{ current: 1, total: 3 }`. */
   set?: { current: number; total: number };
-  /**
-   * What the score column means in this mode — `REMAINING`, `HIT`, `MARKS`.
-   * The number treatment is identical; the label is not.
-   */
-  caption?: string;
 }
 
 export interface GameResultBannerProps {
@@ -335,6 +337,14 @@ export interface MatchLayoutProps {
   scoreboard?: ReactNode;
   /** The visit in progress: the chips naming each dart of the current turn. */
   visit?: ReactNode;
+  /**
+   * The history of the match: every visit it has seen.
+   *
+   * It stands below the input surface, beside the mode's own panels: on a
+   * phone the input and the board preview come first, and the history is
+   * what the player reads when they want to look back.
+   */
+  history?: ReactNode;
   /** The strip's own actions, beside the one that returns to the Game Center. */
   actions?: ReactNode;
   /** Back to the game centre. */
