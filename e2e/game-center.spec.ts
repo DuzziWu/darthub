@@ -45,8 +45,9 @@ test.describe("501 Game", () => {
     await expect(page.getByLabel("Player 1")).toBeVisible();
     await expect(page.getByRole("button", { name: "Start Match" })).toBeVisible();
 
-    // Enter name and start
+    // Enter names and start — the 501 needs two players.
     await page.getByLabel("Player 1").fill("Alice");
+    await page.getByLabel("Player 2").fill("Bo");
     await page.getByRole("button", { name: "Start Match" }).click();
 
     // Verify game started — the score of the first player is on the sheet
@@ -71,6 +72,7 @@ test.describe("501 Game", () => {
   test("new game button returns to start screen", async ({ page }) => {
     await page.goto("/game");
     await page.getByLabel("Player 1").fill("Bob");
+    await page.getByLabel("Player 2").fill("Ann");
     await page.getByRole("button", { name: "Start Match" }).click();
     await expect(page.locator("[data-score]").first()).toBeVisible();
     // The 501 page has "New Game" that returns to setup phase

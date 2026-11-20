@@ -23,11 +23,12 @@ import {
 
 /** The five match views, each of which must apply the same compact rule. */
 const MATCH_VIEWS = [
-  { name: "501", path: "/game" },
-  { name: "301", path: "/game/301" },
-  { name: "Cricket", path: "/game/cricket" },
-  { name: "Around The Clock", path: "/game/around-the-clock" },
-  { name: "Shanghai", path: "/game/shanghai" },
+  // The 501 needs two players; the other views accept one.
+  { name: "501", path: "/game", players: 2 },
+  { name: "301", path: "/game/301", players: 1 },
+  { name: "Cricket", path: "/game/cricket", players: 1 },
+  { name: "Around The Clock", path: "/game/around-the-clock", players: 1 },
+  { name: "Shanghai", path: "/game/shanghai", players: 1 },
 ];
 
 test.describe("visual quality control", () => {
@@ -122,6 +123,8 @@ test.describe("visual quality control", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/game");
     await page.getByLabel("Player 1").fill("Alice");
+    // The 501 needs two players.
+    await page.getByLabel("Player 2").fill("Bo");
     await page.getByRole("button", { name: "Start match" }).click();
     await page.getByRole("region", { name: "Dart pad" }).waitFor();
 
@@ -135,6 +138,8 @@ test.describe("visual quality control", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/game");
     await page.getByLabel("Player 1").fill("Alice");
+    // The 501 needs two players.
+    await page.getByLabel("Player 2").fill("Bo");
     await page.getByRole("button", { name: "Start match" }).click();
     await page.getByRole("region", { name: "Dart pad" }).waitFor();
 
@@ -184,6 +189,9 @@ test.describe("visual quality control", () => {
     for (const view of MATCH_VIEWS) {
       await page.goto(view.path);
       await page.getByLabel("Player 1").fill("Alice");
+      if (view.players > 1) {
+        await page.getByLabel("Player 2").fill("Bo");
+      }
       await page.getByRole("button", { name: "Start match" }).click();
       await page.getByRole("region", { name: "Dart pad" }).waitFor();
 
@@ -235,6 +243,8 @@ test.describe("visual quality control", () => {
     // sector keys, the two bulls and a miss.
     await page.goto("/game");
     await page.getByLabel("Player 1").fill("Alice");
+    // The 501 needs two players.
+    await page.getByLabel("Player 2").fill("Bo");
     await page.getByRole("button", { name: "Start match" }).click();
     const pad = page.getByRole("region", { name: "Dart pad" });
     await expect(pad.getByRole("radio")).toHaveCount(3);

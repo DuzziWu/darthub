@@ -139,3 +139,6 @@ docs/            Product and engineering documentation
 - [Roadmap](./ROADMAP.md)
 - [Security](./SECURITY.md)
 - [Decision Log](./DECISIONS.md)
+- [501 Feature Specification](./features/501/501-spec.md)
+- [501 Milestones](./features/501/501-milestones.md)
+- [501 Technical Decisions](./features/501/501-technical-decisions.md)

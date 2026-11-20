@@ -11,16 +11,20 @@ import { test, expect, type Page } from "@playwright/test";
  */
 
 const MODES = [
-  { name: "501", path: "/game" },
-  { name: "301", path: "/game/301" },
-  { name: "Cricket", path: "/game/cricket" },
-  { name: "Around the Clock", path: "/game/around-the-clock" },
-  { name: "Shanghai", path: "/game/shanghai" },
+  // The 501 needs two players; the other modes accept one.
+  { name: "501", path: "/game", players: 2 },
+  { name: "301", path: "/game/301", players: 1 },
+  { name: "Cricket", path: "/game/cricket", players: 1 },
+  { name: "Around the Clock", path: "/game/around-the-clock", players: 1 },
+  { name: "Shanghai", path: "/game/shanghai", players: 1 },
 ] as const;
 
 /** Fills the setup form and starts the match. */
-const startMatch = async (page: Page, name: string): Promise<void> => {
+const startMatch = async (page: Page, name: string, players = 1): Promise<void> => {
   await page.getByLabel("Player 1").fill(name);
+  if (players > 1) {
+    await page.getByLabel("Player 2").fill("Bo");
+  }
   await page.getByRole("button", { name: /start match/i }).click();
   await expect(page.getByRole("region", { name: "Dart pad" })).toBeVisible();
 };
@@ -32,7 +36,7 @@ for (const mode of MODES) {
   test.describe(`${mode.name} mode`, () => {
     test("it undoes a dart and takes it off the sheet", async ({ page }) => {
       await page.goto(mode.path);
-      await startMatch(page, "Alice");
+      await startMatch(page, "Alice", mode.players);
 
       const pad = page.getByRole("region", { name: "Dart pad" });
       await pad.getByRole("button", { name: "Single 1, 1 points" }).click();
@@ -46,7 +50,7 @@ for (const mode of MODES) {
 
     test("it corrects a wrongly entered dart instead of adding a second one", async ({ page }) => {
       await page.goto(mode.path);
-      await startMatch(page, "Alice");
+      await startMatch(page, "Alice", mode.players);
 
       const pad = page.getByRole("region", { name: "Dart pad" });
       await pad.getByRole("button", { name: "Single 20, 20 points" }).click();
@@ -64,7 +68,7 @@ for (const mode of MODES) {
 
     test("it switches the input mode without changing the match", async ({ page }) => {
       await page.goto(mode.path);
-      await startMatch(page, "Alice");
+      await startMatch(page, "Alice", mode.players);
 
       const pad = page.getByRole("region", { name: "Dart pad" });
       await pad.getByRole("button", { name: "Single 20, 20 points" }).click();

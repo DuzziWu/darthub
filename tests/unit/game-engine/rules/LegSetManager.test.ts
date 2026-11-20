@@ -93,4 +93,47 @@ describe("LegSetManager", () => {
     expect(matchPoint.matchCompleted).toBe(true);
     expect(matchPoint.progress.matchWinnerId).toBe("ally");
   });
+
+  it("it counts the legs of the longer formats the 501 offers", () => {
+    // Best of 7 legs is first to 4; best of 9 legs is first to 5.
+    const seven = new LegSetManager({ legs: 7 });
+    expect(seven.initialProgress().legsWon).toEqual({});
+
+    let progress = seven.initialProgress();
+    for (let leg = 0; leg < 3; leg += 1) {
+      const outcome = seven.recordLegWinner(progress, "alice");
+      expect(outcome.progress.legsWon).toEqual({ alice: leg + 1 });
+      // The set is not taken before the fourth leg.
+      expect(outcome.setCompleted).toBe(false);
+      progress = outcome.progress;
+    }
+
+    const fourth = seven.recordLegWinner(progress, "alice");
+    expect(fourth.setCompleted).toBe(true);
+    expect(fourth.progress.legsWon).toEqual({});
+
+    const nine = new LegSetManager({ legs: 9 });
+    let nineProgress = nine.initialProgress();
+    for (let leg = 0; leg < 4; leg += 1) {
+      const outcome = nine.recordLegWinner(nineProgress, "alice");
+      expect(outcome.setCompleted).toBe(false);
+      nineProgress = outcome.progress;
+    }
+    const fifth = nine.recordLegWinner(nineProgress, "alice");
+    expect(fifth.setCompleted).toBe(true);
+  });
+
+  it("it ends a match of the longer formats at the right leg", () => {
+    // Best of 7 legs: the match ends when a player has won 4 legs.
+    const engine = new GameEngine(new StandardMode({ startScore: 32, outRule: "double", legs: 7 }));
+    engine.startMatch({ playerIds: ["alice"] });
+
+    for (let leg = 0; leg < 3; leg += 1) {
+      const state = engine.recordThrow({ playerId: "alice", points: 32, segment: "double" });
+      expect(state.status).toBe("inProgress");
+    }
+    const fourth = engine.recordThrow({ playerId: "alice", points: 32, segment: "double" });
+    expect(fourth.status).toBe("completed");
+    expect(legSetProgress(fourth.modeData)?.matchWinnerId).toBe("alice");
+  });
 });
