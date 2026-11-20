@@ -130,6 +130,33 @@ noch bleibt und wie die Partie steht.
 **Definition of Done:** Issues umgesetzt, Unit-Tests für die Historie und die
 Anzeigezustände, eine visuelle Kontrolle bei 1440 px und 390 px.
 
+**Umsetzungsstand (M2):** Beide Issues sind umgesetzt.
+
+- 501-I06: Die neue Komponente `MatchHistory` zeigt die Aufnahmen der gesamten Partie.
+  Die Aufnahmen kommen aus dem Motor (`engine.getVisits()`), können also nicht vom
+  Wurfprotokoll abweichen. Die Liste ist umschaltbar — die laufende Aufnahme als
+  Voreinstellung, alle Aufnahmen auf Wunsch — und jeder Wurf daraus ist wählbar; er
+  meldet seinen Index im Wurfprotokoll, also die Eingabe für `correctThrow`. Bust und
+  gezählte Würfe tragen dieselben Chips wie der Turn-Tracker.
+- 501-I07: Der Spielerüberblick führt die Zahl: er nennt Name, „AM ZUG" und die
+  Restpunkte jedes Spielers. Das Scoreblatt zeigt nur noch, was jeder gerade geworfen
+  hat, und trägt keine zweite Zahl mehr. Die führende Zahl steht damit an genau einer
+  Stelle.
+
+**Zwei Befunde aus der Umsetzung:**
+
+- Beim Start der Partie sprang die Seite auf die Position des Startknopfes — auf dem
+  Smartphone damit unterhalb der Falz, wo die Restpunktzahl nicht zu sehen war. Der
+  Sprung ist Bestand und betraf alle fünf Modi; `PlayerSetup` scrollt jetzt vor dem
+  Start nach oben.
+- Die History-Chips brauchten einen eigenen Namen (`History dart N`), sonst teilten sie
+  sich den Namen mit den Chips des Turn-Trackers und waren für Screenreader und Tests
+  nicht mehr zu unterscheiden.
+
+**Tests:** 11 Tests für die Historie, 4 gegen den echten Motor (die Liste stimmt mit
+dem Wurfprotokoll überein), 7 für die führende Zahl, 1 für den Scroll, dazu zwei
+End-to-End-Tests für die Darstellung bei 390 px.
+
 ---
 
 ### M3 — Wurfeingabe und Dartboard-Integration
@@ -355,7 +382,7 @@ grün.
 | Milestone                                  | Status | Fortschritt |
 | ------------------------------------------ | ------ | ----------- |
 | M1 — Spielvorbereitung und Konfiguration   | fertig | 5 / 5       |
-| M2 — Spieloberfläche und Scoreboard        | offen  | 0 / 2       |
+| M2 — Spieloberfläche und Scoreboard        | fertig | 2 / 2       |
 | M3 — Wurfeingabe und Dartboard-Integration | offen  | 0 / 2       |
 | M4 — Spielregeln und Punkteberechnung      | offen  | 0 / 4       |
 | M5 — Undo und Wurfkorrekturen              | offen  | 0 / 2       |
